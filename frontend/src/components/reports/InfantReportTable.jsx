@@ -1,11 +1,11 @@
 import { Fragment } from 'react';
 
 export default function InfantReportTable({ sections = [], loading = false, formatValue, onCellClick }) {
-  if (loading) {
+  if (loading && !sections.length) {
     return (
       <div className="border border-border p-10 text-center">
         <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
-        <p className="mt-3 text-sm text-muted-foreground">Loading infant report...</p>
+        <p className="mt-3 text-xs text-muted-foreground">Loading infant report...</p>
       </div>
     );
   }
@@ -13,21 +13,21 @@ export default function InfantReportTable({ sections = [], loading = false, form
   if (!sections.length) {
     return (
       <div className="border border-border p-8 text-center">
-        <p className="text-sm text-muted-foreground">No data for the selected period.</p>
+        <p className="text-xs text-muted-foreground">No data for the selected period.</p>
         <p className="mt-1 text-xs text-muted-foreground">Select a site and quarter above.</p>
       </div>
     );
   }
 
   return (
-    <table className="w-full border-collapse  text-sm" style={{ tableLayout: 'fixed' }}>
+    <table className="w-full border-collapse text-xs" style={{ tableLayout: 'fixed' }}>
       <thead>
         <tr className=" bg-muted">
-          <th className="w-[50%] border-r border-border/60 px-3 py-2.5 text-left font-bold text-foreground">ប្រភេទ</th>
-          <th className="w-[20%] border-r border-border/60 px-3 py-2.5 text-left font-bold text-foreground">អាយុ</th>
-          <th className="w-[10%] border-r border-border/60 px-3 py-2.5 text-center font-bold text-foreground">ប្រុស</th>
-          <th className="w-[10%] border-r border-border/60 px-3 py-2.5 text-center font-bold text-foreground">ស្រី</th>
-          <th className="w-[10%] px-3 py-2.5 text-center font-bold text-foreground">សរុប</th>
+          <th className="w-[50%] border-r border-border/60 px-3 py-2 text-left text-xs font-bold text-foreground">ប្រភេទ</th>
+          <th className="w-[20%] border-r border-border/60 px-3 py-2 text-left text-xs font-bold text-foreground">អាយុ</th>
+          <th className="w-[10%] border-r border-border/60 px-3 py-2 text-center text-xs font-bold text-foreground">ប្រុស</th>
+          <th className="w-[10%] border-r border-border/60 px-3 py-2 text-center text-xs font-bold text-foreground">ស្រី</th>
+          <th className="w-[10%] px-3 py-2 text-center text-xs font-bold text-foreground">សរុប</th>
         </tr>
       </thead>
       <tbody>
@@ -82,19 +82,19 @@ export default function InfantReportTable({ sections = [], loading = false, form
                     ) : null}
 
                     <td
-                      className="border-r border-b border-border/50 px-3 py-2 text-right text-lg tabular-nums text-blue-600 cursor-pointer hover:bg-muted/40"
+                      className="cursor-pointer border-r border-b border-border/50 px-3 py-2 text-right text-sm tabular-nums text-report-male hover:bg-muted/40"
                       onClick={() => onCellClick?.(section, row, rowIdx, 'male')}
                     >
                       {formatValue(row.male ?? 0)}
                     </td>
                     <td
-                      className="border-r border-b border-border/50 px-3 py-2 text-right text-lg tabular-nums text-pink-600 cursor-pointer hover:bg-muted/40"
+                      className="cursor-pointer border-r border-b border-border/50 px-3 py-2 text-right text-sm tabular-nums text-report-female hover:bg-muted/40"
                       onClick={() => onCellClick?.(section, row, rowIdx, 'female')}
                     >
                       {formatValue(row.female ?? 0)}
                     </td>
                     <td
-                      className={`border-b border-border/50 px-3 py-2 text-right text-lg tabular-nums text-foreground cursor-pointer hover:bg-muted/40 ${isSubtotal ? 'font-bold underline' : ''}`}
+                      className={`cursor-pointer border-b border-border/50 px-3 py-2 text-right text-sm tabular-nums text-foreground hover:bg-muted/40 ${isSubtotal ? 'font-bold underline' : ''}`}
                       onClick={() => onCellClick?.(section, row, rowIdx, 'total')}
                     >
                       {formatValue(row.total ?? 0)}

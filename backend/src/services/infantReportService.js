@@ -318,67 +318,91 @@ class InfantReportService {
     }
   }
 
+  async buildSection(siteCode, fullParams, def) {
+    try {
+      let rows = [];
+      if (def.subScriptId) {
+        const [res1, res2] = await Promise.all([
+          this.runScript(siteCode, def.scriptId, fullParams),
+          this.runScript(siteCode, def.subScriptId, fullParams)
+        ]);
+        if (res1.error || res2.error) {
+          return {
+            sectionNumber: def.sectionNumber,
+            sectionLabelEn: def.sectionLabelEn,
+            sectionLabelKh: def.sectionLabelKh,
+            detailScriptId: def.detailScriptId || null,
+            detailScriptIds: def.detailScriptIds || null,
+            rows: [{ labelEn: 'Error', labelKh: 'កំហុស', male: 0, female: 0, total: 0, error: res1.error || res2.error }]
+          };
+        }
+        rows = def.normalizer(res1.rows, res2.rows);
+      } else {
+        const res = await this.runScript(siteCode, def.scriptId, fullParams);
+        if (res.error) {
+          return {
+            sectionNumber: def.sectionNumber,
+            sectionLabelEn: def.sectionLabelEn,
+            sectionLabelKh: def.sectionLabelKh,
+            detailScriptId: def.detailScriptId || null,
+            detailScriptIds: def.detailScriptIds || null,
+            rows: [{ labelEn: 'Error', labelKh: 'កំហុស', male: 0, female: 0, total: 0, error: res.error }]
+          };
+        }
+        rows = def.normalizer(res.rows);
+      }
+      return {
+        sectionNumber: def.sectionNumber,
+        sectionLabelEn: def.sectionLabelEn,
+        sectionLabelKh: def.sectionLabelKh,
+        detailScriptId: def.detailScriptId || null,
+        detailScriptIds: def.detailScriptIds || null,
+        rows: Array.isArray(rows) ? rows : []
+      };
+    } catch (err) {
+      return {
+        sectionNumber: def.sectionNumber,
+        sectionLabelEn: def.sectionLabelEn,
+        sectionLabelKh: def.sectionLabelKh,
+        detailScriptId: def.detailScriptId || null,
+        detailScriptIds: def.detailScriptIds || null,
+        rows: [{ labelEn: 'Error', labelKh: 'កំហុស', male: 0, female: 0, total: 0, error: err.message }]
+      };
+    }
+  }
+
   async getReportData(siteCode, params) {
     const fullParams = {
       startDate: params.startDate || '2025-01-01',
       endDate: params.endDate || '2025-03-31',
       previousEndDate: params.previousEndDate || '2024-12-31'
     };
-    const sections = await Promise.all(
-      SECTION_DEFS.map(async (def) => {
-        try {
-          let rows = [];
-          if (def.subScriptId) {
-            const [res1, res2] = await Promise.all([
-              this.runScript(siteCode, def.scriptId, fullParams),
-              this.runScript(siteCode, def.subScriptId, fullParams)
-            ]);
-            if (res1.error || res2.error) {
-              return {
-                sectionNumber: def.sectionNumber,
-                sectionLabelEn: def.sectionLabelEn,
-                sectionLabelKh: def.sectionLabelKh,
-                detailScriptId: def.detailScriptId || null,
-                detailScriptIds: def.detailScriptIds || null,
-                rows: [{ labelEn: 'Error', labelKh: 'កំហុស', male: 0, female: 0, total: 0, error: res1.error || res2.error }]
-              };
-            }
-            rows = def.normalizer(res1.rows, res2.rows);
-          } else {
-            const res = await this.runScript(siteCode, def.scriptId, fullParams);
-            if (res.error) {
-              return {
-                sectionNumber: def.sectionNumber,
-                sectionLabelEn: def.sectionLabelEn,
-                sectionLabelKh: def.sectionLabelKh,
-                detailScriptId: def.detailScriptId || null,
-                detailScriptIds: def.detailScriptIds || null,
-                rows: [{ labelEn: 'Error', labelKh: 'កំហុស', male: 0, female: 0, total: 0, error: res.error }]
-              };
-            }
-            rows = def.normalizer(res.rows);
-          }
-          return {
-            sectionNumber: def.sectionNumber,
-            sectionLabelEn: def.sectionLabelEn,
-            sectionLabelKh: def.sectionLabelKh,
-            detailScriptId: def.detailScriptId || null,
-            detailScriptIds: def.detailScriptIds || null,
-            rows: Array.isArray(rows) ? rows : []
-          };
-        } catch (err) {
-          return {
-            sectionNumber: def.sectionNumber,
-            sectionLabelEn: def.sectionLabelEn,
-            sectionLabelKh: def.sectionLabelKh,
-            detailScriptId: def.detailScriptId || null,
-            detailScriptIds: def.detailScriptIds || null,
-            rows: [{ labelEn: 'Error', labelKh: 'កំហុស', male: 0, female: 0, total: 0, error: err.message }]
-          };
-        }
-      })
-    );
+    const sections = await Promise.all(SECTION_DEFS.map((def) => this.buildSection(siteCode, fullParams, def)));
     return { success: true, data: sections };
+  }
+
+  /**
+   * NDJSON stream: { type: 'start', total }, { type: 'section', data, completed, total }, { type: 'done', durationMs }
+   */
+  async streamReportToResponse(res, siteCode, params) {
+    const startedAt = Date.now();
+    const fullParams = {
+      startDate: params.startDate || '2025-01-01',
+      endDate: params.endDate || '2025-03-31',
+      previousEndDate: params.previousEndDate || '2024-12-31'
+    };
+    const total = SECTION_DEFS.length;
+    const write = (obj) => {
+      res.write(`${JSON.stringify(obj)}\n`);
+    };
+    write({ type: 'start', total });
+    let completed = 0;
+    for (const def of SECTION_DEFS) {
+      const section = await this.buildSection(siteCode, fullParams, def);
+      completed += 1;
+      write({ type: 'section', data: section, completed, total });
+    }
+    write({ type: 'done', durationMs: Date.now() - startedAt });
   }
 }
 

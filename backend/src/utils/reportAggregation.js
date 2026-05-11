@@ -43,42 +43,79 @@ function isFacilitySite(site) {
   return true;
 }
 
-function toParentCode(site) {
-  return String(site?.tblsite || '').trim();
+/** Parent site code from a registry row (align with frontend ReportHomePage parent candidates). */
+function parentSiteCodeFromRow(site) {
+  const candidates = [
+    site?.tblsite,
+    site?.tblSite,
+    site?.parent_tblsite,
+    site?.parentTblsite,
+    site?.parent_code,
+    site?.parentCode,
+    site?.parent_site_code
+  ];
+  for (const c of candidates) {
+    const v = String(c ?? '').trim();
+    if (v) return v;
+  }
+  return '';
+}
+
+/** Province-style codes: 2-digit province or *00 aggregate → facilities by art_site_code prefix. */
+function facilityCodesByDigitPrefix(sites, rawCode) {
+  const allSites = Array.isArray(sites) ? sites : [];
+  const facilities = allSites.filter(isFacilitySite);
+  const digits = String(rawCode || '').replace(/\D/g, '');
+  if (!digits) return [];
+  if (/^\d{2}$/.test(digits)) {
+    return facilities.filter((s) => String(s.code).replace(/\D/g, '').startsWith(digits)).map((s) => String(s.code));
+  }
+  if (/^\d{4}$/.test(digits) && digits.endsWith('00')) {
+    const prefix = digits.slice(0, 2);
+    return facilities.filter((s) => String(s.code).replace(/\D/g, '').startsWith(prefix)).map((s) => String(s.code));
+  }
+  return [];
 }
 
 function resolveFacilityCodesByHierarchy(sites, selectedCode, siteLevel) {
   const allSites = Array.isArray(sites) ? sites : [];
-  const selected = allSites.find((s) => String(s.code) === String(selectedCode));
-  if (!selected) return [];
-  if (siteLevel === 'facility' || (siteLevel !== 'province' && siteLevel !== 'country' && isFacilitySite(selected))) {
-    return [String(selected.code)];
+  const codeStr = String(selectedCode || '').trim();
+  const selected = allSites.find((s) => String(s.code) === codeStr);
+
+  if (siteLevel === 'facility' || (siteLevel !== 'province' && siteLevel !== 'country' && selected && isFacilitySite(selected))) {
+    return [codeStr];
   }
 
   const childrenByParent = new Map();
   allSites.forEach((site) => {
-    const parent = toParentCode(site);
+    const parent = parentSiteCodeFromRow(site);
     if (!parent) return;
     if (!childrenByParent.has(parent)) childrenByParent.set(parent, []);
     childrenByParent.get(parent).push(site);
   });
 
   const out = [];
-  const queue = [String(selected.code)];
-  const seen = new Set(queue);
-  while (queue.length) {
-    const current = queue.shift();
-    const children = childrenByParent.get(current) || [];
-    children.forEach((child) => {
-      const childCode = String(child.code);
-      if (!seen.has(childCode)) {
-        seen.add(childCode);
-        queue.push(childCode);
-      }
-      if (isFacilitySite(child)) out.push(childCode);
-    });
+  if (selected) {
+    const queue = [String(selected.code)];
+    const seen = new Set(queue);
+    while (queue.length) {
+      const current = queue.shift();
+      const children = childrenByParent.get(current) || [];
+      children.forEach((child) => {
+        const childCode = String(child.code);
+        if (!seen.has(childCode)) {
+          seen.add(childCode);
+          queue.push(childCode);
+        }
+        if (isFacilitySite(child)) out.push(childCode);
+      });
+    }
   }
-  return [...new Set(out)];
+
+  if (out.length) return [...new Set(out)];
+
+  const prefixed = facilityCodesByDigitPrefix(allSites, codeStr);
+  return [...new Set(prefixed)];
 }
 
 function sumNumericFields(target, source) {

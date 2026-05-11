@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { useAuth } from './contexts/AuthContext.jsx';
+import DocumentPage from './pages/DocumentPage.jsx';
 import IndicatorDetailsPage from './pages/IndicatorDetailsPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import ReportHomePage from './pages/ReportHomePage.jsx';
@@ -26,7 +27,7 @@ function App() {
   };
 
   if (loading) {
-    return <div className="page-shell">Loading...</div>;
+    return <div className="page-shell text-xs text-muted-foreground">Loading…</div>;
   }
 
   if (!user) {
@@ -42,6 +43,7 @@ function App() {
     <>
       <Routes>
         <Route path="/" element={<ReportHomePage onLogout={logout} />} />
+        <Route path="/documents" element={<DocumentPage onLogout={logout} />} />
         <Route path="/details/:indicatorId" element={<IndicatorDetailsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

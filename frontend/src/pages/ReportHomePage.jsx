@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { RiLogoutBoxRLine } from '@remixicon/react';
+import { Link } from 'react-router-dom';
+import { RiFileTextLine, RiLogoutBoxRLine } from '@remixicon/react';
 import { RiDraggable, RiSearchLine, RiSettings3Line } from '@remixicon/react';
 import { AnimatePresence, motion } from 'motion/react';
 import { toast } from 'sonner';
@@ -15,6 +16,28 @@ const fmt = (d) => {
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 };
+
+/** PNTT risk block row index → detail column (0/1/2 = ever / six months / never). Matches riskPnttNormalizer in backend pnttReportService.js */
+const PNTT_RISK_DETAIL_FIELDS = [
+  'SexHIV',
+  'Wsex',
+  'SexM',
+  'SexTran',
+  'Sex4',
+  'Drug',
+  'Pill',
+  'SexMoney',
+  'SexProvice',
+  'WOut'
+];
+
+function recordFieldCaseInsensitive(record, field) {
+  if (!record || field == null || field === '') return undefined;
+  if (Object.prototype.hasOwnProperty.call(record, field)) return record[field];
+  const lower = String(field).toLowerCase();
+  const key = Object.keys(record).find((k) => k.toLowerCase() === lower);
+  return key != null ? record[key] : undefined;
+}
 
 const INDICATOR_LABEL_MAP = {
   '1. Active ART patients in previous quarter': '1. ចំនួនអ្នកជំងឺ ART សកម្មដល់ចុងត្រីមាសមុន (Number of active ART patients in previous quarter)',
@@ -277,6 +300,20 @@ export default function ReportHomePage({ onLogout }) {
     if (!Number.isNaN(asNum) && String(v).trim() !== '') return asNum.toLocaleString();
     return v == null ? '-' : String(v);
   };
+  /** Detail modal: plain numbers (no thousands separators or accounting parentheses). */
+  const formatDetailCellValue = (v) => {
+    if (v == null || v === '') return '-';
+    if (typeof v === 'number') return Number.isFinite(v) ? String(v) : '-';
+    const raw = String(v).trim();
+    if (raw === '') return '-';
+    let normalized = raw;
+    const paren = /^\s*\(\s*([^)]+)\s*\)\s*$/.exec(raw);
+    if (paren) normalized = `-${paren[1].replace(/,/g, '')}`;
+    else normalized = raw.replace(/,/g, '');
+    const n = Number(normalized);
+    if (Number.isFinite(n) && normalized !== '' && normalized !== '-') return String(n);
+    return raw;
+  };
   const getSex = (record) => {
     const sex = record?.sex_display || record?.sex || record?.Sex;
     if (sex === 1 || String(sex).toLowerCase() === 'male' || String(sex).toLowerCase() === 'm') return 'male';
@@ -444,7 +481,15 @@ export default function ReportHomePage({ onLogout }) {
       });
       const list = Array.isArray(response?.data) ? response.data : [];
       const filtered = list.filter((record) => {
-        if (column === 'ever' || column === 'sixMonths' || column === 'never') return Number(record?.[column]) === 1;
+        if (column === 'ever' || column === 'sixMonths' || column === 'never') {
+          const field = PNTT_RISK_DETAIL_FIELDS[rowIdx];
+          if (field == null) return false;
+          const bucket = column === 'ever' ? 0 : column === 'sixMonths' ? 1 : 2;
+          const raw = recordFieldCaseInsensitive(record, field);
+          if (raw === undefined || raw === null || raw === '') return false;
+          const n = Number(raw);
+          return Number.isFinite(n) && n === bucket;
+        }
         const sex = getSex(record);
         if (column === 'male') return sex === 'male';
         if (column === 'female') return sex === 'female';
@@ -608,6 +653,33 @@ export default function ReportHomePage({ onLogout }) {
         return Array.from(sections.values());
       };
 
+      const streamSectionedReport = async (streamFn, streamSiteCode, streamSiteLevel) => {
+        const acc = [];
+        await streamFn(
+          { siteCode: streamSiteCode, siteLevel: streamSiteLevel, ...currentPeriod },
+          {
+            onMessage: (payload) => {
+              if (payload.type === 'start') {
+                setProgress({ completed: 0, total: Number(payload.total) || 0 });
+              }
+            },
+            onSection: (payload) => {
+              acc.push(payload.data);
+              setRows([...acc]);
+              setProgress({
+                completed: Number(payload.completed) || 0,
+                total: Number(payload.total) || 0
+              });
+            },
+            onDone: (payload) => {
+              const ms = Number(payload.durationMs);
+              if (Number.isFinite(ms) && ms >= 0) setRunTimeMs(ms);
+            }
+          }
+        );
+        return acc.length;
+      };
+
       const candidateSiteCodes = getCandidateSiteCodes(effectiveSiteCode);
       const aggregateFacilityCodes = getAggregateFacilityCodes(effectiveSiteCode);
       let success = false;
@@ -728,12 +800,10 @@ export default function ReportHomePage({ onLogout }) {
         setRunTimeMs((prev) => prev ?? Math.round(performance.now() - startedAt));
       } else if (reportType === 'infants') {
         if (selectedSiteLevel === 'country') {
-          const result = await infantReportApi.getInfantReport({ siteCode: effectiveSiteCode, siteLevel: 'country', ...currentPeriod });
-          const rowsFromCountry = result?.data || [];
-          if (rowsFromCountry.length > 0) {
-            setRows(rowsFromCountry);
-            success = true;
-          }
+          setRows([]);
+          setProgress({ completed: 0, total: 0 });
+          const n = await streamSectionedReport(infantReportApi.streamInfantReport, effectiveSiteCode, 'country');
+          if (n > 0) success = true;
         }
         if (selectedSiteLevel !== 'facility' && aggregateFacilityCodes.length > 0) {
           if (success) {
@@ -755,24 +825,36 @@ export default function ReportHomePage({ onLogout }) {
           }
         } else {
           for (const candidateSiteCode of candidateSiteCodes) {
-            const result = await infantReportApi.getInfantReport({ siteCode: candidateSiteCode, siteLevel: selectedSiteLevel, ...currentPeriod });
-            const nextRows = result.data || [];
-            if (nextRows.length > 0) {
-              setRows(nextRows);
-              success = true;
-              break;
+            if (selectedSiteLevel === 'facility') {
+              setRows([]);
+              setProgress({ completed: 0, total: 0 });
+              const n = await streamSectionedReport(infantReportApi.streamInfantReport, candidateSiteCode, 'facility');
+              if (n > 0) {
+                success = true;
+                break;
+              }
+            } else {
+              const result = await infantReportApi.getInfantReport({
+                siteCode: candidateSiteCode,
+                siteLevel: selectedSiteLevel,
+                ...currentPeriod
+              });
+              const nextRows = result.data || [];
+              if (nextRows.length > 0) {
+                setRows(nextRows);
+                success = true;
+                break;
+              }
             }
           }
         }
-        setRunTimeMs(Math.round(performance.now() - startedAt));
+        setRunTimeMs((prev) => prev ?? Math.round(performance.now() - startedAt));
       } else {
         if (selectedSiteLevel === 'country') {
-          const result = await pnttReportApi.getPnttReport({ siteCode: effectiveSiteCode, siteLevel: 'country', ...currentPeriod });
-          const rowsFromCountry = result?.data || [];
-          if (rowsFromCountry.length > 0) {
-            setRows(rowsFromCountry);
-            success = true;
-          }
+          setRows([]);
+          setProgress({ completed: 0, total: 0 });
+          const n = await streamSectionedReport(pnttReportApi.streamPnttReport, effectiveSiteCode, 'country');
+          if (n > 0) success = true;
         }
         if (selectedSiteLevel !== 'facility' && aggregateFacilityCodes.length > 0) {
           if (success) {
@@ -794,16 +876,30 @@ export default function ReportHomePage({ onLogout }) {
           }
         } else {
           for (const candidateSiteCode of candidateSiteCodes) {
-            const result = await pnttReportApi.getPnttReport({ siteCode: candidateSiteCode, siteLevel: selectedSiteLevel, ...currentPeriod });
-            const nextRows = result.data || [];
-            if (nextRows.length > 0) {
-              setRows(nextRows);
-              success = true;
-              break;
+            if (selectedSiteLevel === 'facility') {
+              setRows([]);
+              setProgress({ completed: 0, total: 0 });
+              const n = await streamSectionedReport(pnttReportApi.streamPnttReport, candidateSiteCode, 'facility');
+              if (n > 0) {
+                success = true;
+                break;
+              }
+            } else {
+              const result = await pnttReportApi.getPnttReport({
+                siteCode: candidateSiteCode,
+                siteLevel: selectedSiteLevel,
+                ...currentPeriod
+              });
+              const nextRows = result.data || [];
+              if (nextRows.length > 0) {
+                setRows(nextRows);
+                success = true;
+                break;
+              }
             }
           }
         }
-        setRunTimeMs(Math.round(performance.now() - startedAt));
+        setRunTimeMs((prev) => prev ?? Math.round(performance.now() - startedAt));
       }
       if (!success) {
         setRows([]);
@@ -818,10 +914,16 @@ export default function ReportHomePage({ onLogout }) {
 
   return (
     <div className="min-h-screen bg-background mx-auto lg:max-w-[300mm] px-4 sm:px-6 py-4 sm:py-6">
-      <div className="space-y-4">
-        <div className="fixed right-4 top-4 z-50">
-          <Button variant="outline" size="sm" onClick={onLogout} className="rounded-none bg-card">
+      <div className="space-y-3">
+        <div className="fixed right-4 top-4 z-50 flex flex-col gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={onLogout} className="rounded-none bg-card" title="Log out">
             <RiLogoutBoxRLine className="size-4" />
+          </Button>
+          <Button type="button" variant="outline" size="sm" asChild className="rounded-none bg-card px-2.5" title="Backend API reference">
+            <Link to="/documents" className="inline-flex items-center justify-center gap-1.5">
+              <RiFileTextLine className="size-4 shrink-0" />
+              <span className="text-xs">API</span>
+            </Link>
           </Button>
         </div>
         <ReportFilters
@@ -886,9 +988,9 @@ export default function ReportHomePage({ onLogout }) {
             >
               <div className="flex items-start justify-between border-b border-border bg-muted/30 px-4 py-3">
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-foreground">{detailTitle}</div>
+                  <div className="truncate text-xs font-semibold text-foreground">{detailTitle}</div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    {detailTotal.toLocaleString()} records
+                    {formatDetailCellValue(detailTotal)} records
                   </div>
                 </div>
                 <button
@@ -981,18 +1083,18 @@ export default function ReportHomePage({ onLogout }) {
               <div className="min-h-0 flex-1 overflow-auto p-4">
                 {detailLoading ? (
                   <div className="flex min-h-52 items-center justify-center">
-                    <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
                       <span className="size-4 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
                       Loading details...
                     </div>
                   </div>
                 ) : detailError ? (
-                  <div className="text-sm text-destructive">{detailError}</div>
+                  <div className="text-xs text-destructive">{detailError}</div>
                 ) : detailRows.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">No detail records found.</div>
+                  <div className="text-xs text-muted-foreground">No detail records found.</div>
                 ) : (
                   <div className="overflow-auto border border-border">
-                  <table className="w-full border-collapse text-sm">
+                  <table className="w-full border-collapse text-xs">
                     <thead>
                       <tr className="sticky top-0 z-10 border-b border-border bg-muted">
                         {detailColumns.map((key) => (
@@ -1025,7 +1127,7 @@ export default function ReportHomePage({ onLogout }) {
                         <tr key={idx} className="border-b border-border/50">
                           {detailColumns.map((key) => (
                             <td key={`${idx}-${key}`} className="border-r border-border/50 px-2 py-2 align-top last:border-r-0">
-                              {formatValue(row?.[key])}
+                              {formatDetailCellValue(row?.[key])}
                             </td>
                           ))}
                         </tr>

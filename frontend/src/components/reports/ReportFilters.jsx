@@ -37,9 +37,9 @@ export default function ReportFilters({
   runReport,
   onLogout
 }) {
-  const selectItemClass = 'px-3 py-2 rounded-none data-[selected]:bg-primary data-[selected]:text-primary-foreground';
-  const controlClass = '!h-10 min-h-10';
-  const labelClass = 'h-5 text-sm leading-5 text-muted-foreground';
+  const selectItemClass = 'px-3 py-2 rounded-none text-sm data-[selected]:bg-primary data-[selected]:text-primary-foreground';
+  const controlClass = '!h-9 min-h-9';
+  const labelClass = 'text-xs leading-tight text-muted-foreground';
   const periodValueClass = `${controlClass} w-full`;
   const [quarterPickerOpen, setQuarterPickerOpen] = useState(false);
   const quarterPickerRef = useRef(null);
@@ -154,7 +154,7 @@ export default function ReportFilters({
   };
 
   return (
-    <div className="border border-border bg-card p-4 sm:p-5">
+    <div className="border border-border bg-card p-3 sm:p-4">
       <div className="grid gap-3 md:grid-cols-[1.4fr_0.9fr_0.8fr_0.9fr_auto]">
         <div className="grid gap-2">
           <span className={labelClass}>Site</span>
@@ -232,7 +232,7 @@ export default function ReportFilters({
                         key={q}
                         type="button"
                         variant={selectedQuarter === q ? 'default' : 'outline'}
-                        className="h-10 text-sm rounded-none"
+                        className="h-9 text-sm rounded-none"
                         onClick={() => {
                           setSelectedQuarter(q);
                           setQuarterPickerOpen(false);
@@ -292,8 +292,8 @@ export default function ReportFilters({
           <div className="flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden border border-border bg-card shadow-2xl">
             <div className="flex items-center justify-between border-b border-border px-6 py-4">
               <div>
-                <div className="text-xl font-semibold text-foreground">Select Site</div>
-                <div className="mt-1 text-sm text-muted-foreground">Choose a site by province.</div>
+                <div className="text-lg font-semibold text-foreground">Select Site</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">Choose a site by province.</div>
               </div>
               <button
                 type="button"
@@ -310,7 +310,7 @@ export default function ReportFilters({
                   value={siteSearch}
                   onChange={(e) => setSiteSearch(e.target.value)}
                   placeholder="Filter sites..."
-                className="h-10 w-full border border-input bg-background pl-10 pr-3 text-sm"
+                className="h-9 w-full border border-input bg-background pl-10 pr-3 text-sm"
                 />
               </div>
             </div>
@@ -338,7 +338,7 @@ export default function ReportFilters({
                             <RiCheckboxBlankCircleLine className="size-5 text-muted-foreground" />
                           )}
                         </span>
-                        <span className="text-base font-semibold text-foreground">
+                        <span className="text-sm font-semibold text-foreground">
                           {cambodiaSite ? `${cambodiaSite.code} - ${cambodiaSite.name}` : 'Cambodia'}
                         </span>
                         <span className="text-xs text-muted-foreground">({visibleProvinceEntries.length} provinces)</span>
@@ -400,24 +400,24 @@ export default function ReportFilters({
                   </div>
                 )}
                 {!showCambodiaRoot && (
-                  <div className="py-10 text-center text-sm text-muted-foreground">No sites found.</div>
+                  <div className="py-10 text-center text-xs text-muted-foreground">No sites found.</div>
                 )}
               </div>
             </div>
             <div className="flex items-center justify-between border-t border-border bg-muted/20 px-6 py-4">
-              <div className="text-sm text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 Draft:{' '}
                 <span className="font-medium text-primary">
                   {draftSiteLabel || 'None'}
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <button type="button" className="h-10 px-5 text-sm text-muted-foreground hover:bg-muted" onClick={() => setSiteModalOpen(false)}>
+                <button type="button" className="h-9 px-5 text-sm text-muted-foreground hover:bg-muted" onClick={() => setSiteModalOpen(false)}>
                   Cancel
                 </button>
                 <button
                   type="button"
-                  className="h-10 bg-primary px-6 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                  className="h-9 bg-primary px-6 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
                   onClick={applySiteSelection}
                   disabled={!String(draftSiteCode || '').trim()}
                 >

@@ -1,81 +1,89 @@
+/* Font files first so @font-face registers before Tailwind preflight */
+@import "@fontsource-variable/geist";
+@import "@fontsource/hanuman/400.css";
+@import "@fontsource/hanuman/700.css";
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource/hanuman/400.css";
-@import "@fontsource/hanuman/700.css";
-@import "@fontsource-variable/geist";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(0.97 0.01 85);
-  --foreground: oklch(0.23 0.01 80);
-  --card: oklch(0.99 0.005 85);
-  --card-foreground: oklch(0.23 0.01 80);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.62 0.15 62);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.93 0.01 85);
-  --secondary-foreground: oklch(0.28 0.01 80);
-  --muted: oklch(0.94 0.01 85);
-  --muted-foreground: oklch(0.52 0.01 80);
-  --accent: oklch(0.93 0.01 85);
-  --accent-foreground: oklch(0.28 0.01 80);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.88 0.01 85);
-  --input: oklch(0.9 0.01 85);
-  --ring: oklch(0.62 0.15 62);
+  /* Warm paper + ink (Claude-inspired neutrals) */
+  --background: oklch(0.968 0.009 78);
+  --foreground: oklch(0.28 0.022 55);
+  --card: oklch(0.995 0.004 82);
+  --card-foreground: oklch(0.28 0.022 55);
+  --popover: oklch(0.993 0.005 82);
+  --popover-foreground: oklch(0.28 0.022 55);
+  /* Muted terracotta CTA — softer than pure amber */
+  --primary: oklch(0.5 0.13 46);
+  --primary-foreground: oklch(0.985 0.006 82);
+  --secondary: oklch(0.945 0.012 78);
+  --secondary-foreground: oklch(0.32 0.02 58);
+  --muted: oklch(0.94 0.01 80);
+  --muted-foreground: oklch(0.46 0.024 58);
+  --accent: oklch(0.94 0.014 76);
+  --accent-foreground: oklch(0.32 0.02 58);
+  --destructive: oklch(0.52 0.2 25);
+  --destructive-foreground: oklch(0.985 0.006 82);
+  --border: oklch(0.9 0.014 76);
+  --input: oklch(0.925 0.012 78);
+  --ring: oklch(0.52 0.12 48);
+  /* Report table: male / female — dusty tones, not default Tailwind blue/pink */
+  --report-male: oklch(0.44 0.09 252);
+  --report-female: oklch(0.46 0.11 18);
   --radius: 0.625rem;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: oklch(0.985 0.004 82);
+  --sidebar-foreground: oklch(0.28 0.022 55);
+  --sidebar-primary: oklch(0.5 0.13 46);
+  --sidebar-primary-foreground: oklch(0.985 0.006 82);
+  --sidebar-accent: oklch(0.94 0.01 80);
+  --sidebar-accent-foreground: oklch(0.28 0.022 55);
+  --sidebar-border: oklch(0.9 0.014 76);
+  --sidebar-ring: oklch(0.52 0.12 48);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --background: oklch(0.2 0.018 55);
+  --foreground: oklch(0.94 0.012 82);
+  --card: oklch(0.24 0.02 55);
+  --card-foreground: oklch(0.94 0.012 82);
+  --popover: oklch(0.24 0.02 55);
+  --popover-foreground: oklch(0.94 0.012 82);
+  --primary: oklch(0.72 0.11 52);
+  --primary-foreground: oklch(0.22 0.02 55);
+  --secondary: oklch(0.3 0.02 55);
+  --secondary-foreground: oklch(0.92 0.01 82);
+  --muted: oklch(0.28 0.018 55);
+  --muted-foreground: oklch(0.68 0.02 75);
+  --accent: oklch(0.3 0.02 55);
+  --accent-foreground: oklch(0.94 0.012 82);
+  --destructive: oklch(0.62 0.18 22);
+  --destructive-foreground: oklch(0.98 0.01 82);
+  --border: oklch(0.34 0.02 58);
+  --input: oklch(0.32 0.02 58);
+  --ring: oklch(0.72 0.11 52);
+  --report-male: oklch(0.72 0.1 252);
+  --report-female: oklch(0.74 0.11 22);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar: oklch(0.22 0.018 55);
+  --sidebar-foreground: oklch(0.94 0.012 82);
+  --sidebar-primary: oklch(0.72 0.11 52);
+  --sidebar-primary-foreground: oklch(0.22 0.02 55);
+  --sidebar-accent: oklch(0.3 0.02 55);
+  --sidebar-accent-foreground: oklch(0.94 0.012 82);
+  --sidebar-border: oklch(0.34 0.02 58);
+  --sidebar-ring: oklch(0.72 0.11 52);
 }
 
 @theme inline {
@@ -98,12 +106,15 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-report-male: var(--report-male);
+  --color-report-female: var(--report-female);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  /* Geist for Latin UI; Hanuman for Khmer (no Latin glyphs in Geist → browser uses Hanuman) */
   --font-heading: var(--font-sans);
-  --font-sans: 'Hanuman', 'Geist Variable', sans-serif;
+  --font-sans: 'Geist Variable', 'Hanuman', ui-sans-serif, system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -126,12 +137,11 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-    margin: 0;
-    font-family: 'Hanuman', 'Geist Variable', Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  }
   html {
-    @apply font-sans;
+    @apply font-sans antialiased;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    margin: 0;
   }
 }

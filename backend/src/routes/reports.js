@@ -52,6 +52,62 @@ async function resolveAggregateContext(req, siteCode) {
   return { siteLevel, resolvedSiteCodes };
 }
 
+/** Stable key for merging detail rows across facilities (infant / PNTT). */
+function reportDetailRowDedupeKey(row) {
+  const r = row || {};
+  const id = r.ClinicID ?? r.clinicid ?? r.ClinicId ?? r.CLINICID;
+  if (id != null && String(id).trim() !== '') return `id:${String(id).trim()}`;
+  const art = r.art_number ?? r.Artnum ?? r.ART ?? r.artnum;
+  if (art != null && String(art).trim() !== '') return `art:${String(art).trim()}`;
+  return null;
+}
+
+/**
+ * Country → single query with site scope `all`.
+ * Province (or any multi-facility rollup) → run detail per facility and merge, deduped by patient.
+ */
+async function runMergedReportDetail(runDetailScript, siteCode, siteLevel, scriptId, dateParams) {
+  const sites = await siteDatabaseManager.getAllSitesForManagement();
+  const selected = sites.find((s) => String(s.code) === String(siteCode));
+  const level = String(
+    siteLevel != null && siteLevel !== '' ? siteLevel : inferSiteLevel(siteCode, selected)
+  ).toLowerCase();
+
+  if (level === 'country') {
+    return runDetailScript('all', scriptId, dateParams);
+  }
+
+  const resolvedCodes = resolveFacilityCodesByHierarchy(sites, siteCode, level);
+  if (!resolvedCodes.length) {
+    return { rows: [], error: null };
+  }
+  if (resolvedCodes.length === 1) {
+    return runDetailScript(resolvedCodes[0], scriptId, dateParams);
+  }
+
+  const byKey = new Map();
+  const errors = [];
+  for (const code of resolvedCodes) {
+    const result = await runDetailScript(code, scriptId, dateParams);
+    if (result.error) {
+      errors.push(result.error);
+      continue;
+    }
+    for (const row of result.rows || []) {
+      const k = reportDetailRowDedupeKey(row);
+      if (k == null) {
+        byKey.set(`row:${byKey.size}`, row);
+      } else if (!byKey.has(k)) {
+        byKey.set(k, row);
+      }
+    }
+  }
+  if (!byKey.size && errors.length) {
+    return { rows: [], error: errors[0] };
+  }
+  return { rows: Array.from(byKey.values()), error: null };
+}
+
 router.get('/infant-report', authenticateToken, async (req, res) => {
   try {
     const allowAll = String(req.query.siteLevel || '').toLowerCase() === 'country';
@@ -137,6 +193,43 @@ router.get('/infant-report', authenticateToken, async (req, res) => {
   }
 });
 
+/** NDJSON section stream — country or facility only (same scope as single-site DB queries). */
+router.get('/infant-report/stream', authenticateToken, async (req, res) => {
+  try {
+    const allowAll = String(req.query.siteLevel || '').toLowerCase() === 'country';
+    const siteCode = requireSite(req, res, { allowAll });
+    if (!siteCode) return;
+    const { siteLevel } = await resolveAggregateContext(req, siteCode);
+    if (siteLevel !== 'country' && siteLevel !== 'facility') {
+      return res.status(400).json({
+        success: false,
+        error: 'Streaming is only available for country or facility scope.'
+      });
+    }
+    const params = {
+      startDate: req.query.startDate || '2025-01-01',
+      endDate: req.query.endDate || '2025-03-31',
+      previousEndDate: req.query.previousEndDate || '2024-12-31'
+    };
+    const dbSite = siteLevel === 'country' ? 'all' : siteCode;
+    res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    await infantReportService.streamReportToResponse(res, dbSite, params);
+    res.end();
+  } catch (error) {
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: error.message });
+    } else {
+      try {
+        res.write(`${JSON.stringify({ type: 'error', error: error.message })}\n`);
+        res.end();
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+});
+
 router.get('/infant-report/details', authenticateToken, async (req, res) => {
   try {
     const allowAll = String(req.query.siteLevel || '').toLowerCase() === 'country';
@@ -144,11 +237,19 @@ router.get('/infant-report/details', authenticateToken, async (req, res) => {
     if (!siteCode) return;
     const scriptId = String(req.query.scriptId || '').trim();
     if (!scriptId) return res.status(400).json({ success: false, error: 'scriptId is required', data: [] });
-    const result = await infantReportService.runDetailScript(siteCode, scriptId, {
+    const dateParams = {
       startDate: req.query.startDate || '2025-01-01',
       endDate: req.query.endDate || '2025-03-31',
       previousEndDate: req.query.previousEndDate || '2024-12-31'
-    });
+    };
+    const siteLevel = String(req.query.siteLevel || '').trim();
+    const result = await runMergedReportDetail(
+      infantReportService.runDetailScript.bind(infantReportService),
+      siteCode,
+      siteLevel,
+      scriptId,
+      dateParams
+    );
     if (result.error) return res.status(400).json({ success: false, error: result.error, data: [] });
     res.json({ success: true, data: result.rows || [] });
   } catch (error) {
@@ -241,6 +342,42 @@ router.get('/pntt-report', authenticateToken, async (req, res) => {
   }
 });
 
+router.get('/pntt-report/stream', authenticateToken, async (req, res) => {
+  try {
+    const allowAll = String(req.query.siteLevel || '').toLowerCase() === 'country';
+    const siteCode = requireSite(req, res, { allowAll });
+    if (!siteCode) return;
+    const { siteLevel } = await resolveAggregateContext(req, siteCode);
+    if (siteLevel !== 'country' && siteLevel !== 'facility') {
+      return res.status(400).json({
+        success: false,
+        error: 'Streaming is only available for country or facility scope.'
+      });
+    }
+    const params = {
+      startDate: req.query.startDate || '2025-01-01',
+      endDate: req.query.endDate || '2025-03-31',
+      previousEndDate: req.query.previousEndDate || '2024-12-31'
+    };
+    const dbSite = siteLevel === 'country' ? 'all' : siteCode;
+    res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    await pnttReportService.streamReportToResponse(res, dbSite, params);
+    res.end();
+  } catch (error) {
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: error.message });
+    } else {
+      try {
+        res.write(`${JSON.stringify({ type: 'error', error: error.message })}\n`);
+        res.end();
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+});
+
 router.get('/pntt-report/details', authenticateToken, async (req, res) => {
   try {
     const allowAll = String(req.query.siteLevel || '').toLowerCase() === 'country';
@@ -248,11 +385,19 @@ router.get('/pntt-report/details', authenticateToken, async (req, res) => {
     if (!siteCode) return;
     const scriptId = String(req.query.scriptId || '').trim();
     if (!scriptId) return res.status(400).json({ success: false, error: 'scriptId is required', data: [] });
-    const result = await pnttReportService.runDetailScript(siteCode, scriptId, {
+    const dateParams = {
       startDate: req.query.startDate || '2025-01-01',
       endDate: req.query.endDate || '2025-03-31',
       previousEndDate: req.query.previousEndDate || '2024-12-31'
-    });
+    };
+    const siteLevel = String(req.query.siteLevel || '').trim();
+    const result = await runMergedReportDetail(
+      pnttReportService.runDetailScript.bind(pnttReportService),
+      siteCode,
+      siteLevel,
+      scriptId,
+      dateParams
+    );
     if (result.error) return res.status(400).json({ success: false, error: result.error, data: [] });
     res.json({ success: true, data: result.rows || [] });
   } catch (error) {
