@@ -64,15 +64,15 @@ class IndicatorsService {
     return { ...base, queryMs: Date.now() - startedAt };
   }
 
-  async executeDetails(siteCode, id, params, options = {}) {
+  async fetchDetailRowsFromDb(siteCode, id, params) {
     const sql = this.detailQueries.get(id);
     if (!sql) throw new Error(`Indicator detail query not found: ${id}`);
     const scopedSql = processQuery(sql, params);
     const conn = await siteDatabaseManager.getSiteConnection(siteCode);
-    const rows = await conn.query(scopedSql, { type: conn.QueryTypes.SELECT });
+    return conn.query(scopedSql, { type: conn.QueryTypes.SELECT });
+  }
 
-    const page = Number(options.page || 1);
-    const limit = Number(options.limit || 50);
+  applyDetailFilters(rows, options = {}) {
     const search = String(options.search || '').toLowerCase();
     const ageGroup = options.ageGroup || '';
     const gender = options.gender || '';
@@ -85,23 +85,60 @@ class IndicatorsService {
       });
     }
     if (ageGroup === '0-14') filtered = filtered.filter((r) => Number(r.age || 0) <= 14);
-    if (ageGroup === '15+') filtered = filtered.filter((r) => Number(r.age || 0) >= 15);
+    if (ageGroup === '15+' || ageGroup === '>14') {
+      filtered = filtered.filter((r) => Number(r.age || 0) >= 15);
+    }
     if (search) {
       filtered = filtered.filter((r) =>
         Object.values(r || {}).some((v) => String(v || '').toLowerCase().includes(search))
       );
     }
+    return filtered;
+  }
 
+  paginateDetailRows(filtered, options = {}) {
+    const page = Number(options.page || 1);
+    const limit = Number(options.limit || 50);
     const totalCount = filtered.length;
     const totalPages = Math.max(1, Math.ceil(totalCount / limit));
     const offset = (page - 1) * limit;
     const data = filtered.slice(offset, offset + limit);
-
     return {
       success: true,
       data,
       pagination: { page, limit, totalCount, totalPages, hasNext: page < totalPages, hasPrev: page > 1 }
     };
+  }
+
+  async executeDetails(siteCode, id, params, options = {}) {
+    const rows = await this.fetchDetailRowsFromDb(siteCode, id, params);
+    const filtered = this.applyDetailFilters(rows, options);
+    return this.paginateDetailRows(filtered, options);
+  }
+
+  /**
+   * Province/country (multi-facility): run detail SQL per facility, merge raw rows, then filter + page.
+   */
+  async executeDetailsMerged(siteCodes, id, params, options = {}) {
+    const codes = Array.isArray(siteCodes) ? [...new Set(siteCodes.map(String))].filter(Boolean) : [];
+    if (!codes.length) {
+      return this.paginateDetailRows([], options);
+    }
+    const merged = [];
+    const errors = [];
+    for (const code of codes) {
+      try {
+        const rows = await this.fetchDetailRowsFromDb(code, id, params);
+        for (const row of rows || []) merged.push({ ...row, site_code: row?.site_code ?? code });
+      } catch (e) {
+        errors.push(e?.message || String(e));
+      }
+    }
+    if (!merged.length && errors.length) {
+      throw new Error(errors[0] || 'Failed to load indicator details');
+    }
+    const filtered = this.applyDetailFilters(merged, options);
+    return this.paginateDetailRows(filtered, options);
   }
 }
 

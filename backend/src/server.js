@@ -9,7 +9,6 @@ const morgan = require('morgan');
 const { testConnection } = require('./config/database');
 const { testConnections } = require('./config/siteDatabase');
 const authRoutes = require('./routes/auth');
-const lookupRoutes = require('./routes/lookups');
 const optimizedIndicatorsRoutes = require('./routes/optimized-indicators');
 const reportsRoutes = require('./routes/reports');
 
@@ -27,7 +26,6 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/apiv1/auth', authRoutes);
-app.use('/apiv1/lookups', lookupRoutes);
 app.use('/apiv1/indicators-optimized', optimizedIndicatorsRoutes);
 app.use('/apiv1/reports', reportsRoutes);
 

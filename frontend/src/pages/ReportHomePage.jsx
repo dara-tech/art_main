@@ -128,6 +128,36 @@ const DETAIL_COLUMN_LABELS = {
 };
 
 const toDetailColumnLabel = (key) => DETAIL_COLUMN_LABELS[key] || key;
+
+/** Matches province picker synthetic codes (e.g. 0100) in ReportFilters. */
+const PROVINCE_NAME_BY_PREFIX = {
+  '01': 'Banteay Meanchey',
+  '02': 'Battambang',
+  '03': 'Kampong Cham',
+  '04': 'Kampong Chhnang',
+  '05': 'Kampong Speu',
+  '06': 'Kampong Thom',
+  '07': 'Kampot',
+  '08': 'Kandal',
+  '09': 'Koh Kong',
+  '10': 'Kratie',
+  '11': 'Mondulkiri',
+  '12': 'Phnom Penh',
+  '13': 'Preah Vihear',
+  '14': 'Prey Veng',
+  '15': 'Pursat',
+  '16': 'Ratanakiri',
+  '17': 'Siem Reap',
+  '18': 'Preah Sihanouk',
+  '19': 'Stung Treng',
+  '20': 'Svay Rieng',
+  '21': 'Takeo',
+  '22': 'Oddar Meanchey',
+  '23': 'Kep',
+  '24': 'Pailin',
+  '25': 'Tbong Khmum'
+};
+
 const isFacilitySite = (site) => {
   if (!site) return false;
   const codeDigits = String(site.code || '').replace(/\D/g, '');
@@ -225,6 +255,32 @@ export default function ReportHomePage({ onLogout }) {
     if (digits.length >= 4 && digits.endsWith('00')) return 'province';
     return 'facility';
   }, [selectedSite, siteCode]);
+
+  const reportHeaderMeta = useMemo(() => {
+    const codeStr = siteCode != null && siteCode !== '' ? String(siteCode) : '';
+    if (selectedSite) {
+      const scopeLabel =
+        selectedSiteLevel === 'country' ? 'Country' : selectedSiteLevel === 'province' ? 'Province' : 'Facility';
+      const scopeValue = selectedSite.name || selectedSite.fullName || '-';
+      const siteCodeValue = selectedSite.code != null ? String(selectedSite.code) : codeStr || '-';
+      return { scopeLabel: `${scopeLabel}:`, scopeValue, siteCodeValue };
+    }
+    if (siteCode === '__CAMBODIA__') {
+      return { scopeLabel: 'Country:', scopeValue: 'Cambodia', siteCodeValue: 'all' };
+    }
+    if (selectedSiteLevel === 'province' && codeStr) {
+      const digits = codeStr.replace(/\D/g, '');
+      const prefix = digits.length >= 2 ? digits.slice(0, 2) : '';
+      const scopeValue = PROVINCE_NAME_BY_PREFIX[prefix] || (prefix ? `Province ${prefix}` : '-');
+      return { scopeLabel: 'Province:', scopeValue, siteCodeValue: codeStr };
+    }
+    return {
+      scopeLabel: 'Facility:',
+      scopeValue: '-',
+      siteCodeValue: codeStr || '-'
+    };
+  }, [selectedSite, selectedSiteLevel, siteCode]);
+
   const siteCodeSet = useMemo(() => new Set(sites.map((s) => String(s.code))), [sites]);
   const facilitySites = useMemo(() => sites.filter(isFacilitySite), [sites]);
   const getAggregateFacilityCodes = (rawSiteCode) => {
@@ -949,7 +1005,7 @@ export default function ReportHomePage({ onLogout }) {
           onLogout={onLogout}
         />
         <ReportResultsPanel
-          selectedSite={selectedSite}
+          reportHeaderMeta={reportHeaderMeta}
           currentPeriod={currentPeriod}
           reportType={reportType}
           runTimeMs={runTimeMs}

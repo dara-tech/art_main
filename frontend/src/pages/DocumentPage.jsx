@@ -24,10 +24,10 @@ export const BACKEND_API_ROUTES = [
   },
   {
     method: 'GET',
-    path: '/apiv1/lookups/sites-registry',
-    auth: false,
+    path: '/apiv1/auth/sites-registry',
+    auth: true,
     description: 'Site registry for facility / province / country picker.',
-    notes: 'No query params.'
+    notes: 'No query params. Header: Authorization: Bearer <token>'
   },
   {
     method: 'GET',

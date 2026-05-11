@@ -6,6 +6,7 @@ const {
   buildCacheKey,
   getCache,
   inferSiteLevel,
+  isFacilitySite,
   mergeIndicatorRows,
   resolveFacilityCodesByHierarchy,
   setCache
@@ -223,18 +224,38 @@ router.get('/details/:indicatorId', authenticateToken, async (req, res) => {
     const allowAll = String(req.query.siteLevel || '').toLowerCase() === 'country';
     const siteCode = requireSiteCode(req, res, { allowAll });
     if (!siteCode) return;
-    const result = await indicatorsService.executeDetails(
-      siteCode,
-      req.params.indicatorId,
-      queryParams(req),
-      {
-        page: req.query.page,
-        limit: req.query.limit,
-        search: req.query.search,
-        ageGroup: req.query.ageGroup,
-        gender: req.query.gender
+    const sites = await siteDatabaseManager.getAllSitesForManagement();
+    const selected = sites.find((s) => String(s.code) === String(siteCode));
+    const siteLevel = String(req.query.siteLevel || inferSiteLevel(siteCode, selected)).toLowerCase();
+    const detailOptions = {
+      page: req.query.page,
+      limit: req.query.limit,
+      search: req.query.search,
+      ageGroup: req.query.ageGroup,
+      gender: req.query.gender
+    };
+    const params = queryParams(req);
+    const indicatorId = req.params.indicatorId;
+
+    let result;
+    if (siteLevel === 'country') {
+      const countryCodes = resolveFacilityCodesByHierarchy(sites, siteCode, 'country');
+      const fallbackAllFacilities = sites.filter(isFacilitySite).map((s) => String(s.code));
+      const codes = countryCodes.length > 0 ? countryCodes : fallbackAllFacilities;
+      if (codes.length > 0) {
+        result = await indicatorsService.executeDetailsMerged(codes, indicatorId, params, detailOptions);
+      } else {
+        result = await indicatorsService.executeDetails('all', indicatorId, params, detailOptions);
       }
-    );
+    } else {
+      const resolved = resolveFacilityCodesByHierarchy(sites, siteCode, siteLevel);
+      const codes = resolved.length > 0 ? resolved : [siteCode];
+      if (codes.length === 1) {
+        result = await indicatorsService.executeDetails(codes[0], indicatorId, params, detailOptions);
+      } else {
+        result = await indicatorsService.executeDetailsMerged(codes, indicatorId, params, detailOptions);
+      }
+    }
     res.json(result);
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

@@ -143,6 +143,16 @@ function mergeIndicatorRows(listOfRows) {
   return Array.from(byIndicator.values());
 }
 
+/** Dedupe key for merged patient-level rows (adult indicator details, reports). */
+function detailRowDedupeKey(row) {
+  const r = row || {};
+  const id = r.ClinicID ?? r.clinicid ?? r.ClinicId ?? r.CLINICID;
+  if (id != null && String(id).trim() !== '') return `id:${String(id).trim()}`;
+  const art = r.art_number ?? r.Artnum ?? r.ART ?? r.artnum;
+  if (art != null && String(art).trim() !== '') return `art:${String(art).trim()}`;
+  return null;
+}
+
 function mergeSectionRows(listOfSections) {
   const sections = new Map();
   listOfSections.flat().forEach((section) => {
@@ -171,5 +181,6 @@ module.exports = {
   isFacilitySite,
   resolveFacilityCodesByHierarchy,
   mergeIndicatorRows,
-  mergeSectionRows
+  mergeSectionRows,
+  detailRowDedupeKey
 };

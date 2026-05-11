@@ -7,8 +7,10 @@ const pnttReportService = require('../services/pnttReportService');
 const { siteDatabaseManager } = require('../config/siteDatabase');
 const {
   buildCacheKey,
+  detailRowDedupeKey,
   getCache,
   inferSiteLevel,
+  isFacilitySite,
   mergeSectionRows,
   resolveFacilityCodesByHierarchy,
   setCache
@@ -52,19 +54,8 @@ async function resolveAggregateContext(req, siteCode) {
   return { siteLevel, resolvedSiteCodes };
 }
 
-/** Stable key for merging detail rows across facilities (infant / PNTT). */
-function reportDetailRowDedupeKey(row) {
-  const r = row || {};
-  const id = r.ClinicID ?? r.clinicid ?? r.ClinicId ?? r.CLINICID;
-  if (id != null && String(id).trim() !== '') return `id:${String(id).trim()}`;
-  const art = r.art_number ?? r.Artnum ?? r.ART ?? r.artnum;
-  if (art != null && String(art).trim() !== '') return `art:${String(art).trim()}`;
-  return null;
-}
-
 /**
- * Country → single query with site scope `all`.
- * Province (or any multi-facility rollup) → run detail per facility and merge, deduped by patient.
+ * Country/province (multi-facility rollup) → run detail per facility and merge, with site_code.
  */
 async function runMergedReportDetail(runDetailScript, siteCode, siteLevel, scriptId, dateParams) {
   const sites = await siteDatabaseManager.getAllSitesForManagement();
@@ -73,16 +64,25 @@ async function runMergedReportDetail(runDetailScript, siteCode, siteLevel, scrip
     siteLevel != null && siteLevel !== '' ? siteLevel : inferSiteLevel(siteCode, selected)
   ).toLowerCase();
 
-  if (level === 'country') {
-    return runDetailScript('all', scriptId, dateParams);
-  }
+  const resolvedCodes =
+    level === 'country'
+      ? (() => {
+          const viaHierarchy = resolveFacilityCodesByHierarchy(sites, siteCode, 'country');
+          if (viaHierarchy.length) return viaHierarchy;
+          return sites.filter(isFacilitySite).map((s) => String(s.code));
+        })()
+      : resolveFacilityCodesByHierarchy(sites, siteCode, level);
 
-  const resolvedCodes = resolveFacilityCodesByHierarchy(sites, siteCode, level);
   if (!resolvedCodes.length) {
     return { rows: [], error: null };
   }
   if (resolvedCodes.length === 1) {
-    return runDetailScript(resolvedCodes[0], scriptId, dateParams);
+    const single = await runDetailScript(resolvedCodes[0], scriptId, dateParams);
+    if (single.error) return single;
+    return {
+      rows: (single.rows || []).map((row) => ({ ...row, site_code: row?.site_code ?? resolvedCodes[0] })),
+      error: null
+    };
   }
 
   const byKey = new Map();
@@ -94,11 +94,12 @@ async function runMergedReportDetail(runDetailScript, siteCode, siteLevel, scrip
       continue;
     }
     for (const row of result.rows || []) {
-      const k = reportDetailRowDedupeKey(row);
+      const rowWithSite = { ...row, site_code: row?.site_code ?? code };
+      const k = detailRowDedupeKey(rowWithSite);
       if (k == null) {
-        byKey.set(`row:${byKey.size}`, row);
+        byKey.set(`row:${byKey.size}`, rowWithSite);
       } else if (!byKey.has(k)) {
-        byKey.set(k, row);
+        byKey.set(k, rowWithSite);
       }
     }
   }
