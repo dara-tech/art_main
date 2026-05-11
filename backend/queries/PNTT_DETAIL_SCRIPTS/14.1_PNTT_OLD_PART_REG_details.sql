@@ -3,6 +3,8 @@
 -- =====================================================
 -- Disaggregated records for: Old partners registered
 -- Logic matches `PNTT_OLD_PART_REG_aggregate.sql`
+-- Index patient join: one tblaimain row per ClinicID (ROW_NUMBER) so row count matches aggregate COUNT(part)
+-- when duplicate ClinicID rows exist in tblaimain. Requires MySQL 8+.
 -- =====================================================
 
 SET @StartDate = '2025-04-01';
@@ -39,7 +41,25 @@ RIGHT OUTER JOIN tblapntt pntt
     ON adultactive.ClinicID = pntt.ClinicID
 LEFT OUTER JOIN tblapnttpart part
     ON pntt.AsID = part.AsID
-LEFT OUTER JOIN tblaimain ai
+LEFT OUTER JOIN (
+    SELECT ClinicID,
+           Sex,
+           TypeofReturn,
+           OffIn,
+           DaBirth,
+           DafirstVisit
+    FROM (
+        SELECT ClinicID,
+               Sex,
+               TypeofReturn,
+               OffIn,
+               DaBirth,
+               DafirstVisit,
+               ROW_NUMBER() OVER (PARTITION BY ClinicID ORDER BY DafirstVisit ASC, OffIn ASC, TypeofReturn ASC) AS rn
+        FROM tblaimain
+    ) ranked_ai
+    WHERE rn = 1
+) ai
     ON ai.ClinicID = pntt.ClinicID
 WHERE pntt.Agree = 0
   AND pntt.DaVisit BETWEEN @StartDate AND @EndDate

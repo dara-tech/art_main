@@ -41,7 +41,25 @@ FROM (
 ) adultactive
 RIGHT OUTER JOIN tblapntt pntt
     ON adultactive.ClinicID = pntt.ClinicID
-LEFT OUTER JOIN tblaimain ai
+LEFT OUTER JOIN (
+    SELECT ClinicID,
+           Sex,
+           TypeofReturn,
+           OffIn,
+           DaBirth,
+           DafirstVisit
+    FROM (
+        SELECT ClinicID,
+               Sex,
+               TypeofReturn,
+               OffIn,
+               DaBirth,
+               DafirstVisit,
+               ROW_NUMBER() OVER (PARTITION BY ClinicID ORDER BY DafirstVisit ASC, OffIn ASC, TypeofReturn ASC) AS rn
+        FROM tblaimain
+    ) ranked_ai
+    WHERE rn = 1
+) ai
     ON ai.ClinicID = pntt.ClinicID
 LEFT OUTER JOIN tblapnttchild child
     ON pntt.AsID = child.AsID
