@@ -3,8 +3,8 @@
 -- =====================================================
 -- Disaggregated records for: Old partners registered
 -- Logic matches `PNTT_OLD_PART_REG_aggregate.sql`
--- Index patient join: one tblaimain row per ClinicID (ROW_NUMBER) so row count matches aggregate COUNT(part)
--- when duplicate ClinicID rows exist in tblaimain. Requires MySQL 8+.
+-- adultactive + index join: one tblaimain row per ClinicID (ROW_NUMBER) so joins do not multiply
+-- detail rows when duplicate ClinicID rows exist in tblaimain. Requires MySQL 8+.
 -- =====================================================
 
 SET @StartDate = '2025-04-01';
@@ -34,8 +34,16 @@ SELECT
     END AS partner_sex_display
 FROM (
     SELECT ClinicID, Sex, TypeofReturn, OffIn
-    FROM tblaimain
-    WHERE DafirstVisit BETWEEN @StartDate AND @EndDate
+    FROM (
+        SELECT ClinicID,
+               Sex,
+               TypeofReturn,
+               OffIn,
+               ROW_NUMBER() OVER (PARTITION BY ClinicID ORDER BY DafirstVisit ASC, OffIn ASC, TypeofReturn ASC) AS rn
+        FROM tblaimain
+        WHERE DafirstVisit BETWEEN @StartDate AND @EndDate
+    ) ranked_adult
+    WHERE rn = 1
 ) adultactive
 RIGHT OUTER JOIN tblapntt pntt
     ON adultactive.ClinicID = pntt.ClinicID

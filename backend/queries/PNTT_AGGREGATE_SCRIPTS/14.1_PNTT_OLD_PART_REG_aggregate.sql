@@ -15,11 +15,17 @@ SELECT
   SUM(tblapnttpart.Sex=0) as Female,
   SUM(tblapnttpart.Sex=1) as Male
 FROM (
-  
-  
 SELECT ClinicID, Sex, TypeofReturn, OffIn
-FROM tblaimain
-WHERE DafirstVisit BETWEEN @StartDate AND @EndDate
+FROM (
+    SELECT ClinicID,
+           Sex,
+           TypeofReturn,
+           OffIn,
+           ROW_NUMBER() OVER (PARTITION BY ClinicID ORDER BY DafirstVisit ASC, OffIn ASC, TypeofReturn ASC) AS rn
+    FROM tblaimain
+    WHERE DafirstVisit BETWEEN @StartDate AND @EndDate
+) ranked_adult
+WHERE rn = 1
 ) adultactive
 RIGHT OUTER
 JOIN tblapntt

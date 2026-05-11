@@ -39,6 +39,30 @@ function recordFieldCaseInsensitive(record, field) {
   return key != null ? record[key] : undefined;
 }
 
+/** Match detail modal headline count to the aggregate cell the user clicked (not raw SQL row count). */
+function detailCountFromAggregateRow(row, column) {
+  if (!row || typeof row !== 'object') return null;
+  const n = (v) => {
+    const x = Number(v);
+    return Number.isFinite(x) ? x : null;
+  };
+  if (column === 'ever') return n(row.ever);
+  if (column === 'sixMonths') return n(row.sixMonths);
+  if (column === 'never') return n(row.never);
+  if (column === 'male') return n(row.male);
+  if (column === 'female') return n(row.female);
+  if (column === 'total') {
+    // Prefer male + female so headline matches ប្រុស + ស្រី drill-downs (Tsex can include unknown sex).
+    const m = n(row.male);
+    const f = n(row.female);
+    if (m != null && f != null) return m + f;
+    const t = n(row.total);
+    if (t != null) return t;
+    return (Number(row.male) || 0) + (Number(row.female) || 0);
+  }
+  return null;
+}
+
 const INDICATOR_LABEL_MAP = {
   '1. Active ART patients in previous quarter': '1. ចំនួនអ្នកជំងឺ ART សកម្មដល់ចុងត្រីមាសមុន (Number of active ART patients in previous quarter)',
   '2. Active Pre-ART patients in previous quarter': '2. ចំនួនអ្នកជំងឺ Pre-ART សកម្មដល់ចុងត្រីមាសមុន (Number of active Pre-ART patients in previous quarter)',
@@ -222,6 +246,7 @@ export default function ReportHomePage({ onLogout }) {
   const [detailPage, setDetailPage] = useState(1);
   const [detailLimit] = useState(25);
   const [detailTotal, setDetailTotal] = useState(0);
+  const [detailCountFootnote, setDetailCountFootnote] = useState('');
   const [detailTotalPages, setDetailTotalPages] = useState(1);
   const [detailFilter, setDetailFilter] = useState(null);
   const [showColumnConfig, setShowColumnConfig] = useState(false);
@@ -392,9 +417,20 @@ export default function ReportHomePage({ onLogout }) {
       return undefined;
     };
     let raw;
-    if (sid.includes('_CHILD_') || sid.includes('CHILD_')) {
+    // Filenames use OLD_CHILD_REG / OLD_PART_REG (no "CHILD_" / "PART_" substring); match stable PNTT_* tokens.
+    const isChildScript =
+      sid.includes('PNTT_OLD_CHILD') ||
+      sid.includes('PNTT_NEW_CHILD') ||
+      sid.includes('_CHILD_') ||
+      sid.includes('CHILD_');
+    const isPartScript =
+      sid.includes('PNTT_OLD_PART') ||
+      sid.includes('PNTT_NEW_PART') ||
+      sid.includes('_PART_') ||
+      sid.includes('PART_');
+    if (isChildScript) {
       raw = rawFrom(['child_sex_display'], ['child_sex']);
-    } else if (sid.includes('_PART_') || sid.includes('PART_')) {
+    } else if (isPartScript) {
       raw = rawFrom(['partner_sex_display'], ['partner_sex']);
     } else {
       raw = rawFrom(
@@ -471,6 +507,7 @@ export default function ReportHomePage({ onLogout }) {
     const indicatorKey = indicatorApiMap[filter.rawIndicator] || filter.rawIndicator;
     setDetailLoading(true);
     setDetailError('');
+    setDetailCountFootnote('');
     try {
       const params = {
         siteCode: effectiveSiteCode,
@@ -507,6 +544,7 @@ export default function ReportHomePage({ onLogout }) {
     if (!effectiveSiteCode || !item?.rawIndicator) return;
     const filter = { rawIndicator: item.rawIndicator, ageGroup, gender };
     setDetailFilter(filter);
+    setDetailCountFootnote('');
     setDetailTitle(`${item.indicator} - ${ageGroup}/${gender}`);
     setDetailOpen(true);
     setDetailRows([]);
@@ -518,11 +556,13 @@ export default function ReportHomePage({ onLogout }) {
   const handleInfantCellClick = async (section, row, rowIdx, column) => {
     const scriptId = getDetailScriptId(section, rowIdx);
     if (!effectiveSiteCode || !scriptId) return;
+    setDetailFilter(null);
     setDetailTitle(`${section?.sectionNumber || ''}. ${section?.sectionLabelKh || section?.sectionLabelEn || 'Infant Detail'}`);
     setDetailOpen(true);
     setDetailLoading(true);
     setDetailRows([]);
     setDetailError('');
+    setDetailCountFootnote('');
     setDetailTotal(0);
     setDetailTotalPages(1);
     setDetailPage(1);
@@ -540,8 +580,11 @@ export default function ReportHomePage({ onLogout }) {
         if (column === 'female') return sex === 'female';
         return true;
       });
+      const fromAgg = detailCountFromAggregateRow(row, column);
+      const loaded = filtered.length;
       setDetailRows(filtered);
-      setDetailTotal(filtered.length);
+      setDetailTotal(fromAgg != null ? fromAgg : loaded);
+      setDetailCountFootnote(fromAgg != null && loaded !== fromAgg ? `${loaded} row(s) in list` : '');
     } catch (e) {
       setDetailError(e?.response?.data?.error || e?.message || 'Failed to load infant details');
     } finally {
@@ -551,11 +594,13 @@ export default function ReportHomePage({ onLogout }) {
   const handlePnttCellClick = async (section, row, rowIdx, column) => {
     const scriptId = getDetailScriptId(section, rowIdx);
     if (!effectiveSiteCode || !scriptId) return;
+    setDetailFilter(null);
     setDetailTitle(`${section?.sectionNumber || ''}. ${section?.sectionLabelKh || section?.sectionLabelEn || 'PNTT Detail'}`);
     setDetailOpen(true);
     setDetailLoading(true);
     setDetailRows([]);
     setDetailError('');
+    setDetailCountFootnote('');
     setDetailTotal(0);
     setDetailTotalPages(1);
     setDetailPage(1);
@@ -580,6 +625,12 @@ export default function ReportHomePage({ onLogout }) {
         const sex = getPnttDetailCountSex(record, section);
         if (column === 'male') return sex === 'male';
         if (column === 'female') return sex === 'female';
+        // Total headline uses male + female; list must match (exclude unknown / missing sex rows).
+        if (column === 'total') {
+          const m = Number(row?.male);
+          const f = Number(row?.female);
+          if (Number.isFinite(m) && Number.isFinite(f)) return sex === 'male' || sex === 'female';
+        }
         return true;
       });
       const withDisplay = filtered.map((r) => {
@@ -595,8 +646,11 @@ export default function ReportHomePage({ onLogout }) {
             (grp === 'male' ? 'Male' : grp === 'female' ? 'Female' : 'Unknown')
         };
       });
+      const fromAgg = detailCountFromAggregateRow(row, column);
+      const loaded = withDisplay.length;
       setDetailRows(withDisplay);
-      setDetailTotal(withDisplay.length);
+      setDetailTotal(fromAgg != null ? fromAgg : loaded);
+      setDetailCountFootnote(fromAgg != null && loaded !== fromAgg ? `${loaded} row(s) in list` : '');
     } catch (e) {
       setDetailError(e?.response?.data?.error || e?.message || 'Failed to load PNTT details');
     } finally {
@@ -1079,6 +1133,7 @@ export default function ReportHomePage({ onLogout }) {
               onClick={() => {
                 setDetailOpen(false);
                 setDetailFilter(null);
+                setDetailCountFootnote('');
               }}
             >
             <motion.div
@@ -1093,7 +1148,19 @@ export default function ReportHomePage({ onLogout }) {
                 <div className="min-w-0">
                   <div className="truncate text-xs font-semibold text-foreground">{detailTitle}</div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    {formatDetailCellValue(detailTotal)} records
+                    {detailFilter ? (
+                      <>
+                        {formatDetailCellValue(detailTotal)} records
+                        {detailTotalPages > 1 ? ` (page ${detailPage} of ${detailTotalPages})` : ''}
+                      </>
+                    ) : (
+                      <>
+                        {formatDetailCellValue(detailTotal)} in report
+                        {detailCountFootnote ? (
+                          <span className="text-muted-foreground/90"> · {detailCountFootnote}</span>
+                        ) : null}
+                      </>
+                    )}
                   </div>
                 </div>
                 <button
@@ -1102,6 +1169,7 @@ export default function ReportHomePage({ onLogout }) {
                   onClick={() => {
                     setDetailOpen(false);
                     setDetailFilter(null);
+                    setDetailCountFootnote('');
                   }}
                 >
                   Close

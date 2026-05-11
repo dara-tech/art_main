@@ -143,11 +143,39 @@ function mergeIndicatorRows(listOfRows) {
   return Array.from(byIndicator.values());
 }
 
-/** Dedupe key for merged patient-level rows (adult indicator details, reports). */
+/**
+ * Dedupe key for merged patient-level rows across facilities (infant / PNTT report details).
+ * PNTT child rows share parent clinicid — must include child_id + visit; visit rows need pntt_asid.
+ */
 function detailRowDedupeKey(row) {
   const r = row || {};
-  const id = r.ClinicID ?? r.clinicid ?? r.ClinicId ?? r.CLINICID;
-  if (id != null && String(id).trim() !== '') return `id:${String(id).trim()}`;
+  const site = String(r.site_code ?? r.siteCode ?? '').trim();
+  const siteP = site ? `${site}:` : '';
+
+  const clinicRaw = r.ClinicID ?? r.clinicid ?? r.ClinicId ?? r.CLINICID ?? r.clinic_id;
+  const clinicStr = clinicRaw != null && String(clinicRaw).trim() !== '' ? String(clinicRaw).trim() : '';
+
+  const pnttRaw = r.pntt_asid ?? r.pnttAsID ?? r.AsID;
+  const pnttStr = pnttRaw != null && String(pnttRaw).trim() !== '' ? String(pnttRaw).trim() : '';
+
+  const childRaw = r.child_id ?? r.CAPID ?? r.capid ?? r.ChildID ?? r.childid;
+  if (childRaw != null && String(childRaw).trim() !== '') {
+    return `pntt-child:${siteP}${clinicStr}:${pnttStr}:${String(childRaw).trim()}`;
+  }
+
+  const hasPartner =
+    (r.partner_sex != null && r.partner_sex !== '') ||
+    (r.partner_sex_display != null && String(r.partner_sex_display).trim() !== '');
+  if (hasPartner && (clinicStr || pnttStr)) {
+    const pSex = r.partner_sex ?? r.partner_sex_display ?? '';
+    const visit = r.pntt_visit_date ?? r.pntt_visitdate ?? '';
+    return `pntt-part:${siteP}${clinicStr}:${pnttStr}:${String(pSex)}:${String(visit)}`;
+  }
+
+  if (pnttStr && clinicStr) return `pntt-visit:${siteP}${clinicStr}:${pnttStr}`;
+
+  if (clinicStr) return `id:${siteP}${clinicStr}`;
+
   const art = r.art_number ?? r.Artnum ?? r.ART ?? r.artnum;
   if (art != null && String(art).trim() !== '') return `art:${String(art).trim()}`;
   return null;

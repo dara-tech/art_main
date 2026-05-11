@@ -34,8 +34,18 @@ SELECT
     child.StatusHIV AS child_status_hiv_code
 FROM (
     SELECT ClinicID, Sex, TypeofReturn, OffIn, DaBirth, DafirstVisit
-    FROM tblaimain
-    WHERE DafirstVisit BETWEEN @StartDate AND @EndDate
+    FROM (
+        SELECT ClinicID,
+               Sex,
+               TypeofReturn,
+               OffIn,
+               DaBirth,
+               DafirstVisit,
+               ROW_NUMBER() OVER (PARTITION BY ClinicID ORDER BY DafirstVisit ASC, OffIn ASC, TypeofReturn ASC) AS rn
+        FROM tblaimain
+        WHERE DafirstVisit BETWEEN @StartDate AND @EndDate
+    ) ranked_adult
+    WHERE rn = 1
 ) adultactive
 RIGHT OUTER JOIN tblapntt pntt
     ON adultactive.ClinicID = pntt.ClinicID

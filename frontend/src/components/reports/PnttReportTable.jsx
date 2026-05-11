@@ -66,6 +66,8 @@ const CHILDREN_STRUCTURE = [
 const getFirstRow = (section) => (Array.isArray(section?.rows) && section.rows.length ? section.rows[0] : null);
 const getSectionByScript = (sections, scriptId) => sections.find((s) => s.scriptId === scriptId) || null;
 const asNum = (v) => Number(v ?? 0);
+/** Align សរុប with ប្រុស + ស្រី (SQL Tsex can count unknown / non-0/1 sex). */
+const mfTotal = (row) => asNum(row?.male) + asNum(row?.female);
 
 function renderMainHeader(type = 'default') {
   const firstColTitle = type === 'risk' ? 'កត្តាប្រឈម' : 'សូចនាករ';
@@ -152,10 +154,10 @@ function buildRows(structure, sections) {
           oldRow: o || {},
           newMale: asNum(n?.male),
           newFemale: asNum(n?.female),
-          newTotal: asNum(n?.total),
+          newTotal: mfTotal(n),
           oldMale: asNum(o?.male),
           oldFemale: asNum(o?.female),
-          oldTotal: asNum(o?.total)
+          oldTotal: mfTotal(o)
         };
       });
       const total = subs.reduce(
@@ -183,10 +185,10 @@ function buildRows(structure, sections) {
         oldRow: o || {},
         newMale: asNum(n?.male),
         newFemale: asNum(n?.female),
-        newTotal: asNum(n?.total),
+        newTotal: mfTotal(n),
         oldMale: asNum(o?.male),
         oldFemale: asNum(o?.female),
-        oldTotal: asNum(o?.total)
+        oldTotal: mfTotal(o)
       });
     }
   });
