@@ -14,6 +14,22 @@ function processQuery(query, params) {
   return out;
 }
 
+function classifyDetailAgeGroup(row) {
+  const r = row || {};
+  const typepatients = String(r.typepatients ?? r.TypePatients ?? '').trim();
+  const patientType = String(r.patient_type ?? r.patientType ?? '').trim().toLowerCase();
+
+  // Prefer the same grouping labels the aggregate queries use.
+  if (typepatients === '≤14' || typepatients === '<=14' || typepatients === '0-14') return '0-14';
+  if (typepatients === '15+' || typepatients === '>14') return '>14';
+  if (patientType === 'child') return '0-14';
+  if (patientType === 'adult') return '>14';
+
+  const age = Number(r.age ?? r.Age);
+  if (Number.isFinite(age)) return age <= 14 ? '0-14' : '>14';
+  return '';
+}
+
 class IndicatorsService {
   constructor() {
     this.queries = new Map();
@@ -84,9 +100,9 @@ class IndicatorsService {
         return sex === String(gender).toLowerCase();
       });
     }
-    if (ageGroup === '0-14') filtered = filtered.filter((r) => Number(r.age || 0) <= 14);
+    if (ageGroup === '0-14') filtered = filtered.filter((r) => classifyDetailAgeGroup(r) === '0-14');
     if (ageGroup === '15+' || ageGroup === '>14') {
-      filtered = filtered.filter((r) => Number(r.age || 0) >= 15);
+      filtered = filtered.filter((r) => classifyDetailAgeGroup(r) === '>14');
     }
     if (search) {
       filtered = filtered.filter((r) =>
