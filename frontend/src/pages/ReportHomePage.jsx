@@ -193,6 +193,11 @@ const isFacilitySite = (site) => {
   return true;
 };
 
+const provinceIdFromSelection = (value) => {
+  const raw = String(value || '').trim();
+  return raw.startsWith('province:') ? raw.slice('province:'.length).trim() : '';
+};
+
 function buildPeriod(periodType, selectedDate, selectedMonth, selectedQuarter, selectedYear) {
   let start;
   let end;
@@ -273,6 +278,7 @@ export default function ReportHomePage({ onLogout }) {
   const effectiveSiteCode = useMemo(() => (siteCode === '__CAMBODIA__' ? 'all' : siteCode), [siteCode]);
   const selectedSiteLevel = useMemo(() => {
     if (siteCode === '__CAMBODIA__') return 'country';
+    if (provinceIdFromSelection(siteCode)) return 'province';
     const digits = String(siteCode || '').replace(/\D/g, '');
     const name = String(selectedSite?.name || '').toLowerCase();
     if (name.includes('cambodia')) return 'country';
@@ -294,6 +300,12 @@ export default function ReportHomePage({ onLogout }) {
       return { scopeLabel: 'Country:', scopeValue: 'Cambodia', siteCodeValue: 'all' };
     }
     if (selectedSiteLevel === 'province' && codeStr) {
+      const selectedProvinceId = provinceIdFromSelection(codeStr);
+      if (selectedProvinceId) {
+        const provinceSite = sites.find((site) => String(site?.province_id ?? '') === selectedProvinceId && String(site?.province || '').trim());
+        const scopeValue = provinceSite?.province || `Province ${selectedProvinceId}`;
+        return { scopeLabel: 'Province:', scopeValue, siteCodeValue: selectedProvinceId };
+      }
       const digits = codeStr.replace(/\D/g, '');
       const prefix = digits.length >= 2 ? digits.slice(0, 2) : '';
       const scopeValue = PROVINCE_NAME_BY_PREFIX[prefix] || (prefix ? `Province ${prefix}` : '-');
@@ -304,15 +316,21 @@ export default function ReportHomePage({ onLogout }) {
       scopeValue: '-',
       siteCodeValue: codeStr || '-'
     };
-  }, [selectedSite, selectedSiteLevel, siteCode]);
+  }, [selectedSite, selectedSiteLevel, siteCode, sites]);
 
   const siteCodeSet = useMemo(() => new Set(sites.map((s) => String(s.code))), [sites]);
   const facilitySites = useMemo(() => sites.filter(isFacilitySite), [sites]);
   const getAggregateFacilityCodes = (rawSiteCode) => {
     const value = String(rawSiteCode || '').trim();
     const digits = value.replace(/\D/g, '');
+    const selectedProvinceId = provinceIdFromSelection(value);
     if (!value) return [];
     if (value === '__CAMBODIA__') return facilitySites.map((s) => String(s.code));
+    if (selectedProvinceId) {
+      return facilitySites
+        .filter((site) => String(site?.province_id ?? '').trim() === selectedProvinceId)
+        .map((site) => String(site.code));
+    }
 
     const matchedSite = sites.find((s) => String(s.code) === value);
     if (matchedSite && isFacilitySite(matchedSite)) return [value];
@@ -355,6 +373,7 @@ export default function ReportHomePage({ onLogout }) {
   const getCandidateSiteCodes = (rawSiteCode) => {
     const value = String(rawSiteCode || '').trim();
     if (!value) return [];
+    if (provinceIdFromSelection(value)) return [value];
     const digits = value.replace(/\D/g, '');
     const candidates = [value];
     const hasExact = siteCodeSet.has(value);

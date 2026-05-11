@@ -48,6 +48,7 @@ class SiteDatabaseManager {
         s.site_name as search_terms,
         s.art_site_code as file_name,
         ${parentCodeSelect}
+        s.province_id as province_id,
         p.province_en as province,
         'ART' as type,
         'main_dbs' as database_name

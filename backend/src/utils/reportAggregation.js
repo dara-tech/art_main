@@ -26,6 +26,7 @@ function buildCacheKey(reportType, input = {}) {
 
 function inferSiteLevel(siteCode, siteInfo) {
   const code = String(siteCode || '').trim();
+  if (code.startsWith('province:')) return 'province';
   const digits = code.replace(/\D/g, '');
   const name = String(siteInfo?.name || '').toLowerCase();
   if (name.includes('cambodia')) return 'country';
@@ -41,6 +42,18 @@ function isFacilitySite(site) {
   if (digits.endsWith('00')) return false;
   if (name.includes('cambodia') || name.includes('province')) return false;
   return true;
+}
+
+function provinceIdFromSite(site) {
+  const raw = site?.province_id ?? site?.provinceId ?? site?.provinceid;
+  const value = String(raw ?? '').trim();
+  return value || '';
+}
+
+function provinceIdFromCode(rawCode) {
+  const value = String(rawCode || '').trim();
+  if (!value.startsWith('province:')) return '';
+  return value.slice('province:'.length).trim();
 }
 
 /** Parent site code from a registry row (align with frontend ReportHomePage parent candidates). */
@@ -75,6 +88,16 @@ function facilityCodesByDigitPrefix(sites, rawCode) {
     return facilities.filter((s) => String(s.code).replace(/\D/g, '').startsWith(prefix)).map((s) => String(s.code));
   }
   return [];
+}
+
+function facilityCodesByProvinceId(sites, rawCode) {
+  const allSites = Array.isArray(sites) ? sites : [];
+  const facilities = allSites.filter(isFacilitySite);
+  const provinceId = provinceIdFromCode(rawCode);
+  if (!provinceId) return [];
+  return facilities
+    .filter((site) => provinceIdFromSite(site) === provinceId)
+    .map((site) => String(site.code));
 }
 
 function resolveFacilityCodesByHierarchy(sites, selectedCode, siteLevel) {
@@ -113,6 +136,9 @@ function resolveFacilityCodesByHierarchy(sites, selectedCode, siteLevel) {
   }
 
   if (out.length) return [...new Set(out)];
+
+  const byProvinceId = facilityCodesByProvinceId(allSites, codeStr);
+  if (byProvinceId.length) return [...new Set(byProvinceId)];
 
   const prefixed = facilityCodesByDigitPrefix(allSites, codeStr);
   return [...new Set(prefixed)];

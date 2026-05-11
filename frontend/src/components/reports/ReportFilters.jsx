@@ -85,67 +85,68 @@ export default function ReportFilters({
     const prefix = String(site?.code || '').slice(0, 2);
     return provinceNameByCode[prefix] || `Province ${prefix || 'Unknown'}`;
   };
-  const groupedProvinces = selectableSites.reduce((acc, site) => {
-    const province = getProvinceName(site);
-    if (!acc[province]) acc[province] = [];
-    acc[province].push(site);
-    return acc;
-  }, {});
+  const provinceGroups = Array.from(
+    selectableSites.reduce((acc, site) => {
+      const province = getProvinceName(site);
+      const provinceId = String(site?.province_id ?? '').trim();
+      const key = provinceId ? `province:${provinceId}` : `name:${province}`;
+      if (!acc.has(key)) {
+        acc.set(key, {
+          key,
+          province,
+          provinceId,
+          sites: []
+        });
+      }
+      acc.get(key).sites.push(site);
+      return acc;
+    }, new Map()).values()
+  ).sort((a, b) => String(a.province || '').localeCompare(String(b.province || '')));
   const cambodiaSite = selectableSites.find(isCambodiaRootSite) || null;
   const cambodiaValue = cambodiaSite ? String(cambodiaSite.code) : '__CAMBODIA__';
-  const provinceOptions = Object.entries(groupedProvinces)
-    .filter(([province]) => province !== 'Cambodia')
-    .map(([province, provinceSites]) => ({
-      province,
-      code: (() => {
-        const prefix = String(provinceSites?.[0]?.code || '').slice(0, 2);
-        const explicitProvinceRow = provinceSites.find((site) => {
-          const digits = String(site?.code || '').replace(/\D/g, '');
-          const name = String(site?.name || '').trim().toLowerCase();
-          const provinceLower = String(province).trim().toLowerCase();
-          const matchesPrefix = prefix ? digits.startsWith(prefix) : true;
-          return matchesPrefix && (digits.endsWith('00') || name === provinceLower);
-        });
-        // Keep province node distinct from facilities (e.g. 2200 vs 2201).
-        return String(explicitProvinceRow?.code || (prefix ? `${prefix}00` : ''));
-      })(),
-      count: provinceSites.length
+  const provinceOptions = provinceGroups
+    .filter((group) => group.province !== 'Cambodia')
+    .map((group) => ({
+      ...group,
+      code: group.provinceId ? `province:${group.provinceId}` : ''
     }))
-    .filter((p) => p.code);
-  const provinceCodeByName = new Map(provinceOptions.map((p) => [p.province, String(p.code)]));
+    .filter((group) => group.code);
+  const provinceCodeByKey = new Map(provinceOptions.map((group) => [group.key, String(group.code)]));
   const siteLabelByCode = new Map(selectableSites.map((s) => [String(s.code), `${s.code} - ${s.name}`]));
   if (cambodiaSite) {
     siteLabelByCode.set(String(cambodiaSite.code), `${cambodiaSite.code} - ${cambodiaSite.name}`);
   } else {
     siteLabelByCode.set(cambodiaValue, 'Cambodia');
   }
-  provinceOptions.forEach((p) => {
-    if (!siteLabelByCode.has(String(p.code))) siteLabelByCode.set(String(p.code), `${p.code} - ${p.province}`);
+  provinceOptions.forEach((group) => {
+    if (!siteLabelByCode.has(String(group.code))) siteLabelByCode.set(String(group.code), group.province);
   });
   const selectedSiteLabel = siteLabelByCode.get(String(siteCode)) || '';
   const draftSiteLabel = siteLabelByCode.get(String(draftSiteCode)) || '';
   const searchLower = siteSearch.trim().toLowerCase();
-  const filteredProvinceEntries = Object.entries(groupedProvinces).filter(([province, provinceSites]) => {
+  const filteredProvinceEntries = provinceGroups.filter((group) => {
+    const province = String(group.province || '');
+    const provinceSites = Array.isArray(group.sites) ? group.sites : [];
     if (!searchLower) return true;
     if (province.toLowerCase().includes(searchLower)) return true;
     return provinceSites.some(
       (s) => String(s.name || '').toLowerCase().includes(searchLower) || String(s.code || '').toLowerCase().includes(searchLower)
     );
   });
-  const visibleProvinceEntries = filteredProvinceEntries.filter(([province]) => province !== 'Cambodia');
+  const visibleProvinceEntries = filteredProvinceEntries.filter((group) => group.province !== 'Cambodia');
   const showCambodiaRoot =
     !searchLower ||
     String(cambodiaSite?.name || 'cambodia').toLowerCase().includes(searchLower) ||
     String(cambodiaSite?.code || '').toLowerCase().includes(searchLower) ||
     visibleProvinceEntries.length > 0;
-  const toggleProvince = (province) => setExpandedProvinces((prev) => ({ ...prev, [province]: !prev[province] }));
+  const toggleProvince = (provinceKey) => setExpandedProvinces((prev) => ({ ...prev, [provinceKey]: !prev[provinceKey] }));
   const openSiteModal = () => {
     setDraftSiteCode(siteCode || '');
     setSiteSearch('');
     setSiteModalOpen(true);
     setExpandedCambodia(true);
-    const firstProvince = Object.keys(groupedProvinces)[0];
-    if (firstProvince) setExpandedProvinces((prev) => ({ ...prev, [firstProvince]: true }));
+    const firstProvinceKey = provinceGroups.find((group) => group.province !== 'Cambodia')?.key;
+    if (firstProvinceKey) setExpandedProvinces((prev) => ({ ...prev, [firstProvinceKey]: true }));
   };
   const applySiteSelection = () => {
     if (!String(draftSiteCode || '').trim()) return;
@@ -346,16 +347,18 @@ export default function ReportFilters({
                     </div>
                     {expandedCambodia && (
                       <div className="ml-12 mt-2 space-y-1 border-l border-border pl-4">
-                        {visibleProvinceEntries.map(([province, provinceSites]) => {
-                          const isExpanded = expandedProvinces[province] ?? false;
-                          const provinceCode = provinceCodeByName.get(province) || '';
+                        {visibleProvinceEntries.map((group) => {
+                          const province = group.province;
+                          const provinceSites = group.sites;
+                          const isExpanded = expandedProvinces[group.key] ?? false;
+                          const provinceCode = provinceCodeByKey.get(group.key) || '';
                           const provinceSelected = provinceCode && String(draftSiteCode) === provinceCode;
                           return (
-                            <div key={province} className="px-1 py-1 hover:bg-muted/30">
+                            <div key={group.key} className="px-1 py-1 hover:bg-muted/30">
                               <div className="flex items-center gap-2">
                                 <button
                                   type="button"
-                                  onClick={() => toggleProvince(province)}
+                                  onClick={() => toggleProvince(group.key)}
                                   className="inline-flex h-7 w-7 items-center justify-center border border-border"
                                 >
                                   {isExpanded ? <RiArrowDownSLine className="size-4" /> : <RiArrowRightSLine className="size-4" />}

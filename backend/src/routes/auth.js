@@ -121,6 +121,7 @@ router.get('/sites-registry', authenticateToken, async (req, res, next) => {
       searchTerms: site.search_terms,
       fileName: site.file_name,
       tblsite: site.tblsite,
+      province_id: site.province_id,
       province: site.province,
       type: site.type,
       database_name: site.database_name
