@@ -1101,6 +1101,12 @@ export default function ReportHomePage({ onLogout }) {
               <span className="text-xs">API</span>
             </Link>
           </Button>
+          <Button type="button" variant="outline" size="sm" asChild className="rounded-none border-border/80 bg-card px-2.5 shadow-sm" title="Indicator SQL reference">
+            <Link to="/queries" className="inline-flex items-center justify-center gap-1.5">
+              <RiFileTextLine className="size-4 shrink-0" />
+              <span className="text-xs">Queries</span>
+            </Link>
+          </Button>
         </div>
         <ReportFilters
           sites={sites}

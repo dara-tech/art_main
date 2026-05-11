@@ -80,6 +80,17 @@ class IndicatorsService {
     return { ...base, queryMs: Date.now() - startedAt };
   }
 
+  getQueryReference(params) {
+    const ids = Array.from(this.queries.keys()).sort();
+    return ids.map((id) => ({
+      indicatorId: id,
+      aggregatePath: `backend/queries/indicators/${id}.sql`,
+      aggregateSql: processQuery(this.queries.get(id), params),
+      detailPath: this.detailQueries.has(id) ? `backend/queries/indicators/${id}_details.sql` : null,
+      detailSql: this.detailQueries.has(id) ? processQuery(this.detailQueries.get(id), params) : null
+    }));
+  }
+
   async fetchDetailRowsFromDb(siteCode, id, params) {
     const sql = this.detailQueries.get(id);
     if (!sql) throw new Error(`Indicator detail query not found: ${id}`);

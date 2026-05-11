@@ -208,6 +208,21 @@ router.get('/all/stream', authenticateToken, async (req, res) => {
   }
 });
 
+router.get('/query-reference', authenticateToken, async (req, res) => {
+  try {
+    const params = queryParams(req);
+    const data = indicatorsService.getQueryReference(params);
+    res.json({
+      success: true,
+      paramsUsed: params,
+      count: data.length,
+      data
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.get('/:indicatorId', authenticateToken, async (req, res) => {
   try {
     const siteCode = requireSiteCode(req, res);

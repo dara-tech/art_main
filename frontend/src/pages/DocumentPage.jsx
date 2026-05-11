@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { RiArrowLeftLine, RiLogoutBoxRLine } from '@remixicon/react';
+import { RiArrowLeftLine, RiFileTextLine, RiLogoutBoxRLine } from '@remixicon/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -56,6 +56,13 @@ export const BACKEND_API_ROUTES = [
     auth: true,
     description: 'Paginated patient-level rows for an indicator.',
     notes: 'Query: siteCode, siteLevel, page, limit, gender?, ageGroup?, dates'
+  },
+  {
+    method: 'GET',
+    path: '/apiv1/indicators-optimized/query-reference',
+    auth: true,
+    description: 'Processed indicator SQL reference with default parameters substituted.',
+    notes: 'Optional query: startDate, endDate, previousEndDate (otherwise backend defaults are used)'
   },
   {
     method: 'GET',
@@ -117,6 +124,12 @@ export default function DocumentPage({ onLogout }) {
           <Link to="/" className="inline-flex items-center justify-center gap-1.5" title="Back to reports">
             <RiArrowLeftLine className="size-4" />
             <span className="text-xs">Reports</span>
+          </Link>
+        </Button>
+        <Button type="button" variant="outline" size="sm" asChild className="rounded-none bg-card">
+          <Link to="/queries" className="inline-flex items-center justify-center gap-1.5" title="Indicator SQL reference">
+            <RiFileTextLine className="size-4" />
+            <span className="text-xs">Queries</span>
           </Link>
         </Button>
       </div>
