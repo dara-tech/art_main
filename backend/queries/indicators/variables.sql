@@ -1,0 +1,5 @@
+-- ===================================================================
+-- SCRIPT SETUP - Common Variables
+-- ===================================================================
+-- Variables are now handled by Sequelize replacements
+-- This file is kept for reference but not used directly

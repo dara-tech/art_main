@@ -1,0 +1,934 @@
+# ការពន្យល់នៅលើ Database Schema
+
+## 1. tblaart, 31. Tblcart (តារាងសម្រាប់រក្សាទុកព័ត៌មានលេខកូដART និងថ្ងៃខែឆ្នាំចាប់ផ្តើមប្រើប្រាស់ថ្នាំ ARV)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID (Primary) | int(6) | Numeric | Patient's Clinic ID Number | លេខកូដClinic IDរបស់អ្នកជំងឺ |
+| ART | char(10) | String | ART Number | លេខកូដARTរបស់អ្នកជំងឺ |
+| DaArt | date | Date | Date Started ARV | ថ្ងៃខែឆ្នាំប្រើប្រាស់ថ្នាំARV |
+
+## 2. tblaccess (តារាងសម្រាប់រក្សាទុកព័ត៌មានអ្នកចូលប្រើប្រាស់ប្រព័ន្ធ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| Uid | int(1) | Numeric | User's ID | លេខកូដអ្នកប្រើប្រាស់ប្រព័ន្ធ |
+| Type | int(1) | String | Type of user access to system | ប្រភេទអ្នកប្រើប្រាស់ក្នុងប្រព័ន្ធ |
+| Dat | datetime | Date | Date and time of user Access to system. | ថ្ងៃខែឆ្នាំម៉ោងអ្នកប្រើប្រាស់ចូលក្នុងប្រព័ន្ធ |
+
+## 3. tblaiallergy (តារាងសម្រាប់រក្សាទុកព័ត៌មានលេខអ្នកជំងឺដែលមានអាឡែកហ្ស៊ី ឬប្រតិកម្មថ្នាំ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID | int(6) | Numeric | Patient's Clinic ID Number | លេខកូដClinic IDរបស់អ្នកជំងឺ |
+| DrugName | char(15) | String | Name of Drug | ឈ្មោះថ្នាំដែលអាឡែកហ្ស៊ី ឬប្រតិកម្ម |
+| Allergy | char(25) | Sting | Allergic reaction type | ប្រភេទនៃប្រតិកម្មថ្នាំ |
+| Da | date | Date | Informed Date | ថ្ងៃខែឆ្នាំប្រើប្រាស់ថ្នាំARV |
+
+## 4. tblaiarvtreathis (តារាងសម្រាប់រក្សាទុកព័ត៌មានប្រវត្តិនៃការប្រើប្រាស់ថ្នាំ ARV)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID | int(6) | Numeric | Patient's Clinic ID Number | លេខកូដClinic IDរបស់អ្នកជំងឺ |
+| DrugName | char(10) | String | Name of Drug | ឈ្មោះថ្នាំ ARV |
+| Clinic | char(20) | String | Facility Name | ឈ្មោះកន្លែងផ្តល់សេវាព្យាបាល |
+| DaStart | date | date | Start date | ថ្ងៃចាប់ផ្តើមប្រើប្រាស់ថ្នាំARV |
+| DaStop | date | date | Stop date | ថ្ងៃឈប់ប្រើប្រាស់ថ្នាំARV |
+| Note | char(4) | String | Remark or note | កំណត់សម្គាល់ផ្សេងៗ |
+
+## 5. tblaimain (តារាងសម្រាប់រក្សាទុកព័ត៌ដំណើរការនៃការចុះឈ្មោះមកពិនិត្យព្យាបាលលើកដំបូងរបស់អ្នកជំងឺ Adult Initial Visit)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID (Primary) | int(6) | Numeric | Patient's Clinic ID Number | លេខកូដClinic IDរបស់អ្នកជំងឺ |
+| DafirstVisit | date | Date | Date of first visit | កាលបរិច្ឆេទមកចុះឈ្មោះពិនិត្យព្យាបាលលើកដំបូង |
+| TypeofReturn | int(1) | Numeric (-1=not selected, 0=Inside Clinic, 1=Outside Clinic) | Type of Return | ប្រភេទនៃការបោះបង់ ហើយត្រឡប់មកសេវាព្យាបាលវិញ |
+| LClinicID | char(6) | String | Previous Clinic ID of Patient | លេខកូដClinic ID ចាស់របស់អ្នកជំងឺ |
+| SiteNameold | char(4) | String | Previous Site Code | លេខកូដចាស់របស់ Site |
+| DaBirth | date | Date | Date of Birth | ថ្ងៃខែឆ្នាំកំណើត |
+| Sex | int(1) | Numeric (-1=not selected, 0=Female, 1=Male) | Sex | ភេទ |
+| Education | int(1) | Numeric (-1=not selected, 0=None, 1=Primary, 2=High School, 3=University) | Education | ការអប់រំ |
+| Rea | int(1) | Numeric (-1=Not Selected, 0=No, 1=Yes) | Can read | ចេះអាន |
+| Write | int(1) | Numeric (-1=Not Selected, 0=No, 1=Yes) | Can write | ចេះសរសេរ |
+| Referred | int(1) | Numeric(-1=not selected, 0=Self-referral, 1=Home Care and Community, 2=VCCT, 3=PMTCT, 4=TB Program, 5=Blood Bank, 6=Other) | Referred From | បញ្ជូនមកពី |
+| Orefferred | char(20) | String | Other referred | បញ្ជូនមកពីកន្លែងផ្សេងទៀត |
+| DaHIV | date | Date | Date of HIV Positive Diagnosis | កាលបរិច្ឆេទធ្វើរោគវិនិច្ឆ័យមេរោគអេដស៍វិជ្ជមាន |
+| Vcctcode | char(9) | String | VCCT Code | លេខកូដ VCCT |
+| VcctID | char(10) | String | VCCT Number of Client | លេខកូដអតិថិជន |
+| PclinicID | char(7) | String | Pediatric Clinic ID (Child transfer to Adult) | លេខកូដសម្គាល់របស់អ្នកជំងឺកុមារ |
+| OffIn | int(1) | Numeric (-1=not selected, 0=No, 1=Yes) | Officially Transferred in | ផ្លាស់ជាផ្លូវការមកពី |
+| SiteName | char(4) | String | Site Code | លេខកូដ ART Site |
+| DaART | date | Date | ARV Started Date | កាលបរិច្ឆេទប្រើប្រាស់ថ្នាំARV |
+| Artnum | char(10) | String | ART Number | លេខកូដ ART |
+| TbPast | int(1) | Numeric (-1=not selected, 0=Yes, 1=No, 2=Unknown) | TB Past Medical History and Treatment | ប្រវត្តិនៃជំងឺរបេងកន្លែងមក និងការព្យាបាល |
+| TPT | int(1) | Numeric (-1=not selected, 0=No, 1=Completed, 2=On going) | TPT prophylaxis | ការព្យាបាលបង្ការជំងឺរបេង (TPT) កន្លងមក |
+| DaStartTPT | date | Date | TPT prophylaxis Started Date | ថ្ងៃខែចាប់ផ្តើមការព្យាបាលបង្ការ |
+| DaEndTPT | date | Date | TPT prophylaxis Finished Date | ថ្ងៃខែបញ្ចប់ការព្យាបាលបង្ការ |
+| TypeTB | int(1) | Numeric (-1=not selected, 0=PTB, 1=EP-TB) | Type of TB | ប្រភេទនៃជំងឺរបេង |
+| ResultTB | int(1) | Numeric (-1=not selected, 0=BK+, 1=BK- ) | Result of TB | លទ្ធផលជំងឺរបេង |
+| Daonset | date | Date | Date onset of TB | ថ្ងៃខែឆ្នាំចាប់ផ្តើមឈឺជំងឺរបេង |
+| Tbtreat | int(1) | Numeric (-1=not selected, 0=Cat1, 1=Cat2, 2=Cat3, 3=Cat4, 4=Unknown) | TB Treatment | ការព្យាបាលរបេង |
+| Datreat | date | Date | TB Treatment Date | ថ្ងៃខែព្យាបាលរបេង |
+| ResultTreat | int(1) | Numeric (-1=not selected, 0=On going, 1=Cured, 2=Completed, 3=Failure, 4=Lost to Follow up, 5=not evaluated) | TB Treatment Result | លទ្ធផលព្យាបាលរបេង |
+| DaResultTreat | date | Date | TB Treatment Result Date | ថ្ងៃខែចេញលទ្ធផលព្យាបាលរបេង |
+| ARVTreatHis | int(1) | Numeric (-1=not selected, 0=Yes, 1=No) | ART Treatment History | ប្រវត្តិនៃការប្រើប្រាស់ថ្នាំARV |
+| Diabete | char(5) | Boolean (False=uncheck, True=check) | Diabetes | ជំងឺទឹកនោមផ្អែម |
+| Hyper | char(5) | Boolean (False=uncheck, True=check) | Hypertension | លើសឈាម |
+| Abnormal | char(5) | Boolean (False=uncheck, True=check) | Abnormal Lipidemia | លើសឬខ្វះជាតិលីពីត(ខ្លាញ់)ក្នុងឈាម |
+| Renal | char(5) | Boolean (False=uncheck, True=check) | Renal Disease | ជំងឺតម្រងនោម |
+| Anemia | char(5) | Boolean (False=uncheck, True=check) | Anemia | ស្លេកស្លាំងដោយខ្វះកោសិកាឈាមក្រហម |
+| Liver | char(5) | Boolean (False=uncheck, True=check) | Liver Disease | ជំងឺថ្លើម |
+| HepBC | char(5) | Boolean (False=uncheck, True=check) | Hepatitis B or Hepatitis C | រលាកថ្លើមប្រភេទ បេ ឬរលាកថ្លើមប្រភេទ សេ |
+| MedOther | char(5) | Boolean (False=uncheck, True=check) | Other Medical Treatment | ប្រវត្តិព្យាបាលជំងឺផ្សេងៗ |
+| Allergy | int(1) | -1=not selected, 0=Yes, 1=No, 2=Unknown | Drug Allergy | អាឡែកហ្ស៊ីជាមួយថ្នាំផ្សេងៗ |
+| Nationality | int(1) | Numeric | Nationality | សញ្ជាតិ |
+## 6. tblaiothmedabnormal, tblaiothmedanemia, tblaiothmeddiabete, tblaiothmedhepbc, tblaiothmedhyper, tblaiothmedliver, tblaiothmedother, tblaiothmedrenal
+(តារាងសម្រាប់រក្សាទុកព័ត៌មានប្រវត្តិនៃការព្យាបាលជំងឺផ្សេងៗទៀត)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID | int(6) | Numeric | Patient's Clinic ID | លេខកូដClinic IDរបស់អ្នកជំងឺ |
+| DrugName | char(10) | String | Drug Name | ឈ្មោះថ្នាំ |
+| Clinic | char(20) | String | Name of Facility | ឈ្មោះកន្លែងផ្តល់សេវាព្យាបាល |
+| DaStart | date | Date | Started Treatment Date | ថ្ងៃខែចាប់ផ្តើមព្យាបាល |
+| Dastop | date | Date | Stopped Treatment Date | ថ្ងៃខែបញ្ចប់ការព្យាបាល |
+| Note | char(4) | String | Remark or note | កំណត់សម្គាល់ផ្សេងៗ |
+
+## 14. tblalink (តារាងសម្រាប់រក្សាទុកព័ត៌មានលេខកូដអ្នកជំងឺតភ្ជាប់ទៅកម្មវិធីផ្សេងៗ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID (Primary) | int(6) | Numeric | Patient's Clinic ID Number | លេខកូដClinic IDរបស់អ្នកជំងឺ |
+| Codes (Primary) | char(15) | Numeric | Code number of other services | លេខកូដរបស់កម្មវិធីផ្សេងទៀត |
+| Typecode (Primary) | char(15) | String | Type of service | ប្រភេទនៃកម្មវិធី |
+
+## 15. tblallergy (តារាងសម្រាប់រក្សាទុកព័ត៌មានប្រភេទ Allergy )
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| Aid (Primary) | int(1) | Numeric | Allergy ID | លេខកូដAllergy |
+| AllergyStatus | varchar(30) | String | Name of Allergy | ឈ្មោះ Allergy |
+| Type | int(1) | 0=Drug;1=Allergy | Type of Allergy | ប្រភេទនៃ Allergy |
+
+## 16. tblapntt (តារាងសម្រាប់រក្សាទុកព័ត៌មានដៃគូផ្ទុយគ្នា)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID | int(6) | Numeric | Patient's Clinic ID Number | លេខកូដClinic IDរបស់អ្នកជំងឺ |
+| DaVisit | date | Date | Date visit of PNTT | កាលបរិច្ឆេទពិនិត្យPNTT |
+| SexHIV | int(1) | Numeric (-1=not check, 0=Yes, 1=6months, 2=No) | Had sex with HIV+ Partner | ធ្លាប់រួមភេទជាមួយដៃគូដឹងងថាមានផ្ទុកមេរោគអេដស៍ |
+| Wsex | int(1) | Numeric (-1=not check, 0=Yes, 1=6months, 2=No) | Had Sex with Women | ធ្លាប់រួមភេទជាមួយស្ត្រី |
+| SexM | int(1) | Numeric (-1=not check, 0=Yes, 1=6months, 2=No) | Had sex with men | ធ្លាប់រួមភេទជាមួយបុរស |
+| SexTran | int(1) | Numeric (-1=not check, 0=Yes, 1=6months, 2=No) | Had sex with TG | ធ្លាប់រួមភេទជាមួយអ្នកប្លែងភេទ |
+| Sex4 | int(1) | Numeric (-1=not check, 0=Yes, 1=6months, 2=No) | Had sex with at least 4 partners | ធ្លាប់រួមភេទជាមួយដៃគូលើសពី៤នាក់ |
+| Drug | int(1) | Numeric (-1=not check, 0=Yes, 1=6months, 2=No) | Drug Injection | ធ្លាប់ចាក់ថ្នាំញៀន |
+| Pill | int(1) | Numeric (-1=not check, 0=Yes, 1=6months, 2=No) | Sharing Needles | ធ្លាប់ប្រើម្ជុលសឺរ៉ាំងរួមគ្នា |
+| SexMoney | int(1) | Numeric (-1=not check, 0=Yes, 1=6months, 2=No) | Sale Sex for money | ធ្លាប់ទទួលបានប្រាក់សម្រាប់ការរួមភេទ |
+| SexProvice | int(1) | Numeric (-1=not check, 0=Yes, 1=6months, 2=No) | Buying sex | ធ្លាប់បានផ្តល់ប្រាក់សម្រាប់ការរួមភេទ |
+| WOut | int(1) | Numeric (-1=not check, 0=Yes, 1=6months, 2=No) | Migration | ធ្លាប់ធ្វើចំណាក់ស្រុក |
+| Agree | int(1) | Numeric (-1=not check, 0=Yes, 1=No) | Agree to provide Risk Assessment | យល់ព្រមចំពោះការជូនដំណឹង |
+| AsID (Primary) | double | Numeric | Ask ID | លេខកូដសម្គាល់ការជូនដំណឹង |
+
+## 17. tblapnttchild (តារាងសម្រាប់រក្សាទុកព័ត៌មានកូន(PNTT Child)របស់អ្នកជំងឺ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| APID | double | Numeric | Adult PNTT ID | លេខកូដសម្គាល់មនុស្សធំPNTT ID |
+| NumChild | int(1) | Date | Number of Children | ចំនួនកូនអ្នកជំងឺនិងលេខរៀង |
+| Age | int(2) | Numeric | Age | អាយុកូន |
+| Sex | int(1) | 0=Female;1=Male | Sex | ភេទ |
+| Grou | char(10) | string | Group | ក្រុម |
+| House | char(10) | String | House Number | លេខផ្ទះ |
+| Street | char(15) | String | Street Number | លេខផ្លូវ |
+| Village | char(30) | String | Village | ភូមិ |
+| Commune | char(30) | String | Commune | ឃុំ |
+| District | char(30) | String | District | ស្រុក |
+| Province | char(30) | String | Province | ខេត្ត |
+| Phone | char(12) | String | Phone Number | លេខទូរស័ព្ទ |
+| PlanChild | int(1) | Numeric (-1=not selected, 0=referred by Patient, 1=referred by service provider, 2=referred with condition, 3=referred by patient and service provider) | Plan to take child for clinical visit | ការរៀបចំផែនការនាំកុមារមកពិនិត្យ |
+| PatientDate | date | Date | The date which Patient taking child for Clinical Visit | កាលបរិច្ឆេទដែលអ្នកជំងឺនឹងនាំកុមារមកពិនិត្យ |
+| Other | char(30) | String | Other | ផ្សេងៗ |
+| CAPID (Primary) | double | Numeric | Child PNTT ID | លេខកូដសម្គាល់កូនក្មេងPNTT |
+
+## 18. tblapnttchildcont (តារាងសម្រាប់រក្សាទុកព័ត៌មានកូនរបស់អ្នកជំងឺ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| Dat | date | Date | Date of Contact | ថ្ងៃខែទាក់ទងទៅអ្នកជំងឺ |
+| TypeContact | int(1) | Numeric (-1=not selected, 0=Phone, 1=Visit, 2=Phone &Visit) | Type of Contact | ប្រភេទនៃការព្យាយាមទាក់ទងទៅអ្នកជំងឺ |
+| Contact | int(1) | Numeric (-1=not selected, 0=Yes, 1=No) | Can be reach for contact or not? | ទាក់ទងបានឬមិនបាន |
+| Confirm | char(30) | String | Confirmation | បញ្ជាក់ |
+| CAPID | double | Numeric | Child PNTT ID | លេខកូដសម្គាល់កូនក្មេងPNTT |
+
+## 19. tblapnttpart (តារាងសម្រាប់រក្សាទុកព័ត៌មានដៃគូរបស់អ្នកជំងឺ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| AsID | double | Numeric | Assessment PNTT ID | លេខសម្គាល់អ្នកជំងឺចូលរួមPNTT |
+| NumSexPart | char(2) | Numeric | Number of Sexual partners | ចំនួនដៃគូរួមភេទ |
+| NumPin | char(2) | Numeric | Number of Needle sharing partners | ចំនួនដៃគូប្រើម្ជុលរួមគ្នា |
+| NumChildren | char(2) | Numeric | Number of Children | ចំនួនកូនបង្កើត |
+| NumPart | int(1) | Numeric | Partner | ដៃគូ |
+| Age | int(2) | Numeric | Age | អាយុ |
+| Sex | int(1) | Numeric (-1=not selected,0=Female, 1=Male) | Sex | ភេទ |
+| Grou | char(10) | String | Group | ក្រុម |
+| House | char(10) | String | House Number | លេខផ្ទះ |
+| Street | char(15) | String | Street Number | លេខផ្លូវ |
+| Village | char(30) | String | Village | ភូមិ |
+| Commune | char(30) | String | Commune | ឃុំ |
+| District | char(30) | String | District | ស្រុក |
+| Province | char(30) | String | Province | ខេត្ត |
+| Phone | char(12) | String | Contact Number | លេខទូរស័ព្ទ |
+| RePatient | int(1) | Numeric (-1=not selected, 0=Spouse/fiancé, 1=girl/boyfriend, 2=regular partner, 3=needle sharing partner, 4=Other) | Relationship of Patient | ទំនាក់ទំនងជាមួយអ្នកជំងឺ |
+| OtherPatient | char(30) | String | Specify if choose Other | ផ្សេងៗ |
+| IpvHit | int(1) | Numeric (-1=not check, 0=Yes, 1=No) | IPV- Hit | វាយទាត់ទះឬធ្វើឲ្យឈឺចាប់ដល់រាងកាយ |
+| IpvThreat | int(1) | Numeric (-1=not check, 0=Yes, 1=No) | IPV- Threatening | គំរាមកំហែង |
+| IpvSex | int(1) | Numeric (-1=not check, 0=Yes, 1=No) | IPV- force to have sex | បង្ខំរួមភេទដោយមានលក្ខណៈមិនសមរម្យ |
+| ProIPV | int(1) | Numeric (-1=not check, 0=Yes, 1=No) | Providing information about Intimate Partner Violence | ផ្តល់ព័ត៌មានអំពីសេវាសំខាន់ៗពាក់ព័ន្ធនឹងអំពើហិង្សា |
+| SupIPV | int(1) | Numeric (-1=not check, 0=Yes, 1=No) | Initial Support if there's IPV | ផ្តល់ការគាំទ្រដំបូង (ប្រសិនបើមានអំពើហិង្សាដៃគូ) |
+| RefIPV | int(1) | Numeric (-1=not check, 0=Yes, 1=No) | Referred to IPV | បានបញ្ជូនទៅរកសេវាអំពើហិង្សា) |
+| NotificationIPV | int(1) | Numeric (-1=not check, 0=suspend because of IPV, 1=referred by Patient, 2=referred by service provider, 3=referred with condition, 4=referred by patient and service provider | Partner Notification Plan | ការរៀបចំផែនការជូនដំណឹងទៅដល់ដៃគូ |
+| PatientDate | date | Date | Date which patient notify to her/his Partner | កាលបរិច្ឆេទដែលអ្នកជំងឺនឹងជូនដំណឹងដល់ដៃគូខ្លួន€ង |
+| SeviceDate | date | Date | Date which service provider notify to partner of patient | កាលបរិច្ឆេទដែលអ្នកជំងឺនិងអ្នកផ្តល់សេវានឹងសហការគ្នាជូនដំណឹង |
+| StatusHIV | int(1) | Numeric (-1=not check, 0=Known HIV Status, 1=Reject HIV testing, 2=Agree for HIV Test, 3=Other | HIV Status and Result | ស្ថានភាពមេរោគអេដស៍ និងលទ្ធផលតេស្ត |
+| HTS | int(1) | Numeric (-1=not check, 0=HTS/VCCT, 1=HIV Self Testing | If Agree for HIV testing which Test will be chosen. | ធ្វើតេស្តនៅសេវាHTS/VCCTឬយកតេស្តធ្វើដោយខ្លួន€ង |
+| Result | int(1) | Numeric (-1=not check, 0=Positive, 1=Negative) | Result of  Partner's HIV Testing | លទ្ធផល |
+| RegTreat | int(1) | Numeric (-1=not check, 0=Yes, 1=No) | Register on Treatment | បានចុះឈ្មោះទទួលការព្យាបាល |
+| ClinicID | int(6) | Numeric | Clinic ID if HIV Known Status | លេខកូដ Clinic ID |
+| ArtNumber | char(10) | String | ART Number if HIV known status | លេខកូដ ART |
+| Other | char(30) | String | Other | ផ្សេងៗ |
+| APID | double | Numeric | Adult PNTT ID | លេខកូដសម្គាល់មនុស្សធំPNTT ID |
+
+## 20. tblapnttpartcont (តារាងសម្រាប់រក្សាទុកព័ត៌មានការផ្តល់ប្រឹក្សាដល់ដៃគូរបស់អ្នកជំងឺ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| Dat | date | Date | Date of Contact | ថ្ងៃខែទាក់ទងទៅអ្នកជំងឺ |
+| TypeContact | int(1) | Numeric (-1=not selected, 0=Phone, 1=Visit, 2=Phone &Visit) | Type of Contact | ប្រភេទនៃការព្យាយាមទាក់ទងទៅអ្នកជំងឺ |
+| Contact | int(1) | Numeric (-1=not selected, 0=Yes, 1=No) | Can be reach or not? | ទាក់ទងបានឬមិនបាន |
+| Confirm | char(30) | String | Confirmation | បញ្ជាក់ |
+| APID | double | Numeric | Adult PNTT ID | លេខកូដសម្គាល់មនុស្សធំPNTT ID |
+
+## 21. tblappointment (តារាងសម្រាប់រក្សាទុកព័ត៌មានការណាត់ជួបអ្នកជំងឺរបស់គ្រូពេទ្យ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| Vid | varchar(17) | String | Visit ID | លេខកូដសម្គាល់នៃការណាត់ជួបអ្នកជំងឺ |
+| Doctore | int(2) | Numeric | Code of Doctor | លេខកូដសម្គាល់គ្រូពេទ្យម្នាក់ៗ |
+| Time | int(1) | Numeric (-1=not selected, 0=Morning, 1=Afternoon) | Time to See Doctor | ពេលវេលាជួបគ្រូពេទ្យ |
+| Att | int(1) | 0=First Visit;1=Early,2=schedule,3=Late | Attendant of patient | សម្រាប់ពិនិត្យលើអ្នកជំងឺពេលណាត់ជួប |
+
+## 22. tblartsite (តារាងសម្រាប់រក្សាទុកព័ត៌មានទីកន្លែងផ្តល់ព្យាបាលART)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| Sid | varchar(4) | String | Site ID | លេខកូដ ID របស់ ART Site |
+| SiteName | varchar(40) | String | Site Name | ឈ្មោះ ART Site |
+| Status | int(1) | Numeric (0=inactive, 1=active) | Site Status | ស្ថានភាពរបស់ ART Site |
+
+## 23. tblaumain (តារាងសម្រាប់រក្សាទុកព័ត៌មាននៃការធ្វើបច្ចុប្បន្នភាពព័ត៌មានរបស់អ្នកជំងឺពេញវ័យ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID | int(6) | Numeric | Clinic ID | លេខកូដ Clinic ID អ្នកជំងឺ |
+| Daupdate | date | Date | Date of Info Update | កាលបរិច្ឆេទធ្វើបច្ចុប្បន្នភាព |
+| Marital | int(1) | Numeric (-1=not selected, 0=Single, 1=Married, 2=Divorced, 3=Widow(er) | Marital Status | ស្ថានភាពផ្ទាល់ខ្លួន |
+| Occupation | char(30) | String | Occupation | មុខរបរ |
+| HIVshow | int(1) | Numeric (-1=not selected, 0=agree, 1=not agree) | Disclose HIV Positive Status | បង្ហាញស្ថានភាពមេរោគអេដស៍ |
+| Relative | char(6) | Boolean (False= uncheck, True= Check) | Relative | សាច់ញាតិ |
+| Family | char(6) | Boolean (False= uncheck, True= Check) | Family | ក្រុមគ្រួសារ |
+| Community | char(6) | Boolean (False= uncheck, True= Check) | Community | សហគមន៍ |
+| Grou | char(10) | String | Group | ក្រុម |
+| House | char(15) | String | House Number | លេខផ្ទះ |
+| Street | char(25) | String | Street Number | លេខផ្លូវ |
+| Village | char(25) | String | Village | ភូមិ |
+| Commune | char(25) | String | Commune | ឃុំ |
+| District | char(25) | String | District | ស្រុក |
+| Province | char(25) | String | Province | ខេត្ត |
+| Phone | char(12) | String | Contact Number | លេខទូរស័ព្ទ |
+| AddCont1 | varchar(70) | String | Address of First Contact | អ្នកទំនាក់ទំនងទី១ |
+| Phone1 | char(12) | String | Phone Number of First Contact | លេខទូរស័ព្ទអ្នកទំនាក់ទំនងទី១ |
+| AddCont2 | varchar(70) | String | Address of Second Contact | អ្នកទំនាក់ទំនងទី២ |
+| Phone2 | char(12) | String | Phone Number of Second Contact | លេខទូរស័ព្ទអ្នកទំនាក់ទំនងទី២ |
+| NGO | char(6) | Boolean (False= uncheck, True= Check) | Current Supported by CA/NGO | ទទួលឧបត្ថម្ភដោយអង្គការក្រៅរដ្ឋាភិបាល |
+| NameNGO | varchar(50) | String | Name and Location of CA/NGO | ឈ្មោះនិងទីតាំងរបស់អង្គការក្រៅរដ្ឋាភិបាលឬសកម្មភាពសហគមន៍ |
+| AUID | double | Numeric | Adult Update ID | លេខកូដសម្គាល់ពេលធ្វើបច្ចុប្បន្នភាព |
+
+## 24. tblavarvdrug, 25. tblavhydrug, 27. tblavoidrug, 29. tblavtbdrug, 30. tblavtptdrug, 42. Tblcvarvdrug, 44. tblcvoidrug, 46. Tblcvtbdrug, 54. tblevarvdrug (តារាងសម្រាប់រក្សាទុកព័ត៌មានការផ្តល់ថ្នាំ ARV, TB, OI and HCV ដល់អ្នកជំងឺ ចំនួន និងរបៀបនៃការលេបថ្នាំ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| DrugName | char(16) | String | Drug Name | ឈ្មោះថ្នាំ |
+| Dose | char(20) | String | Dose | កម្រិតថ្នាំ |
+| Quantity | int(3) | Numeric | Quantity | បរិមាណ |
+| Freq | char(5) | String (bid, qd, qid & tid) | Frequent | ចំនួនដង/ថ្ងៃ |
+| Form | char(15) | String (liquid, tab or cap) | Form | ទម្រង់ ឬប្រភេទថ្នាំ (ទឹក/គ្រាប់) |
+| Status | int(1) | Numeric (-1=not selected, 0=Start, 1=Stop, 2=Continue) | Status | ស្ថានភាពនៃការប្រើថ្នាំ |
+| Da | date | Date | Date of Drug Start or Stop | កាលបរិច្ឋេទនៃការប្រើថ្នាំ |
+| Reason | char(40) | String | Reason for Discontinuation | ហេតុផលនៃការបញ្ឈប់ការប្រើប្រាស់ថ្នាំ |
+| Remark | char(6) | String | Remark | កំណត់សម្គាល់ |
+| Vid | double | Numeric | Visit ID | លេខកូដ Visit ID |
+
+## 26. tblavmain (តារាងសម្រាប់រក្សាទុកព័ត៌មានការមកពិនិត្យព្យាបាលរបស់អ្នកជំងឺពេញវ័យ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID | int(6) | String | Clinic ID | លេខកូដ Clinic ID អ្នកជំងឺ |
+| ARTnum | char(10) | String | ART Number | លេខកូដ ART |
+| DatVisit | date | Date | Visit Date | ថ្ងៃខែឆ្នាំមកពិនិត្យព្យាបាល |
+| TypeVisit | int(1) | Numeric (-1=not selected, 0=first Visit, 1=Early Visit, 2= on Schedule, 3=Late Visit | Type of Visit | ស្ថានភាពពេលដែលមកទទួលការព្យាបាល មកដំបូង មុនណាត់ ទាន់ពេលឬក៏យឺត |
+| Womenstatus | int(1) | Numeric (-1=not selected, 0=Pregnant, 1=not pregnant) | Women's Pregnant Status | ស្ថានភាពនៃការមានផ្ទៃពោះ |
+| PregStatus | int(1) | Numeric (-1=not selected, 0=miscarriage, 1=abortion) | Pregnant Result | លទ្ធផលឬស្ថានភាពចុងក្រោយនៃការមានផ្ទៃពោះ |
+| DaPreg | date | Date | Expected Delivery Date | កាលបរិច្ឆេទសម្រាលដែលរំពឹងទុក |
+| ANCservice | int(1) | Numeric (-1=not selected, 0=Yes, 1=No) | ANC Visit | ការពិនិត្យផ្ធៃពោះនៅសេវាថែទាំមុនពេលសម្រាល |
+| Weight | float | Numeric | Weight | ទម្ងន់ |
+| Height | Float | Numeric | Height | កម្ពស់ |
+| Temp | float | Numeric | Temperature | សីតុណ្ហភាព ឬកម្តៅក្នុងខ្លួន |
+| Pulse | int(3) | Numeric | Pulse | ជីពចរ |
+| Resp | int(3) | Numeric | Respiratory Rate | ចង្វាក់ដង្ហើម |
+| Blood | char(7) | Numeric | Blood Pressure | សម្ពាធឈាម |
+| STIPreven | char(6) | Boolean (False=not check, True=Check) | STI Prevention Counselling | ផ្តល់ការអប់រំអំពីជំងឺកាមរោគ |
+| ARTAdher | char(6) | Boolean (False=not check, True=Check) | ART Adherence Counselling | ផ្តល់ការអប់រំអំពីការប្រើប្រាស់ថ្នាំARVឲ្យបានជាប់លាប់ |
+| Birthspac | char(6) | Boolean (False=not check, True=Check) | Birth Spacing Counselling | ផ្តល់ការអប់រំអំពីមធ្យោបាយពន្យាកំណើត |
+| TBinfect | char(6) | Boolean (False=not check, True=Check) | TB Infection Counselling | ផ្តល់ការអប់រំអំពីការឆ្លងជំងឺរបេង |
+| Partner | char(6) | Boolean (False=not check, True=Check) | Partner's Status Counselling | ផ្តល់ការអប់រំអំពីស្ថានភាពដៃគូរបស់អ្នកជំងឺ |
+| Condoms | char(6) | Boolean (False=not check, True=Check) | Condom Use Counselling | ផ្តល់ការអប់រំអំពីការប្រើប្រាស់ស្រោមអនាម័យ |
+| CMTypeClient | int(1) | Numeric (-1=not selected, 0=New, 1=New but Used to, 2=Old | Type of Contraceptive Method | ការប្រើប្រាស់មធ្យោបាយពន្យាកំណើត |
+| CMDaUse | date | Date | Date of Start using Contraceptive Method | ថ្ងៃខែឆ្នាំចាប់ផ្តើមប្រើប្រាស់មធ្យោបាយពន្យាកំណើត |
+| CMCondom | char(2) | String | Condom Use | ចំនួនស្រោមអនាម័យដែលបានផ្តល់ឲ្យ |
+| CoC | char(2) | String | CoC Pill | ចំនួនថ្នាំគ្រាប់ CoC ដែលបានផ្តល់ឲ្យ |
+| Poc | char(2) | String | PoC Pill | ចំនួនថ្នាំគ្រាប់ PoC ដែលបានផ្តល់ឲ្យ |
+| CMVaccine | char(2) | String | Contraceptive Injection | ថ្នាំចាក់ |
+| UseOther | char(6) | Boolean (False=Uncheck, True=Check) | Being use Contraceptives in another Serice | កំពុងប្រើប្រាស់សេវាលើមធ្យោបាយពន្យាកំណើតនៅកន្លែងផ្សេង |
+| OCMcondom | char(2) | String | Condom Use | ចំនួនស្រោមអនាម័យ |
+| OCoc | char(2) | String | CoC Pill | ចំនួនថ្នាំគ្រាប់ CoC |
+| OPoC | char(2) | String | PoC Pill | ចំនួនថ្នាំគ្រាប់ PoC |
+| OCMVaccin | char(2) | String | Contraceptive Injection | ថ្នាំចាក់ |
+| OCMother | char(2) | String | Other Contraceptive Method | មធ្យោបាយពន្យាកំណើតផ្សេងទៀត |
+| Cough | int(1) | Numeric (-1=not selected, 0=Yes, 1=No) | Cough | ធ្លាប់មានក្អក |
+| Fever | int(1) | Numeric (-1=not selected, 0=Yes, 1=No) | Fever | ធ្លាប់គ្រុនក្តៅ ឬក្តៅខ្លួន |
+| Wlost | int(1) | Numeric (-1=not selected, 0=Yes, 1=No) | Weight Loss | ស្រកទម្ងន់ |
+| Drenching | int(1) | Numeric (-1=not selected, 0=Yes, 1=No) | Drenching | បែកញើសខុសធម្មតានៅពេលយប់រយៈពេលពីរសប្តាហ៍ឬលើស |
+| Urine | int(1) | Numeric (-1=not selected, 0=Yes, 1=No) | White, yellow and beige discharge from vagina or penis. | ហូរខ្ទុះតាមប្រដាប់ភេទ ឬបង្ហូរនោម |
+| Genital | int(1) | Numeric (-1=not selected, 0=Yes, 1=No) | Wound or burning around vagina or penis | ដំបៅឬរលាកលើប្រដាប់ភេទ |
+| Chemnah | int(1) | Numeric (-1=not selected, 0=Yes, 1=No) | Human papilloma Virus (HPV) | សិរមាន់ ឬមានដុំសាច់ដុះលើប្រដាប់ភេទ |
+| Hospital | int(1) | Numeric (-1=not selected, 0=No, 1=Yes) | Hospitalization Since Last Visit | ចូលសម្រាកពេទ្យបន្ទាប់ពីមកពិនិត្យព្យាបាលលើកចុងក្រោយ |
+| NumDay | char(3) | String | Number of days of hospitalization | ចំនួនថ្ងៃចូលសម្រាកពេទ្យ |
+| CauseHospital | char(30) | String | Causes of hospitalization | មូលហេតុនៃការចូលសម្រាកពេទ្យ |
+| MissARV | int(1) | Numeric (-1=not selected, 0=No, 1=Yes) | Missed ARV Doses Since Last Visit | ភ្លេចលេបថ្នាំ ARV ពេលមកពិនិត្យព្យាបាលលើកចុងក្រោយ |
+| MissTime | char(3) | String | How many times? | ចំនួនប៉ុន្មានដង? |
+| WHO | int(1) | Numeric (1,2,3 &4) | WHO Stage | ចំណាត់ថ្នាក់តាមជំងឺ WHO ថ្មី |
+| Eligible | int(1) | Numeric (-1=not selected, 0=Yes, 1=No) | Eligible for ART | ករណីសមស្របប្រើ ART |
+| TestID | char(15) | String | Test ID Number from Laboratory | លេខកូដសម្គាល់តេស្តពីមន្ទីរពិសោធន៍ |
+| Function | int(1) | Numeric (-1=not selected, 0=Work, 1=Ambulatory, 2=Bed bound) | Function of Patient | ស្ថានភាពអ្នកជំងឺ |
+| TB | int(1) | Numeric (-1=not selected, 0=PTB, 1=EPTB) | If TB | ប្រសិនបើមានរោគរបេង |
+| TypeTB | int(1) | Numeric (-1=not selected, 0=BK+, 1=BK-) | Type of TB | ប្រភេទនៃមេរោគរបេង |
+| TBtreat | int(1) | Numeric (-1=not selected, 0=Start, 1=Stop, 2=On going) | TB Treatment | ការព្យាបាលជំងឺរបេង |
+| DaTBtreat | date | Date | Date of TB Treatment | កាលបរិច្ឆេទនៃការព្យាបាល |
+| TestHIV | char(6) | Boolean (False=Not check, True=Check) | HIV Confirmatory Test Before Starting ARV | ធ្វើតេស្តបញ្ជាក់មេរោគអេដស៍មុនពេលចាប់ផ្តើមប្រើថ្នាំ ARV |
+| ResultHIV | int(1) | Numeric (-1=not selected, 0=Positive, 1=Negative) | Confirmatory Test Result | លទ្ធផលតេស្តបញ្ជាក់ |
+| ReCD4 | int(1) | Numeric (-1=not selected, 0=Yes, 1=No) | Prescription for CD4 Test | វេជ្ជបញ្ជាធ្វើតេស្តCD4 |
+| ReVL | int(1) | Numeric (-1=not selected, 0=Yes, 1=No) | Prescription for HIV Viral load Test | វេជ្ជបញ្ជាធ្វើតេស្ត HIV Viral load |
+| ReHCV | int(1) | Numeric (-1=not selected, 0=Yes, 1=No) | Prescription for HCV Viral load Test | វេជ្ជបញ្ជាធ្វើតេស្ត HCV Viral load |
+| CrAG | char(6) | Boolean (False=not check, True=check) | Screening for Cryptococcal antigen (CrAG) | ធ្វើតេស្តរកមើលអង់ទីករCrAG |
+| CrAGResult | int(1) | Numeric (-1=not selected, 0=Positive, 1=Negative) | Result of Screening for CrAG | លទ្ធផលតេស្ត |
+| VLDetectable | int(1) | Numeric (-1=not selected, 0=No, 1=1st, 2=2nd, 3=3rd ) | Enhance Adherence Counselling for patients with VL Detectable | ពង្រឹងការលេបថ្នាំឲ្យបានត្រឹមត្រូវ ទៀងទាត់ជាប់លាប់សម្រាប់អ្នកជំងឺដែលមានលទ្ធផល VL Detectable |
+| Referred | int(1) | Numeric (-1= not selected, 0=PMTCT, 1=TB, 2=Inpatient, 3=Other) | Referred to | បញ្ជូនទៅ |
+| OReferred | char(30) | String | Please input if referred to Other | បើបញ្ជូនទៅកន្លែងផ្សេង សូមធ្វើការវាយបញ្ចូល |
+| Moderate | char(6) | Boolean (False=not check, True=Check) | Moderate/ severe anemia (AZT,CTX) |  |
+| Renal | char(6) | Boolean (False=not check, True=Check) | Renal Toxicity (TDF) |  |
+| Rash | char(6) | Boolean (False=not check, True=Check) | Rash (NVP, EFV, CTX, ABC) |  |
+| Hepatitis | char(6) | Boolean (False=not check, True=Check) | Hepatitis (NVP, INH) |  |
+| Peripheral | char(6) | Boolean (False=not check, True=Check) | Peripheral neuropathy (d4T, NVP, ddI, INH) |  |
+| Neutropenia | char(6) | Boolean (False=not check, True=Check) | Neutropenia (AZT) |  |
+| Hyperlipidemia | char(6) | Boolean (False=not check, True=Check) | Hyperlipidemia (LPV/r) |  |
+| Lactic | char(6) | Boolean (False=not check, True=Check) | Lactic acidosis (d4T, AZT, ddI) |  |
+| Hypersensitivity | char(6) | Boolean (False=not check, True=Check) | Hypersensitivity (ABC) |  |
+| Jaundice | char(6) | Boolean (False=not check, True=Check) | Jaundice/ Hyperbilirubinemia (NVP, INH, ATV/r) |  |
+| MTother | char(30) | String | Please input if Medication Toxicity is other |  |
+| ARVreg | int(1) | Numeric (-1=not selected, 0=1st line, 1= 2nd line, 2=3rd line) | ARV Regimen | របបថ្នាំ ARV |
+| ResultHC | int(1) | Numeric (-1=not selected, 0=Cured, 1= Failure, 3=Lost to follow up) | HCV Treatment Result | លទ្ធផលនៃការព្យាបាលជំងឺរលាកថ្លើមប្រភេទC |
+| TPTout | int(1) | Numeric (-1=not selected, 0=complete, 1=Lost to follow up, 2=TB, 3=Stop because of drug Side effect 1,2,3,4,5, 6 and other reason) | TPT Outcome | លទ្ធផលនៃការព្យាបាលបង្ការជំងឺរបេង |
+| TBout | int(1) | Numeric (-1=not selected, 0=Cured, 1=Stop, 2=Failure, 3=Lost to follow up, 4=Not rated) | TB Treatment Outcome | លទ្ធផលនៃការព្យាបាលជំងឺរបេង |
+| DaApp | date | Date | Next Appointment Date | ថ្ងៃណាត់ជួបគ្រូពេទ្យពិនិត្យលើកក្រោយ |
+| Vid | double | Numeric | Visit ID Number (Clinic ID+ Visit Date) | លេខកូដសម្គាល់ថ្ងៃមិកពិនិត្យព្យាបាល |
+
+## 28. tblavpatientstatus, 45. Tblcvpatientstatus (តារាងសម្រាប់រក្សាទុកព័ត៌មានអ្នកជំងឺដែលចាកចេញពីសេវាព្យាបាល)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID | int(6) | Numeric | Clinic ID | លេខកូដសម្គាល់អ្នកជំងឺ |
+| Status | int(1) | Numeric (-1=not selected, 0=Lost, 1=Dead, 3=Transferred out) | Patient's Status | ស្ថានភាពរបស់អ្នកជំងឺនៅក្នងសេវាព្យាបាល |
+| Place | int(1) | Numeric (-1=not selected, 0=Home, 1= Hospital, 3=other) | Place | ទីកន្លែង |
+| OPlace | char(20) | String | Input if place is Other | វាយបញ្ចូលបើមានទីកន្លែងផ្សេងទៀត |
+| Da | date | Date | Date | កាលបិរច្ឆេទ |
+| Cause | char(50) | String | Cause of Death/ | មូលហេតុនៃការស្លាប់/ |
+| Vid | double | Numeric | Visit ID (Clinic ID+ Visit date | លេខកូដសម្គាល់ពេលមកពិនិត្យព្យាបាល |
+
+## 33. tblcicotrim, 35. Tblcifluconazole (តារាងសម្រាប់រក្សាទុកព័ត៌មានឪពុកម្តាយរបស់កុមារ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID | char(10) | Numeric | Clinic ID | លេខកូដសម្គាល់អ្នកជំងឺ |
+| ClinicName | char(20) | String | Name of Clinic | ឈ្មោះកន្លែងសេវាព្យាបាល |
+| StartDate | date | Date | Start Date | កាលបរិច្ឆេទការចាប់ផ្តើមប្រើថ្នាំ |
+| StopDate | date | Date | Stop Date | កាលបរិច្ឆេទឈប់ប្រើថ្នាំ |
+| ReasonStop | char(30) | String | Reason to Stop | មូលហេតុដែលឈប់ប្រើថ្នាំ |
+
+## 33. tblcifamily (តារាងសម្រាប់រក្សាទុកព័ត៌មានឪពុកម្តាយរបស់កុមារ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID | char(7) | Numeric | Clinic ID | លេខកូដសម្គាល់អ្នកជំងឺ |
+| Faminily | int(1) | Numeric (-1=not selected, 0=Mother, 1=Father, 2=Sibling) | Family's Member | សមាជិកគ្រួសារ |
+| Age | int(2) | Numeric | Age of Family's member | អាយុរបស់សមាជិកគ្រួសារ |
+| HIVstatus | int(1) | Numeric (-1=not selected, 0=Negative, 1=Positive, 2=Unknown) | HIV Status of Family's member | ស្ថានភាពផ្ទុកមេរោគអេដស៍របស់សមាជិកគ្រួសារ |
+| Status | int(1) | Numeric (-1=not selected, 0=Dead, 1=Alive, 2=Unknown) | Status of Family's member | ស្ថានភាពរបស់សមាជិកគ្រួសារ |
+| StartARV | int(1) | Numeric (-1=not selected, 0=Yes, 1=No, 2=Unknown) | Is Started ARV? | តើបានប្រើថ្នាំ ARV ឬក៏អត់? |
+| Pregnant | int(1) | Numeric (-1=not selected, 0=During Pregnancy, 1= During Delivery, 2= After Delivery) | If family's member, mother's pregnant | ប្រសិនបើមានផ្ទៃពោះឬសម្រាល |
+| SiteName | char(4) | String | ART Site Name | ឈ្មោះកន្លែងផ្តល់សេវា ART |
+| HTB | int(1) | Numeric (-1=not selected, 0=Yes, 1=No, 2=Unknown) | TB History | ប្រវត្តិជំងឺរបេង |
+
+## 36. tblcimain (តារាងសម្រាប់រក្សាទុកព័ត៌មាននៃដំណើរការចុះឈ្មោះអ្នកជំងឺកុមារនៅលើកដំបូង)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID | char(7) | String | Clinic ID | លេខកូដសម្គាល់អ្នកជំងឺ |
+| DaFirstVisit | date | Date | First Visit Date | ថ្ងៃពិនិត្យព្យាបាលលើកដំបូង |
+| LClinicID | char(7) | String | Clinic ID of Lost then Return Patient | លេខកូដសម្គាល់ Clinic ID របស់អ្នកជំងឺដែលបោះបង់ការព្យាបាលហើយបានត្រឡប់មកទទួលសេវាវិញ |
+| DaBirth | date | Date | Date of Birth | ថ្ងៃខែឆ្នាំកំណើត |
+| Sex | int(1) | Numeric (-1=not selected, 0=Female, 1=Male) | Sex | ភេទ |
+| Referred | int(1) | Numeric (-1=not selected, 0=Self Referred, 1=CA/NGO, 2=VCCT, 3=Other) | Referred From | ផ្ទេរមកពី |
+| Oreferred | char(30) | String | Input if referred from = Other | វាយបញ្ជូលប្រសិនបើបញ្ជូនមកពីកន្លែងផ្សេង |
+| EClinicID | char(9) | String | Exposed Infant's Clinic ID | លេខកូដសម្គាល់កុមារប្រឈម |
+| DaTest | date | Date | Date of Tested | ថ្ងៃខែឆ្នាំធ្វើតេស្ត |
+| TypeTest | int(1) | Numeric (-1=Not selected, 0=HIV PCR, 1=HIV PCR Confirm, 2=Antibody Test | Type of Test | ប្រភេទតេស្ត |
+| Vcctcode | char(6) | String | VCCT Site Code | លេខកូដកន្លែងផ្តល់សេវា VCCT |
+| VcctID | char(6) | String | VCCT Number | លេខកូដ VCCT |
+| OffIn | int(1) | Numeric (-1=Not selected, 0=No, 1=Yes) | Is officially Transferred in? | ផ្លាស់ជាផ្លូវការមកពី |
+| SiteName | char(4) | String | Name of ART Site | ឈ្មោះកន្លែងផ្តល់សេវា ART |
+| DaART | date | Date | ART Started Date | ថ្ងៃខែឆ្នាំប្រើថ្នាំ ARV |
+| Artnum | char(10) | String | ART Number | លេខកូដART |
+| Feeding | int(1) | Numeric (-1=Not selected, 0=Exclusive Formula Feeding, 1=Exclusive Breast Feeding, 2= Mixed Feeding, 3=Unknown) | Infant's Feeding History | ប្រវត្តិអាហាររបស់កុមារ |
+| TbPast | int(1) | Numeric (-1=Not selected, 0=Yes, 1=No, 2=Unknown) | Past TB Medical history and Treatment | ប្រវត្តិនៃជំងឺរបេងកន្លងមក និងការព្យាបាល |
+| TypeTB | int(1) | Numeric (-1=Not selected, 0=PTB, 1=EP-TB) | Type of TB | ប្រភេទជំងឺរបេង |
+| ResultTB | int(1) | Numeric (-1=Not selected, 0=BK+, 1=BK-) | Result of TB | លទ្ធផលនៃជំងឺរបេង |
+| Daonset | date | Date | Date onset of Sickness | ថ្ងៃខែឆ្នាំចាប់ផ្តើមឈឺ |
+| Tbtreat | int(1) | Numeric (-1=Not selected, 0=Cat1, 1=Cat2, 2=Cat3, 3=Cat4, 4=Unknown) | TB Treatment | ការព្យាបាលជំងឺរបេង |
+| Datreat | date | Date | Date of Treatment | ថ្ងៃខែឆ្នាំព្យាបាល |
+| ResultTreat | int(1) | Numeric (-1= Not selected, 0=Cured, 1=Completed, 2=Failure, 3=Died, 4=Lost to Follow up, 5=Not Evaluated, 6=On going) | TB Treatment Outcomes | លទ្ធផលនៃការព្យាបាលជំងឺរបេង |
+| DaResultTreat | date | Date | Date of Treatment outcome | កាលបរិច្ឆេទនៃការចេញលទ្ធផលព្យាបាលជំងឺរបេង |
+| Inh | int(1) | Numeric (-1=Not selected, 0Yes, 1=No, 2=Unknown) | INH Prophylaxis history | ការព្យាបាលបង្ការដោយ INH នាពេលកន្លេងទៅ |
+| OtherPast | int(1) | Numeric (-1=Not selected, 0=No, 1=ARV Pro, 2=ARV) | Other Past Treatment history | ប្រវត្តិនៃការព្យាបាលជំងឺផ្សេងទៀតដែលមានកន្លងមក |
+| Cotrim | int(1) | Numeric (-1=No selected, 0=Yes,1=No, 2=Unknown) | Past CTX Prophylaxis | ព្យាបាលបង្ការដោយ CTX នាពេលកន្លងទៅ |
+| Fluco | int(1) | Numeric (-1=No selected, 0=Yes,1=No, 2=Unknown) | Past Fluco Prophylaxis | ព្យាបាលបង្ការដោយ Fluco នាពេលកន្លងទៅ |
+| Allergy | int(1) | Numeric (-1=No selected, 0=Yes,1=No, 2=Unknown) | Drug Reaction/ Allergy | មានប្រតិកម្មថ្នាំ |
+| ClinicIDold | char(7) | String | Old Clinic ID | លេខសម្គាល់ Clinic ID ចាស់ |
+| SiteNameold | char(4) | String | Old ART Site Name | លេខកូដ ART Site ចាស់ |
+| Nationality | int(1) | Numeric | Nationality | សញ្ជាតិ |
+## 37. tblcithpast (តារាងសម្រាប់រក្សាទុកព័ត៌មានប្រវត្តិថ្នាំ OI របស់កុមារ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID | char(7) | String | Clinic ID | លេខកូដសម្គាល់ Clinic ID |
+| DrugName | char(10) | String | Drug Name | ឈ្មោះថ្នាំ OI |
+| Clinic | char(25) | String | Facility/Clinic/Source | កន្លែងព្យាបាល ឬទទួលសេវា |
+| DaStart | date | Date | Start Date | ថ្ងៃចាប់ផ្តើមប្រើថ្នាំ |
+| DaStop | date | Date | Stop Date | ថ្ងៃឈប់ប្រើថ្នាំ |
+| Note | char(20) | String | Note | កំណត់សម្គាល់ផ្សេងៗ |
+
+## 38. tblclinic (តារាងសម្រាប់រក្សាទុកព័ត៌មានប្រវត្តិថ្នាំ OI របស់កុមារ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| Cid | int(2) | Numeric | ID of Facility/Source | លេខកូដសម្គាល់កន្លែងផ្តល់ការព្យាបាលឬសេវា |
+| ClinicName | char(20) | String | Facility/Source | កន្លែងផ្តល់សេវាព្យាបាល |
+
+## 39. tblclink (តារាងសម្រាប់រក្សាទុកព័ត៌មានលេខកូដដែលភ្ជាប់)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID | char(7) | String | Clinic ID | លេខកូដ Clinic ID របស់កុមារ |
+| Codes | char(25) | String | Linking code | លេខកូដសម្រាប់ភ្ជាប់ក្នុងប្រព័ន្ធ |
+| Typecode | char(20) | String | Type of Code | ប្រភេទនៃលេខកូដ |
+
+## 40. tblcommune (តារាងសម្រាប់រក្សាទុកព័ត៌មានឈ្មោះឃុំ/សង្កាត់)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| Did | int(11) | Numeric | District ID Number | លេខកូសម្គាល់ឲ្យស្រុក |
+| Cid | int(11) | Numeric | Commune ID Number | លេខកូដសម្គាល់ឲ្យឃុំ/សង្កាត់ |
+| CommuneEN | varchar(50) | String | Name of Commune (EN) | ឈ្មោះឃុំ/សង្កាត់ជាភាសាអង់គ្លេស |
+
+## 41. tblcumain (តារាងសម្រាប់រក្សាទុកព័ត៌មានសម្រាប់ធ្វើបច្ចុប្បន្នភាពរបស់អ្នកជំងឺកុមារ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID | char(7) | String | Clinic ID Number | លេខកូដ Clinic ID របស់កុមារ |
+| Daupdate | date | Date | Updated Date | កាលបរិច្ឆេទធ្វើបច្ចុប្បន្នភាព |
+| AddGuardian | int(1) | Numeric (-1= Not selected, 0=Mother, 1=Father, 2= Grandmother, 3= Grandfather, 4= Relatives | Address of Guardian | អាស័យដ្ខានរបស់អាណាព្យាបាល |
+| Grou | char(10) | String | Group | ក្រុម |
+| House | char(20) | String | House Number | លេខផ្ទះ |
+| Street | char(20) | String | Street Name/ Number | លេខឬឈ្មោះផ្លូវ |
+| Village | char(20) | String | Village | ភូមិ |
+| Commune | char(25) | String | Commune | ឃុំ/ សង្កាត់ |
+| District | char(25) | String | District | ស្រុក/ ខណ្ឌ |
+| Province | char(25) | String | Province | ខេត្ត |
+| AddContact | char(30) | String | Name and Address of Contact Person | ឈ្មោះនិងអាស័យដ្ឋានអ្នកទំនាក់ទំនង |
+| Phone | char(12) | String | Phone Number | លេខទូរស័ព្ទរបស់អ្នកទំនាក់ទំនង |
+| ChildStatus | int(1) | Numeric (-1= Not selected, 0=Bother Parents alive, 1= Mother deceased, 2= Father deceased, 3= Both deceased) | Child Status | ស្ថានភាពរបស់កុមារ |
+| Foccupation | int(1) | Numeric | Father's Occupation | មុខរបររបស់ឪពុក |
+| Moccupation | int(1) | Numeric | Mother's Occupation | មុខរបររបស់ម្តាយ |
+| Education | int(1) | Numeric (-1= Not selected, 0= None, 1= Kindergarten, 2= Primary, 3= Secondary) | Child's Education | កម្រិតអប់រំរបស់កុមារ |
+## 37. tblcithpast (តារាងសម្រាប់រក្សាទុកព័ត៌មានប្រវត្តិថ្នាំ OI របស់កុមារ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID | char(7) | String | Clinic ID | លេខកូដសម្គាល់ Clinic ID |
+| DrugName | char(10) | String | Drug Name | ឈ្មោះថ្នាំ OI |
+| Clinic | char(25) | String | Facility/Clinic/Source | កន្លែងព្យាបាល ឬទទួលសេវា |
+| DaStart | date | Date | Start Date | ថ្ងៃចាប់ផ្តើមប្រើថ្នាំ |
+| DaStop | date | Date | Stop Date | ថ្ងៃឈប់ប្រើថ្នាំ |
+| Note | char(20) | String | Note | កំណត់សម្គាល់ផ្សេងៗ |
+
+## 38. tblclinic (តារាងសម្រាប់រក្សាទុកព័ត៌មានប្រវត្តិថ្នាំ OI របស់កុមារ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| Cid | int(2) | Numeric | ID of Facility/Source | លេខកូដសម្គាល់កន្លែងផ្តល់ការព្យាបាលឬសេវា |
+| ClinicName | char(20) | String | Facility/Source | កន្លែងផ្តល់សេវាព្យាបាល |
+
+## 39. tblclink (តារាងសម្រាប់រក្សាទុកព័ត៌មានលេខកូដដែលភ្ជាប់)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID | char(7) | String | Clinic ID | លេខកូដ Clinic ID របស់កុមារ |
+| Codes | char(25) | String | Linking code | លេខកូដសម្រាប់ភ្ជាប់ក្នុងប្រព័ន្ធ |
+| Typecode | char(20) | String | Type of Code | ប្រភេទនៃលេខកូដ |
+
+## 40. tblcommune (តារាងសម្រាប់រក្សាទុកព័ត៌មានឈ្មោះឃុំ/សង្កាត់)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| Did | int(11) | Numeric | District ID Number | លេខកូសម្គាល់ឲ្យស្រុក |
+| Cid | int(11) | Numeric | Commune ID Number | លេខកូដសម្គាល់ឲ្យឃុំ/សង្កាត់ |
+| CommuneEN | varchar(50) | String | Name of Commune (EN) | ឈ្មោះឃុំ/សង្កាត់ជាភាសាអង់គ្លេស |
+
+## 41. tblcommune (តារាងសម្រាប់រក្សាទុកព័ត៌មានសម្រាប់ធ្វើបច្ចុប្បន្នភាពរបស់អ្នកជំងឺកុមារ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID | char(7) | String | Clinic ID Number | លេខកូដ Clinic ID របស់កុមារ |
+| Daupdate | date | Date | Updated Date | កាលបរិច្ឆេទធ្វើបច្ចុប្បន្នភាព |
+| AddGuardian | int(1) | Numeric (-1= Not selected, 0=Mother, 1=Father, 2= Grandmother, 3= Grandfather, 4= Relatives | Address of Guardian | អាស័យដ្ខានរបស់អាណាព្យាបាល |
+| Grou | char(10) | String | Group | ក្រុម |
+| House | char(20) | String | House Number | លេខផ្ទះ |
+| Street | char(20) | String | Street Name/ Number | លេខឬឈ្មោះផ្លូវ |
+| Village | char(20) | String | Village | ភូមិ |
+| Commune | char(25) | String | Commune | ឃុំ/ សង្កាត់ |
+| District | char(25) | String | District | ស្រុក/ ខណ្ឌ |
+| Province | char(25) | String | Province | ខេត្ត |
+| AddContact | char(30) | String | Name and Address of Contact Person | ឈ្មោះនិងអាស័យដ្ឋានអ្នកទំនាក់ទំនង |
+| Phone | char(12) | String | Phone Number | លេខទូរស័ព្ទរបស់អ្នកទំនាក់ទំនង |
+| ChildStatus | int(1) | Numeric (-1= Not selected, 0=Bother Parents alive, 1= Mother deceased, 2= Father deceased, 3= Both deceased) | Child Status | ស្ថានភាពរបស់កុមារ |
+| Foccupation | int(1) | Numeric | Father's Occupation | មុខរបររបស់ឪពុក |
+| Moccupation | int(1) | Numeric | Mother's Occupation | មុខរបររបស់ម្តាយ |
+| Education | int(1) | Numeric (-1= Not selected, 0= None, 1= Kindergarten, 2= Primary, 3= Secondary) | Child's Education | កម្រិតអប់រំរបស់កុមារ |
+| ChildSupport | char(30) | String | Detail about name and location of facility that supported children | ឈ្មោះនិងទីកន្លែងរបស់អង្គការដៃគូដែលបានជួយផ្គត់ផ្គង់ និងគាំទ្រកុមារ |
+| Vaccine | int(1) | Numeric (-1= Not selected, 0= Routine Vaccinations, 1= On going Vaccination, 2= Missing, 3= None, 4= Unknown) | Child's Vaccination | ការចាក់ថ្នាំបង្ការដល់កុមារ |
+| CUID | char(15) | String | Child Update ID | លេខកូដសម្គាល់ការធ្វើបច្ចុប្បន្នភាពរបស់កុមារ |
+
+## 43. tblcvmain (តារាងសម្រាប់រក្សាទុកព័ត៌មានកុមារពេលមកពិនិត្យជំងឺ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID | char(7) | String | Clinic ID Number | លេខកូដ Clinic ID របស់កុមារ |
+| ARTnum | char(10) | String | ART Number | លេខកូដ ART របស់អ្នកជំងឺ |
+| DatVisit | date | Date | Visited Date | ថ្ងៃខែឆ្នាំមកពិនិត្យព្យាបាល |
+| TypeVisit | int(1) | Numeric (0= first visit, 1= early, 2= on schedule, 3= Late) | Type of Visit | ប្រភេទនៃការមកពិនិត្យព្យាបាល |
+| Temp | float | Numeric | Temperature | សីតុណ្ហភាព ឬកម្តៅខ្លួន |
+| Pulse | float | Numeric | Pulse | ជីពចរ |
+| Resp | float | Numeric | Respiratory Rate | ចង្វាក់ដង្ហើម |
+| Blood | char(7) | String | Blood Pressure | សម្ពាធឈាម |
+| Weight | float | Numeric | Weight | ទម្ងន់ |
+| Height | float | Numeric | Height | កម្ពស់ |
+| Malnutrition | int(1) | Numeric (-1= Not selected, 0= No, 1=Yes) | Malnutrition Status | ស្ថានភាពកង្វះអាហាររូបត្ថម្ភរបស់កុមារ |
+| WH | int(1) | Numeric (-1= Not selected, 0= Mild malnutrition, 1= Moderate malnutrition, 2=Severe Malnutrition) | Weight comparing to Height | ទម្ងន់ធៀបនឹងកម្ពស់ |
+| PTB | int(1) | Numeric (-1= Not selected, 0=Yes, 1= No) | Contacted with an adult or older child with smear-positive PTB | ប៉ះពាល់ជាមួយនឹងមនុស្សចាស់ ឬកុមារធំជាងដែលមានជំងឺរបេងសួត |
+| Wlost | int(1) | Numeric (-1= Not selected, 0=Yes, 1= No) | Failure to thrive or Weight loss | មានការយឺតយ៉ាវក្នុងការធំធាត់ ឬស្រកទម្ងន់ |
+| Cough | int(1) | Numeric (-1= Not selected, 0=Yes, 1= No) | Currently cough | ក្អកជាប់ |
+| Fever | int(1) | Numeric (-1= Not selected, 0=Yes, 1= No) | Currently fever | មានគ្រុនឥតដាច់ |
+| Enlarg | int(1) | Numeric (-1= Not selected, 0=Yes, 1= No) | Enlarged cervical lymph nodes) | មានឡើងកូនកណ្តុរនៅនឹងក |
+| Hospital | int(1) | Numeric (-1= Not selected, 0= No, 1= Yes) | Hospitalized Since Last Visit | សម្រាកពេទ្យបន្ទាប់ពីពេលពិនិត្យលើកចុងក្រោយ |
+| NumDay | int(1) | Numeric | Number of days admitted to the hospital | ចំនួនថ្ងៃចូលសម្រាកនៅពេទ្យ |
+| CauseHospital | char(30) | String | Causes of Hospitalization | មូលហេតុនៃការចូលសម្រាកពេទ្យ |
+| Miss1 | int(1) | Numeric (-1= Not selected, 0= No, 1= Yes) | Missed dosed 1 month ago | ភ្លេចលេបថ្នាំមួយខែកន្លងមក |
+| Miss1Time | int(1) | Numeric | How many times? | ចំនួនដង |
+| Miss3 | int(1) | Numeric (-1= Not selected, 0= No, 1= Yes) | Missed dosed last 3 days | ភ្លេចលេបថ្នាំបីថ្ងៃចុងក្រោយ |
+| Miss3Time | int(1) | Numeric | How many times? | ចំនួនដង |
+| Function | int(1) | Numeric (-1= Not selected, 0=Normally play, 1= Occasionally play , 2= bed bound) | Function | ស្ថានភាពរបស់អ្នកជំងឺ |
+| WHO | int(1) | Numeric (-1= Not selected, 0= Stage1, 1= Stage2, 2= Stage3, 3= Stage4) | WHO Stage | ចំណាត់ថ្នាក់ជំងឺតាម WHO ថ្មី |
+| Eligible | int(1) | Numeric (-1= Not selected, 0=Yes, 1=No) | Eligible for ART | ករណីសមស្របប្រើថ្នាំ ARV |
+| Treatfail | int(1) | Numeric (-1= Not selected, 0=Yes, 1=No) | Suspected in treatment failure | ករណីសង្ស័យបរាជ័យក្នុងការព្យាបាល |
+| TypeFail | int(1) | Numeric (-1= Not selected, 0=Virological, 1= Immunological, 2= Clinical) | Type of Failure | ប្រភេទនៃការព្យាបាលបរាជ័យ |
+| TB | int(1) | Numeric (-1= Not selected, 0= PTB, 1=EP-TB) | If TB | ប្រសិនបើមានរបេង |
+| TypeTB | int(1) | Numeric (-1= Not selected, 0= BK+, 1=BK-) | Type of TB | ប្រភេទនៃជំងឺរបេង |
+| TBtreat | int(1) | Numeric (-1=Not selected, 0= Start, 1=Stop, 2= on going) | TB Treatment | ការព្យាបាលជំងឺរបេង |
+| DaTBtreat | date | Date | TB Treatment Date | ថ្ងៃខែឆ្នាំព្យាបាលជំងឺរបេង |
+| TestID | char(15) | String | Test ID from Laboratory | លេខកូដសម្គាល់ការធ្វើតេស្តពីមន្ទីរពិសោធន៍ |
+| TestHIV | char(6) | Boolean (False=not check, True=check) | HIV Confirmatory Tested before starting ARV | ធ្វើតេស្តបញ្ជាក់រកមេរោគអេដស៍មុនពេលចាប់ផ្តើមប្រើថ្នាំ ARV |
+| ResultHIV | int(1) | Numeric (-1= Not selected, 0=Positive, 1=Negative) | Confirmatory Test result | លទ្ធផលធ្វើតេស្តបញ្ជាក់ |
+| ReCD4 | int(1) | Numeric (-1=Not selected, 0= Yes, 1=No) | Prescribing Laboratory Test for CD4 | វេជ្ជបញ្ជាត្រូវធ្វើតេស្ត CD4 ពីមន្ទីរពិសោធន៍ |
+| ReVL | int(1) | Numeric (-1=Not selected, 0= Yes, 1=No) | Prescribing Laboratory test for Viral load | វេជ្ជបញ្ជាត្រូវធ្វើតេស្ត Viral load ពីមន្ទីរពិសោធន៍ |
+| CrAG | char(6) | Boolean (False=uncheck, True=Check) | Screening for Cryptococcal antigen (CrAG) | ធ្វើតេស្តរកមើលអង់ទីករCrAG |
+| CrAGResult | int(1) | Numeric (-1= not selected, 0= Positive, 1= Negative) | Result of Screening for CrAG | លទ្ធផលតេស្ត |
+| VLDetectable | int(1) | Numeric (-1= Not selected, 0= 1, 1=2, 2=3) | Enhanced Adherence Counselling for patient with VL Detectable | ពង្រឹងការលេបថ្នាំឲ្យបានត្រឹមត្រូវ ទៀងទាត់ និងជាប់លាប់ សម្រាប់អ្នកជំងឺដែលមានលទ្ធផល VL Detectable |
+| Referred | int(1) | Numeric (-1=not selected, 0=PMTCT, 1=TB, 2= Inpatient, 3=Other) | Referred To | ផ្ទេរទៅ |
+| OReferred | char(30) | String | Input if Referred to other | វាយបញ្ចូលប្រសិនបើផ្ទេរទៅកន្លែងផ្សេង |
+| DaApp | date | Date | Next Appointment Date | ថ្ងៃណាត់ជួបពិនិត្យលើកក្រោយ |
+| Vid | char(15) | String | Visit ID Number (ClinicID + Visit date) | លេខកូដសម្គាល់ពេលមកពិនិត្យព្យាបាល |
+
+## 47. tbldistrict (តារាងសម្រាប់រក្សាទុកព័ត៌មានឈ្មោះស្រុក/ ខណ្ឌ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| Pid | int(11) | Numeric | Province ID Number | លេខកូសម្គាល់ឲ្យខេត្ត |
+| Did | int(11) | Numeric | District ID Number | លេខកូដសម្គាល់ឲ្យស្រុក/ខណ្ឌ |
+| DistrictEng | varchar(30) | String | Name of District (EN) | ឈ្មោះស្រុក/ខណ្ឌជាភាសាអង់គ្លេស |
+
+## 48. tbldoctor (តារាងសម្រាប់រក្សាទុកព័ត៌មានឈ្មោះរបស់គ្រួពេទ្យ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| Did | int(2) | Numeric | ID Number of Doctor | លេខកូសម្គាល់របស់គ្រូពេទ្យ |
+| Name | char(20) | String | Doctor's Name | ឈ្មោះរបស់គ្រូពេទ្យ |
+| Status | int(1) | Numeric (-1= Not selected, 0= Inactive, 1=Active) | Status | ស្ថានភាព |
+
+## 49. tbldrug (តារាងសម្រាប់រក្សាទុកព័ត៌មានឈ្មោះថ្នាំ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| Did | int(2) | Numeric | Drug ID Number | លេខកូដសម្គាល់ថ្នាំ |
+| DrugName | varchar(20) | String | Drug's Name | ឈ្មោះថ្នាំ |
+| TypeDrug | int(1) | Numeric (0=ARV, 1=OI, 2=TB, 3=HCV) | Type of Drug | ប្រភេទថ្នាំ |
+| Status | int(1) | Numeric | Drug's Status | ស្ថានភាថ្នាំ |
+| Detail | varchar(30) | String | Details | ព័ត៌មានលម្អិត |
+
+## 50. tbldrugtreat (តារាងសម្រាប់រក្សាទុកព័ត៌មានឈ្មោះថ្នាំសម្រាប់ព្យាបាលរោគ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| Tid | int(2) | Numeric | Treatment ID Number | លេខកូដសម្គាល់សម្រាប់ការព្យាបាល |
+| DrugName | char(30) | String | Drug's Name | ឈ្មោះថ្នាំសម្រាប់ការព្យាបាល |
+
+## 51. tbleimain (តារាងសម្រាប់រក្សាទុកព័ត៌មានដំណើរការនៃការចុះឈ្មោះមកពិនិត្យព្យាបាលលើកដំបូងរបស់អ្នកជំងឺដែលជាកុមារប្រឈម Exposed Infant Initial Visit)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID (Primary) | char(10) | String (Ex. E12090001) | Exposed Infant's Clinic ID Number | Clinic ID របស់កុមារប្រឈម |
+| DafirstVisit | Date | Date | Date of Initial Visited | កាលបរិច្ឆេទមកពិនិត្យព្យាបាលលើកដំបូង |
+| DaBirth | Date | Date | Date of Birth | ថ្ងៃខែឆ្នាំកំណើត |
+| Sex | int(1) | Numeric (0=Female, 1=Male) | Sex | ភេទ |
+| AddGuardian | int(1) | Numeric (-1=not selected, 0=Mother, 1=Father, 2=Grandmother, 3=Grandfather, 4=relative | Address of Guardian | ជាអស័យដ្ឋានរបស់អាណាព្យាបាលមួយណា |
+| Grou | char(10) | String | Group | ក្រុម |
+| House | char(20) | String | House Number | លេខផ្ទះ |
+| Street | char(20) | String | Street Number or Name | ផ្លូវ |
+| Village | char(20) | String | Village | ភូមិ |
+| Commune | char(25) | String | Commune | ឃុំ ឬសង្កាត់ |
+| District | char(25) | String | District | ស្រុក ឬខណ្ឌ |
+| Province | char(25) | String | Province | ខេត្ត |
+| NameContact | char(25) | String | Name of Contact Person | ឈ្មោះអ្នកដែលអាចទាក់ទងបាន |
+| AddContact | char(30) | String | Address of Contact Person | អស័យដ្ឋានអ្នកដែលអាចទាក់ទងបាន |
+| Phone | char(12) | Numeric | Phone's Number of Contact Person | លេខទូរស័ព្ទអ្នកដែលអាចទាក់ទងបាន |
+| Fage | int(2) | Numeric | Father's age | អាយុរបស់ឪពុក |
+| FHIV | int(1) | Numeric (-1=not selected, 0=Positive, 1=Negative, 2=Unknown) | Father's HIV Status | ស្ថានភាពជំងឺអេដស៍របស់ឪពុក |
+| Fstatus | int(1) | Numeric (-1=not selected, 0=alive, 1=Dead, 2=Unknown) | Father's Status | ស្ថានភាពរបស់ឪពុក |
+| Mage | int(2) | Numeric | Mother's age | អាយុរបស់ម្តាយ |
+| MClinicID | int(6) | Numeric | Mother's Clinic ID | លេខClinic ID របស់ម្តាយ |
+| MArt | char(10) | String | Mother's ART Number | លេខកូដ ART របសម្តាយ |
+| HospitalName | char(30) | String | Name of Hospital where mother received ARV Treatment | ឈ្មោះមន្ទីរពេទ្យដែលម្តាយបានទទួលការព្យាបាល |
+| Mstatus | int(1) | Numeric (-1=not selected, 0=alive, 1=Dead, 2=Unknown | Mother's Status | ស្ថានភាពរបស់ម្តាយ |
+| PlaceDelivery | char(30) | String | Place of Delivery | ទីកន្លែងសម្រាល |
+| PMTCT | char(10) | String | PMTCT Code | លេខកូដ PMTCT |
+| DaDelivery | Date | Date | Date of Delivery | ថ្ងៃខែឆ្នាំសម្រាល |
+| DeliveryStatus | int(1) | Numeric (-1=not selected, 0= Normal Delivery, 1=C-Section , 2= Assisted Delivery) | Delivery Status | ស្ថានភាពឬមធ្យោបាយសម្រាល |
+| LenBaby | float | Numeric | Length of Baby | ប្រវែងរបស់ទារក |
+| WBaby | float | Numeric | Weight of Baby | ទម្ងន់របស់ទារក |
+| KnownHIV | int(1) | Numeric (-1=not selected, 0=before this pregnancy, 1=during this pregnancy, 2=during delivery | Known HIV+ Status of Mother | ការដឹងស្ថានភាពផ្ទុកមេរោគអេដ៍របស់ម្តាយ |
+| Received | int(1) | Numeric (-1=not selected, 0= ARV, 1= ARV prophylaxis, 2= None) | Mother's Treatment Type | ការទទួលការព្យាបាលរបស់ម្តាយទា |
+| Syrup | int(1) | Numeric (-1=not selected, 0=6 weeks, 1= 12 weeks, 2= Unknown) | Received Syrup NVP+AZT | ទារកទទួលបានSyrup NVP+AZT |
+| Cotrim | int(1) | Numeric (-1=not selected, 0=Yes, 1= No) | Received Cotrimoxazole | ធ្លាប់បានទទួលប្រើថ្នាំ Cotrimoxazole |
+| Offin | int(1) | Numeric (-1= not selected, 0= No, 1= Yes) | Officially Transferred in from | បញ្ជូនជាផ្លូវការមកពី |
+| SiteName | char(40) | String | Site Name | ឈ្មោះកន្លែងផ្តល់សេវាព្យាបាល |
+| HIVtest | int(1) | Numeric (-1= not selected, 0= No, 1= Yes) | Baby ever received HIV Test before or not? | កុមារធ្លាប់ធ្វើតេស្តពីមុនមកឬទេ? |
+
+## 52. tblelink (តារាងសម្រាប់រក្សាទុកព័ត៌មានកូនកើតពីម្តាយផ្ទុកមេរោគអេដស៍)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID (Primary) | char(10) | String |  |  |
+| Code (Primary) | char(15) | String |  |  |
+| Typecode (Primary) | char(15) | String |  |  |
+
+## 53. tbletest (តារាងសម្រាប់រក្សាទុកព័ត៌មានលទ្ធផលធ្វើតេស្តឈាមពីមន្ទីរពិសោធន៍)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID | char(9) | String | PAC Clinic ID | លេខកូដClinic IDរបស់អ្នកជំងឺ |
+| PCR | char(6) | Boolean (False=uncheck, True=Check) | DNA PCR | តេស្ត DNA PCR |
+| ConfirmPCR | char(6) | Boolean (False=uncheck, True=Check) | Confirm DNA PCR | តេស្តបញ្ជាក់ DNA PCR |
+| OI | char(6) | Boolean (False=uncheck, True=Check) | OI Symptom | រោគសញ្ញាជំងឺឱកាសនិយម |
+| TestConfirm | char(6) | Boolean (False=uncheck, True=Check) | Test Confirm | តេស្តបញ្ជាក់ |
+| DaBlood | date | Date | Blood drawing Date | ថ្ងៃខែជោះឈាម |
+| LabID | char(10) | String | Laboratory ID | លេខកូដមន្ទីរពិសោធន៍ |
+| DaReceive | date | Date | Date of Receiving Specimen | ថ្ងៃខែឆ្នាំទទួលសំណាក |
+| DaAnalys | date | Date | Blood tested date | ថ្ងៃខែឆ្នាំធ្វើការវិភាគឈាម |
+| Result | int(1) | Numeric (-1=not selected, 0=Negative, 1=Positive, 2=Unknown) | Test Result | លទ្ធផលតេស្ត |
+| DaRresult | date | Date | Result Receiving Date | ថ្ងៃខែឆ្នាំទទួលលទ្ធផល |
+| DBS | char(6) | Boolean (False=uncheck, True=Check) | Incorrect Dry Blood Sample | សំណាកឈាមDBSមិនត្រឹមត្រូវ |
+| Technic | char(6) | Boolean (False=uncheck, True=Check) | Incorrect Technique from Laboratory | បច្ចេកទេសនៅមន្ទីរពិសោធន៍មិនត្រឹមត្រូវ |
+| ResultIn | char(6) | Boolean (False=uncheck, True=Check) | Undefined Result | លទ្ធផលមិនអាចកំណត់បាន |
+| Other | char(30) | String | Other | ផ្សេងៗទៀត |
+| TID (Primary) | char(17) | String | Test ID | លេខកូដសម្គាល់ Test ID |
+
+## 55. tblevmain (តារាងសម្រាប់រក្សាទុកព័ត៌មានតាមដានការមកពិនិត្យព្យាបាលរបស់កុមារប្រឈម)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID | char(10) | String | PAC Clinic ID | លេខកូដ Clinic ID របស់អ្នកជំងឺ |
+| DatVisit | date | Date | Date of Visit | ថ្ងៃខែឆ្នាំមកពិនិត្យព្យាបាល |
+| TypeVisit | int(1) | Numeric (-1=not selected, 0=Initial, 1=Early, 2=On Schedule, 3= Late) | Type of Visit | ប្រភេទនៃការមកពិនិត្យព្យាបាល |
+| Temp | float | numeric | Temperature | សីតុណ្ហភាព |
+| Pulse | float | Numeric | Pulse | ជីពចរ |
+| Resp | float | Numeric | Respiratory Rate | ចង្វាក់ដង្ហើម |
+| Head | float | Numeric | Head Circumference | ទំហំក្បាល |
+| Weight | float | Numeric | Weight | ទម្ងន់ |
+| Height | float | Numeric | Height | កម្ពស់ |
+| Malnutrition | int(1) | Numeric (0=No, 1=Yes) | Malnutrition Status | កង្វះអាហាររូបត្ថម្ភ |
+| WH | int(11) | Int (-1=not selected, 0=Mild malnutrition, 1=Moderate malnutrition, 2=Severe malnutrition) | Weight and Height Ratio | ទម្ងន់ធៀបនឹងកម្ពស់ |
+| BCG | int(11) | Int( -1=not selected, 0=Yes, 1=No) | Hepatitis B Vaccination BCG | ចាក់វ៉ាក់សាំងថ្លើមប្រភេទB (BCG) |
+| OPV | int(11) | Int (-1=not selected, 0=1st, 1=2nd, 2= 3rd ) | Hepatitis B Vaccination OPV | ចាក់វ៉ាក់សាំងថ្លើមប្រភេទB (OPV) |
+| Measles | int(11) | Int (-1=not selected, 0=Yes, 1=No) | Measles Vaccination | ចាក់វ៉ាក់សាំងកញ្រ្ជឹល |
+| Other | char(20) | String | Other | ផ្សេងៗ |
+| Feeding | int(1) | Int (-1=not selected, 0=Exclusive Breast Feeding, 1=Exclusive Formula Feeding, 2=Mixed Feeding, 3=Reported given complementally Food, 4=introduce about extra feeding during this visit | Infant Feeding Type | ការចិញ្ចឹមទារក |
+| DNA | int(1) | Int (-1=not selected, 0= at birth, 1= 6 weeks, 2= 6 weeks after stopped breast feeding, 3=Other, 4=Confirmed Test) | DNA PCR Test | ការធ្វើតេស្តឈាមស្ងួត DBS សម្រាប់ DNA PCR |
+| DaResult | date | Date | Date Result Delivered to Patient | ថ្ងៃខែឆ្នាំប្រគល់លទ្ធផលដល់អ្នកជំងឺ |
+| Vid (Primary) | char(17) | String | Visit ID Number | លេខកូដសម្គាល់ Visit ID |
+| TestID | char(17) | String | Test ID Number | លេខកូដសម្គាល់ Test ID |
+| DaApp | date | Date | Next Appointment Date | ថ្ងៃខែណាត់ជួបពិនិត្យព្យាបាលលើកក្រោយ |
+
+## 56. tblevpatientstatus (តារាងសម្រាប់រក្សាទុកព័ត៌មានរបស់កុមារប្រឈមដែលចាកចេញពីសេវា)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID | char(10) | String | Clinic ID | លេខកូដសម្គាល់របស់កុមារប្រឈម |
+| Status | int(1) | Numeric (0=Positive : Waiting for confirmatory test, 1=Hiv(+) Register/Transfer to ART, 2=Hiv(-), 3=Dead, 4=Lost) | Status/ Outcome | ស្ថានភាព/ លទ្ធផល |
+| DaStatus | date | Date | Outcome Date | កាលបរិច្ឆេទដែលកុមារប្រឈមចាកចេញពីសេវា |
+| Vid | char(17) | String | Visit ID Number (Clinic ID+Date Visit) | លេខកូដសម្គាល់ថ្ងៃដែលកុមារប្រឈមចាកចេញពីសេវា |
+
+## 57. tbllog (តារាងសម្រាប់រក្សាទុកព័ត៌មានពីសកម្មភាពប្រើប្រាស់ប្រព័ន្ធគ្រប់គ្រងទិន្នន័យ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| ClinicID | char(10) | String | Clinic ID | លេខកូដសម្គាល់របស់អ្នកជំងឺ |
+| Status | char(20) | String | Table name/ form name | បង្ហាញឈ្មោះទម្រង់ព័ត៌មានដែលមាននៅក្នុងDatabase |
+| Type | int(1) | Numeric | Type | ប្រភេទនៃការចូលទៅប្រើប្រាស់ប្រព័ន្ធ |
+| Dat | datetime | Date | Date/time is automatically while user accessed and made any changes in database system | កាលបរិច្ឆេទនិងពេលវេលាដែលបានចូលទៅប្រើប្រាស់ប្រព័ន្ធ |
+
+## 58. tbllostlog (តារាងសម្រាប់រក្សាទុកព័ត៌មានការកត់ត្រាកាលបរិច្ឆេទនិងពេលវេលាដែលអ្នកប្រើប្រាស់ប្រព័ន្ធចូលទៅកំណត់រយៈពេលដែលអ្នកជំងឺបោះបង់ការព្យាបាល)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| Exsposed | int(1) | Numeric | Set lost to follow up period for Exposed Infant (Number of day or month) | កំណត់រយៈពេលដែលកុមារប្រឈមបោះបង់សេវា (ចំនួនថ្ងៃឬ ខែ) |
+| Child | int(1) | Numeric | Set lost to follow up period for pre-ART Child Patient (Number of day or month) | កំណត់រយៈពេលដែលអ្កកជំងឺកុមារ pre-ARTបោះបង់សេវា (ចំនួនថ្ងៃ ឬ ខែ) |
+| ChildARV | int(1) | Numeric | Set lost to follow up period for ART Child patient (Number of day or month) | កំណត់រយៈពេលដែលអ្នកជំងឺARVកុមារបោះបង់សេវា (ចំនួនថ្ងៃ ឬ ខែ) |
+| Adult | int(1) | Numeric | Set lost to follow up period for pre-ART Adult patient (Number of day or month) | កំណត់រយៈពេលដែលអ្នកជំងឺ pre-ARTបោះបង់សេវា (ចំនួនថ្ងៃ ឬ ខែ) |
+| AdultARV | int(1) | Numeric | Set lost to follow up period for ART Adult patient (Number of day or month) | កំណត់រយៈពេលដែលអ្នកជំងឺ ART បោះបង់សេវា (ចំនួនថ្ងៃ ឬខែ) |
+| Ed | int(1) | Numeric (0= day, 1= month) | Set as day or month for Exposed Infant | គិតជា ថ្ងៃ ឬខែ សម្រាប់កុមារប្រឈម |
+| Cd | int(1) | Numeric (0= day, 1= month) | Set as day or month for Child patient | គិតជាថ្ងៃឬខែ សម្រាប់ក្មេង |
+| Ad | int(1) | Numeric (0= day, 1= month) | Set as day or month for Adult patient | គិតជាថ្ងៃឬខែសម្រាប់មនុស្សពេញវ័យ |
+| DateChange | date | Date | Date is automatically created by system while a period of lost is changed by user. | កាលបរិច្ឆេទត្រូវបានបង្កើតឡើងដោយស្វ័យប្រវត្តិ នៅពេលដែលអ្នកប្រើប្រាស់ចូលទៅកំណត់រយៈពេលបោះបង់សេវានៅក្នុងប្រព័ន្ធ |
+
+## 59. tblnatinality (តារាងសម្រាប់រក្សាទុកព័ត៌មានសញ្ជាតិរបស់អ្នកជំងឺ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| Nid | int(1) | Numeric | Nationality ID Number | លេខកូដសម្គាល់សញ្ជាតិ |
+| Nationality | varchar(40) | String | Nationality | សញ្ជាតិ |
+
+## 60. tbloccupation (តារាងសម្រាប់រក្សាទុកព័ត៌មានមុខរបររបស់អ្នកជំងឺ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| OcID | int(2) | Numeric | Occupation ID Number | លេខកូដសម្គាល់មុខរបរ |
+| Name | char(30) | String | Occupation | មុខរបរ |
+
+## 61. tblpatienttest (តារាងសម្រាប់រក្សាទុកព័ត៌មានលទ្ធផលធ្វើតេស្តពីមន្ទីរពិសោធន៍)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| TestID | char(15) | String | Test ID (ClinicID+Test date) | លេខកូដសម្គាល់តេស្តពីមន្ទីរពិសោធន៍ |
+| ClinicID | char(10) | String | Clinic ID | លេខកូដសម្គាល់របស់អ្នកជំងឺ |
+| DaArrival | date | Date | Date of Test arrived at Laboratory | កាលបរិច្ឆេទបញ្ជូនសំណាកមកដល់មន្ទីរពិសោធន៍ |
+| Dat | date | Date | Tested Date | កាលបរិច្ឆេទធ្វើតេស្ត |
+| DaCollect | date | Date | Blood drawing Date | កាលបរិច្ឆេទបូមឈាម |
+| CD4 | char(5) | String | CD4 Test result | លទ្ធផលតេស្ត CD4 |
+| CD | char(6) | String | CD% | លទ្ធផល CD% |
+| CD8 | char(6) | String | CD8 | លទ្ធផល CD8 |
+| HIVLoad | char(10) | String | HIV Viral load test result | លទ្ធផលតេស្ត Viral load |
+| HIVLog | char(6) | String | HIV log result | HIV log |
+| HCV | char(9) | String | HCV Viral load | HCV Viral load |
+| HCVlog | char(6) | String | HCV log | HCV log |
+| HIVAb | int(1) | Numeric (1= not selected, 0=Positive, 1=Negative, 2=Indeterminate) | HIV anti-body test |  |
+| HBsAg | int(1) | Numeric (-1=Not selected, 0=Positive, 1=Negative) | Hepatitis B Antigen |  |
+| HCVPCR | int(1) | Numeric (-1=Not selected, 0=Positive, 1=Negative) | Hepatitis C Virus RNA PCR Test |  |
+| HBeAg | int(1) | Numeric (-1=Not selected, 0=Positive, 1=Negative) | Hepatitis B e Antigen |  |
+| TPHA | int(1) | Numeric (-1=Not selected, 0=Positive, 1=Negative) | Treponema Pallidum Hemagglutination |  |
+| AntiHBcAb | int(1) | Numeric (-1=Not selected, 0=Positive, 1=Negative) | Hepatitis B core Antibody |  |
+| RPR | int(1) | Numeric (-1=Not selected, 0=Positive, 1=Negative) | Rapid Plasma Reagin |  |
+| AntiHBeAb | int(1) | Numeric (-1=Not selected, 0=Positive, 1=Negative) | Hepatitis B e Antibody |  |
+| RPRab | char(10) | String | Rapid Plasma Reagin antibody |  |
+| HCVAb | int(1) | Numeric (-1=Not selected, 0=Positive, 1=Negative) | Hepatitis C antibody test |  |
+| HBsAb | int(1) | Numeric (-1=Not selected, 0=Positive, 1=Negative) | Hepatitis B surface Antibody |  |
+| WBC | char(10) | String | White blood cells |  |
+| Neutrophils | char(10) | String | Neutrophils |  |
+| HGB | char(10) | String | Hemoglobin |  |
+| Eosinophis | char(10) | String | Eosinophils |  |
+| HCT | char(10) | String | Hematocrit |  |
+| Lymphocyte | char(10) | String | Lymphocyte |  |
+| MCV | char(10) | String | Mean Corpuscular Volume |  |
+| Monocyte | char(10) | String | Monocyte |  |
+| PLT | char(10) | String | Platelets |  |
+| Reticulocte | char(10) | String | Reticulocytes |  |
+| Prothrombin | char(10) | String | Prothrombin |  |
+| ProReticulocyte | char(10) | String | Pro Reticulocytes |  |
+| Creatinine | char(10) | String | Creatinine |  |
+| HDL | char(10) | String | High-Density Lipoprotein Cholesterol |  |
+| Bilirubin | char(10) | String | Bilirubin |  |
+| Glucose | char(10) | String | Glucose |  |
+| Sodium | char(10) | String | Sodium |  |
+| AlPhosphate | char(10) | String | Alkaline Phosphate |  |
+| GotASAT | char(10) | String | Aspartate Aminotransferase (AST) |  |
+| Potassium | char(10) | String | Potassium |  |
+| Amylase | char(10) | String | Amylase |  |
+| GPTALAT | char(10) | String | Alanine Aminotransferase (ALT) |  |
+| Chloride | char(10) | String | Chloride |  |
+| CK | char(10) | String | Creatine Kinase |  |
+| CHOL | char(10) | String | Cholesterol |  |
+| Bicarbonate | char(10) | String | Bicarbonate |  |
+| Lactate | char(10) | String | Lactate |  |
+| Triglyceride | char(10) | String | Triglyceride |  |
+| Urea | char(10) | String | Blood urea nitrogen (BUN) |  |
+| Magnesium | char(10) | String | Magnesium |  |
+| Phosphorus | char(10) | String | Phosphorus |  |
+| Calcium | char(10) | String | Calcium |  |
+| BHCG | int(1) | Numeric (-1= Not selected, 0=Positive, 1=Negative) | Beta HCG |  |
+| SputumAFB | int(1) | (-1= Not selected, 0=-, 1=+, 2=++, 3=++) | Acid-Fast Bacillus in Sputum |  |
+| AFBCulture | int(1) | Numeric (-1=not selected, 0=Solid, 1=liquid, 2=-ve, 3=+ve) | AFB Culture |  |
+| AFBCulture1 | char(15) | String | AFB Culture1 |  |
+| UrineMicroscopy | int(1) | Numeric (-1=not selected, 0=Significant, 1=Not significant) | Urine Microscopy and Culture |  |
+| UrineComment | char(15) | String | Urine Comment |  |
+| CSFCell | char(10) | String | Cerebrospinal Fluid |  |
+| CSFGram | char(10) | String | Cerebrospinal Fluid Gram Stain |  |
+| CSFAFB | char(10) | String | Cerebrospinal Acid-Fast Bacillus |  |
+| CSFIndian | int(1) | Numeric (-1=not selected, 0=Positive, 1=Negative) | Cerebrospinal Indian link |  |
+| CSFCCag | char(10) | String | Cerebrospinal Cryptococcal Antigen |  |
+| CSFProtein | char(10) | String | Cerebrospinal Protein |  |
+| CSFGlucose | char(10) | String | Cerebrospinal Glucose |  |
+| BloodCulture | int(1) | Numeric )-1=not selected, 0=-ve, 1=+ve) | Blood Culture bottle1 |  |
+| BloodCulture0 | char(10) | String | Result of blood culture bottle 1 |  |
+| BloodCulture1 | int(1) | Numeric (-1=not selected, 0= -ve, 1=+ve) | Blood Culture bottle 2 |  |
+| BloodCulture10 | char(10) | String | Result of blood culture bottle 2 |  |
+| CTNA | int(1) | Numeric (-1=not selected, 0= Positive, 1= Negative) | Chlamydia Trachomatis/ Neisseria |  |
+| GCNA | int(1) | Numeric (-1=not selected, 0= Positive, 1= Negative) | Gonorrhoeae (GC) Nucleic Acid |  |
+| CXR | int(1) | Numeric (-1=not selected, 0=Normal, 1= Abnormal) | Chest X-ray (Radiography) |  |
+| Abdominal | int(1) | Numeric (-1=not selected, 0=Normal, 1= Abnormal) | Abdominal Ultrasound |  |
+
+## 62. tblpatienttestabdominal (តារាងសម្រាប់រក្សាទុកព័ត៌មានតាមដានការមកពិនិត្យព្យាបាលរបស់អ្នកជំងឺ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| TestID | char(15) | String | Test ID Number | សេខកូដសម្គាល់ការធ្វើតេស្ត |
+| Abdo | char(20) | String | Abnormal result of Abdominal US | លទ្ធផលពិនិត្យX-Ray |
+| Abdo1 | char(20) | String | Abnormal result of Abdominal US 1 | លទ្ធផលពិនិត្យX-Ray |
+| Abdo2 | char(20) | String | Abnormal result of Abdominal US2 | លទ្ធផលពិនិត្យX-Ray |
+
+## 63. tblpatienttestcxr (តារាងសម្រាប់រក្សាទុកព័ត៌មានតាមដានការមកពិនិត្យព្យាបាលរបស់អ្នកជំងឺ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| TestID | char(15) | String | Test ID Number | លេខកូដសម្គាល់ការធ្វើតេស្ត |
+| CXR | char(20) | String | Abnormal result of CXR | លទ្ធផលពិនិត្យអេកូសាស្ត្រ |
+| CXR1 | char(20) | String | Abnormal result of CXR1 | លទ្ធផលពិនិត្យអេកូសាស្ត្រ |
+| CXR2 | char(20) | String | Abnormal result of CXR2 | លទ្ធផលពិនិត្យអេកូសាស្ត្រ |
+
+## 64. tblprovince (តារាងសម្រាប់រក្សាទុកព័ត៌មានតាមដានការមកពិនិត្យព្យាបាលរបស់អ្នកជំងឺ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| Pid | int(11) | Numeric | Province ID Number | លេខកូដសម្គាល់ឲ្យខេត្ត |
+| ProvinceEng | varchar(20) | String | Province in English | ឈ្មោះខេត្តជាភាសាអង់គ្លេស |
+
+## 65. tblreason (តារាងសម្រាប់រក្សាទុកព័ត៌មានមូលហេតុផ្សេងៗនៃការឈប់ប្រើប្រាស់ថ្នាំ ARV/OI…..)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| Rid | int(2) | Numeric | Reason ID Number | លេខកូដសម្គាល់មូលហេតុ |
+| Reason | char(40) | String | Reason | មូលហេតុនៃការឈប់ប្រើថ្នាំ |
+
+## 66. tblsetlost (តារាងសម្រាប់រក្សាទុកព័ត៌មានតាមដានការមកពិនិត្យព្យាបាលរបស់អ្នកជំងឺ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| Exsposed | int(1) | Numeric | Set lost to follow up period for Exposed Infant (Number of day or month) | កំណត់រយៈពេលដែលកុមារប្រឈមបោះបង់សេវា (ចំនួនថ្ងៃឬ ខែ) |
+| Child | int(1) | Numeric | Set lost to follow up period for pre-ART Child Patient (Number of day or month) | កំណត់រយៈពេលដែលអ្កកជំងឺកុមារ pre-ARTបោះបង់សេវា (ចំនួនថ្ងៃ ឬ ខែ) |
+| ChildARV | int(1) | Numeric | Set lost to follow up period for ART Child patient (Number of day or month) | កំណត់រយៈពេលដែលអ្នកជំងឺARVកុមារបោះបង់សេវា (ចំនួនថ្ងៃ ឬ ខែ) |
+| Adult | int(1) | Numeric | Set lost to follow up period for pre-ART Adult patient (Number of day or month) | កំណត់រយៈពេលដែលអ្នកជំងឺ pre-ARTបោះបង់សេវា (ចំនួនថ្ងៃ ឬ ខែ) |
+| AdultARV | int(1) | Numeric | Set lost to follow up period for ART Adult patient (Number of day or month) | កំណត់រយៈពេលដែលអ្នកជំងឺ ART បោះបង់សេវា (ចំនួនថ្ងៃ ឬខែ) |
+| Ed | int(1) | Numeric (0= day, 1= month) | Set as day or month for Exposed Infant | គិតជា ថ្ងៃ ឬខែ សម្រាប់កុមារប្រឈម |
+| Cd | int(1) | Numeric (0= day, 1= month) | Set as day or month for Child patient | គិតជាថ្ងៃឬខែ សម្រាប់ក្មេង |
+| Ad | int(1) | Numeric (0= day, 1= month) | Set as day or month for Adult patient | គិតជាថ្ងៃឬខែសម្រាប់មនុស្សពេញវ័យ |
+
+## 67. tblsitename (តារាងសម្រាប់រក្សាទុកព័ត៌មានឈ្មោះរបស់ART Site)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| NameEn | char(40) | String | ART Site's Name in English | ឈ្មោះART Site ជាភាសាអង់គ្លេស |
+| NameKh | char(40) | String | ART Site's Name in Khmer | ឈ្មោះ ART Site ជាភាសាខ្មែរ |
+| SiteCode | char(4) | String | ART Site Code | លេខកូដ ART Site |
+| Province | char(20) | String | Province | ខេត្ត |
+| District | char(25) | String | District | ស្រុក |
+| ODname | char(30) | String | Health operational district's name | ឈ្មោះស្រុកប្រតិបត្តិ |
+
+## 72. tbluser (តារាងសម្រាប់រក្សាទុកព័ត៌មានរបស់អ្នកប្រើប្រាស់កម្មវិធីគ្រប់គ្រងទិន្នន័យ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| Uid | int(11) | Numeric | User ID Number | លេខកូដសម្គាល់របស់អ្នកប្រើប្រាស់ |
+| Fullname | varchar(40) | String | Full Name | ឈ្មោះពេញរបស់អ្នកប្រើប្រាស់ |
+| User | varchar(40) | String | User's Name for login | ឈ្មោះសម្រាប់ចូលប្រើប្រាស់កម្មវិធី |
+| Pass | char(40) | String | Password | លេខសម្ងាត់ |
+| Status | int(1) | Numeric | Status | ស្ថានភាពអ្នកប្រើប្រាស់ |
+
+## 73. tblvcctsite (តារាងសម្រាប់រក្សាទុកព័ត៌មានឈ្មោះកន្លែងផ្តល់សេវាVCCT)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| Vid | varchar(10) | String | VCCT Site ID Number | លេខកូដសម្គាល់កន្លែងផ្តល់សេវា VCCT |
+| SiteName | varchar(30) | String | VCCT Site's Name | ឈ្មោះកន្លែងផ្តល់សេវា VCCT |
+| ODname | varchar(20) | String | Operational District's Name | ឈ្មោះស្រុកប្រតិបត្តិ |
+| Status | int(1) | Numeric | Status | ស្ថានភាព |
+
+## 74. tblversion (តារាងសម្រាប់រក្សាទុកព័ត៌មានជំនាន់របស់កម្មវិធីគ្រប់គ្រងទិន្នន័យ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| Version | char(15) | String | Database Version | ជំនាន់របស់កម្មវិធីគ្រប់គ្រងទិន្នន័យ |
+
+## 75. tblvillage (តារាងសម្រាប់រក្សាទុកព័ត៌មានឈ្មោះភូមិ)
+
+| Field Name | Type | Values | Description EN | Description KH |
+|------------|------|--------|----------------|----------------|
+| Cid | int(11) | Numeric | Commune ID Number | លេខកូដសម្គាល់របស់ឃុំ/សង្កាត់ |
+| Vid | int(11) | Numeric | Village ID Number | លេសកូដសម្គាល់របស់ភូមិ |
+| VillageEn | varchar(35) | String | Village in English | ឈ្មោះភូមិជាភាសាអង់គ្លេស |
