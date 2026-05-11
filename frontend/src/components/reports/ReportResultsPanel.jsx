@@ -63,31 +63,32 @@ export default function ReportResultsPanel({
         : 'PNTT';
 
   return (
-    <div className="w-full overflow-hidden border border-border bg-card">
-      <div className="w-full border-b border-border bg-muted px-3 py-2.5 text-center sm:px-4">
+    <div className="w-full overflow-hidden border border-border/80 bg-card shadow-xl shadow-black/6">
+      <div className="h-1.5 w-full bg-primary" />
+      <div className="w-full border-b border-border/80 bg-muted/65 px-3 py-3 text-center sm:px-4">
         <h1 className="text-base font-bold tracking-tight text-foreground sm:text-lg">{reportTitle}</h1>
       </div>
       <table className="w-full border-collapse text-xs">
         <tbody>
-          <tr className="border-b border-border">
-            <td className="w-1/4 border-b border-r border-border bg-muted px-3 py-2 font-semibold text-foreground">
+          <tr className="border-b border-border/80">
+            <td className="w-1/4 border-b border-r border-border/80 bg-muted/55 px-3 py-2.5 font-semibold text-foreground">
               {reportHeaderMeta?.scopeLabel ?? 'Facility:'}
             </td>
-            <td className="w-1/4 border-b border-r border-border bg-background px-3 py-2 text-foreground">
+            <td className="w-1/4 border-b border-r border-border/80 bg-background px-3 py-2.5 text-foreground">
               {reportHeaderMeta?.scopeValue ?? '-'}
             </td>
-            <td className="w-1/4 border-b border-r border-border bg-muted px-3 py-2 font-semibold text-foreground">Site Code:</td>
-            <td className="w-1/4 border-b border-border bg-background px-3 py-2 text-foreground">
+            <td className="w-1/4 border-b border-r border-border/80 bg-muted/55 px-3 py-2.5 font-semibold text-foreground">Site Code:</td>
+            <td className="w-1/4 border-b border-border/80 bg-background px-3 py-2.5 text-foreground">
               {reportHeaderMeta?.siteCodeValue ?? '-'}
             </td>
           </tr>
           <tr>
-            <td className="border-r border-border bg-muted px-3 py-2 font-semibold text-foreground">Period:</td>
-            <td className="border-r border-border bg-background px-3 py-2 text-foreground">
+            <td className="border-r border-border/80 bg-muted/55 px-3 py-2.5 font-semibold text-foreground">Period:</td>
+            <td className="border-r border-border/80 bg-background px-3 py-2.5 text-foreground">
               {currentPeriod.startDate} to {currentPeriod.endDate}
             </td>
-            <td className="border-r border-border bg-muted px-3 py-2 font-semibold text-foreground">Report:</td>
-            <td className="bg-background px-3 py-2 text-foreground">
+            <td className="border-r border-border/80 bg-muted/55 px-3 py-2.5 font-semibold text-foreground">Report:</td>
+            <td className="bg-background px-3 py-2.5 text-foreground">
               {reportLabel}
             </td>
           </tr>
@@ -96,23 +97,23 @@ export default function ReportResultsPanel({
 
       <Separator />
 
-      <div className="border-t border-border p-3 sm:p-4">
+      <div className="border-t border-border/80 p-3 sm:p-4">
         {loading && !hasRows ? (
-          <div className="flex h-44 w-full items-center justify-center border border-border bg-muted/30">
+          <div className="flex h-44 w-full items-center justify-center border border-border/80 bg-muted/25 shadow-inner">
             <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
               <RiLoader4Line className="size-4 animate-spin" />
               Loading report...
             </div>
           </div>
         ) : !hasRows ? (
-          <div className="flex h-44 w-full items-center justify-center border border-border bg-muted/20 text-xs text-muted-foreground">
+          <div className="flex h-44 w-full items-center justify-center border border-border/80 bg-muted/20 text-xs text-muted-foreground shadow-inner">
             No data yet. Choose site/period and click Run.
           </div>
         ) : isAdultChild ? (
-          <div className="bg-card border border-border/50 overflow-hidden">
+          <div className="overflow-hidden border border-border/80 bg-card shadow-sm">
             <div className="max-h-[520px] overflow-auto">
               <table className="w-full border-collapse">
-                <thead className="bg-muted border-b border-border/50 sticky top-0">
+                <thead className="sticky top-0 border-b border-border/80 bg-muted/70">
                   <tr>
                     <th className="w-[52%] border-r border-border/50 px-3 py-2 text-left text-xs font-semibold text-foreground">សូចនាករ </th>
                     <th className="w-24 border-r border-border/50 px-3 py-2 text-right text-xs font-semibold text-foreground">អាយុ</th>
@@ -122,13 +123,13 @@ export default function ReportResultsPanel({
                     {showQueryMs && <th className="w-28 px-3 py-2 text-right text-xs font-bold text-foreground">ms</th>}
                   </tr>
                 </thead>
-                <tbody className="bg-card divide-y divide-border/50">
+                <tbody className="bg-card divide-y divide-border/60">
                   {adultChildRows.map((item, idx) => (
                     <Fragment key={`${item.indicator}-${idx}`}>
-                      <tr className="hover:bg-muted/20">
+                      <tr className="hover:bg-muted/15">
                         <td
                           rowSpan={3}
-                          className="cursor-pointer border-r border-border/50 px-3 py-2 align-middle text-xs font-medium hover:bg-muted/40"
+                          className="cursor-pointer border-r border-border/60 px-3 py-2 align-middle text-xs font-medium hover:bg-muted/35"
                           onClick={() => onAdultChildCellClick?.(item, 'all', 'all')}
                           role="button"
                           tabIndex={0}
@@ -176,7 +177,7 @@ export default function ReportResultsPanel({
                           </td>
                         )}
                       </tr>
-                      <tr className="hover:bg-muted/20">
+                      <tr className="hover:bg-muted/15">
                         <td className="border-r border-border/50 px-3 py-2 text-right text-xs">{item.older.age}</td>
                         <td
                           className="cursor-pointer border-r border-border/50 px-3 py-2 text-right text-xs tabular-nums hover:bg-muted/40"
@@ -197,7 +198,7 @@ export default function ReportResultsPanel({
                           {formatValue(item.older.total)}
                         </td>
                       </tr>
-                      <tr className="bg-muted/60 hover:bg-muted/70">
+                      <tr className="bg-muted/50 hover:bg-muted/60">
                         <td className="border-r border-border/50 px-3 py-2 text-right text-xs font-semibold">{item.subtotal.age}</td>
                         <td
                           className="cursor-pointer border-r border-border/50 px-3 py-2 text-right text-xs font-semibold tabular-nums text-report-male hover:bg-muted/40"
@@ -252,7 +253,7 @@ export default function ReportResultsPanel({
           typeof previewRows[0] === 'object' &&
           Object.prototype.hasOwnProperty.call(previewRows[0], 'sectionNumber') &&
           Object.prototype.hasOwnProperty.call(previewRows[0], 'rows') ? (
-          <div className="overflow-x-auto border border-border">
+          <div className="overflow-x-auto border border-border/80 shadow-sm">
             <InfantReportTable sections={previewRows} loading={loading} formatValue={formatValue} onCellClick={onInfantCellClick} />
           </div>
         ) : reportType === 'pntt' &&
@@ -260,7 +261,7 @@ export default function ReportResultsPanel({
           typeof previewRows[0] === 'object' &&
           Object.prototype.hasOwnProperty.call(previewRows[0], 'sectionNumber') &&
           Object.prototype.hasOwnProperty.call(previewRows[0], 'rows') ? (
-          <div className="overflow-x-auto border border-border p-3">
+          <div className="overflow-x-auto border border-border/80 p-3 shadow-sm">
             <PnttReportTable sections={previewRows} loading={loading} formatValue={formatValue} onCellClick={onPnttCellClick} />
           </div>
         ) : !isAdultChild &&

@@ -1089,13 +1089,13 @@ export default function ReportHomePage({ onLogout }) {
   };
 
   return (
-    <div className="min-h-screen bg-background mx-auto lg:max-w-[300mm] px-4 sm:px-6 py-4 sm:py-6">
-      <div className="space-y-3">
+    <div className="mx-auto min-h-screen bg-background px-4 py-4 sm:px-6 sm:py-6 lg:max-w-[300mm]">
+      <div className="space-y-4">
         <div className="fixed right-4 top-4 z-50 flex flex-col gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={onLogout} className="rounded-none bg-card" title="Log out">
+          <Button type="button" variant="outline" size="sm" onClick={onLogout} className="rounded-none border-border/80 bg-card shadow-sm" title="Log out">
             <RiLogoutBoxRLine className="size-4" />
           </Button>
-          <Button type="button" variant="outline" size="sm" asChild className="rounded-none bg-card px-2.5" title="Backend API reference">
+          <Button type="button" variant="outline" size="sm" asChild className="rounded-none border-border/80 bg-card px-2.5 shadow-sm" title="Backend API reference">
             <Link to="/documents" className="inline-flex items-center justify-center gap-1.5">
               <RiFileTextLine className="size-4 shrink-0" />
               <span className="text-xs">API</span>
@@ -1144,7 +1144,7 @@ export default function ReportHomePage({ onLogout }) {
         <AnimatePresence>
           {detailOpen && (
             <motion.div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-[2px]"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -1156,14 +1156,14 @@ export default function ReportHomePage({ onLogout }) {
               }}
             >
             <motion.div
-              className="flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden border border-border bg-card shadow-2xl"
+              className="flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden bg-card shadow-2xl shadow-black/15"
               initial={{ opacity: 0, y: 18, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.98 }}
               transition={{ duration: 0.22, ease: 'easeOut' }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-start justify-between border-b border-border bg-muted/30 px-4 py-3">
+              <div className="flex items-start justify-between border-b border-border/80 bg-muted/35 px-4 py-3">
                 <div className="min-w-0">
                   <div className="truncate text-xs font-semibold text-foreground">{detailTitle}</div>
                   <div className="mt-1 text-xs text-muted-foreground">
@@ -1184,7 +1184,7 @@ export default function ReportHomePage({ onLogout }) {
                 </div>
                 <button
                   type="button"
-                  className="ml-3 border border-border px-2.5 py-1 text-xs font-medium hover:bg-muted"
+                  className="ml-3 border border-border/80 bg-background px-2.5 py-1 text-xs font-medium shadow-sm hover:bg-muted"
                   onClick={() => {
                     setDetailOpen(false);
                     setDetailFilter(null);
@@ -1194,11 +1194,11 @@ export default function ReportHomePage({ onLogout }) {
                   Close
                 </button>
               </div>
-              <div className="flex items-center justify-between border-b border-border px-4 py-2">
+              <div className="flex items-center justify-between border-b border-border/80 px-4 py-2.5">
                 <div className="text-xs text-muted-foreground">Column settings</div>
                 <button
                   type="button"
-                  className="inline-flex h-7 w-7 items-center justify-center border border-border hover:bg-muted"
+                  className="inline-flex h-7 w-7 items-center justify-center border border-border/80 bg-background hover:bg-muted"
                   onClick={() => setShowColumnConfig((v) => !v)}
                   title={showColumnConfig ? 'Hide column settings' : 'Show column settings'}
                   aria-label={showColumnConfig ? 'Hide column settings' : 'Show column settings'}
@@ -1207,7 +1207,7 @@ export default function ReportHomePage({ onLogout }) {
                 </button>
               </div>
               {showColumnConfig && (
-                <div className="border-b border-border bg-muted/20 px-4 py-3">
+                <div className="border-b border-border/80 bg-muted/20 px-4 py-3">
                   {detailColumns.length > 0 && (
                     <div className="mb-3">
                       <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -1225,7 +1225,7 @@ export default function ReportHomePage({ onLogout }) {
                               moveSelectedColumn(dragColumnKey, key);
                               setDragColumnKey('');
                             }}
-                            className="inline-flex cursor-grab items-center gap-1.5 border border-border bg-background px-2 py-1 text-xs active:cursor-grabbing"
+                            className="inline-flex cursor-grab items-center gap-1.5 border border-border/80 bg-background px-2 py-1 text-xs shadow-sm active:cursor-grabbing"
                           >
                             <RiDraggable className="size-3.5 text-muted-foreground" />
                             {toDetailColumnLabel(key)}
@@ -1240,7 +1240,7 @@ export default function ReportHomePage({ onLogout }) {
                       value={detailColumnSearch}
                       onChange={(e) => setDetailColumnSearch(e.target.value)}
                       placeholder="Search columns..."
-                      className="h-8 w-full border border-input bg-background pl-8 pr-2 text-xs"
+                      className="h-8 w-full border border-border/80 bg-background pl-8 pr-2 text-xs shadow-sm"
                     />
                   </div>
                   <div className="grid max-h-32 grid-cols-2 gap-2 overflow-auto md:grid-cols-4">
@@ -1283,14 +1283,14 @@ export default function ReportHomePage({ onLogout }) {
                 ) : detailRows.length === 0 ? (
                   <div className="text-xs text-muted-foreground">No detail records found.</div>
                 ) : (
-                  <div className="overflow-auto border border-border">
+                  <div className="overflow-auto border border-border/80 shadow-sm">
                   <table className="w-full border-collapse text-xs">
                     <thead>
-                      <tr className="sticky top-0 z-10 border-b border-border bg-muted">
+                      <tr className="sticky top-0 z-10 border-b border-border/80 bg-muted/75">
                         {detailColumns.map((key) => (
                           <th
                             key={key}
-                            className="border-r border-border px-2 py-2 text-left font-semibold last:border-r-0 cursor-pointer select-none hover:bg-muted/80"
+                            className="cursor-pointer select-none border-r border-border/80 px-2 py-2 text-left font-semibold last:border-r-0 hover:bg-muted/80"
                             onClick={() => {
                               if (detailSortKey === key) {
                                 setDetailSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -1327,12 +1327,12 @@ export default function ReportHomePage({ onLogout }) {
                   </div>
                 )}
               </div>
-              <div className="flex items-center justify-between border-t border-border bg-muted/20 px-4 py-2">
+              <div className="flex items-center justify-between border-t border-border/80 bg-muted/20 px-4 py-2.5">
                 <div className="text-xs text-muted-foreground">Page {detailPage} / {detailTotalPages}</div>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    className="h-7 border border-border px-3 text-xs disabled:opacity-50"
+                    className="h-7 border border-border/80 bg-background px-3 text-xs shadow-sm disabled:opacity-50"
                     disabled={detailLoading || detailPage <= 1}
                     onClick={() => fetchDetailPage(detailFilter, detailPage - 1)}
                   >
@@ -1340,7 +1340,7 @@ export default function ReportHomePage({ onLogout }) {
                   </button>
                   <button
                     type="button"
-                    className="h-7 border border-border px-3 text-xs disabled:opacity-50"
+                    className="h-7 border border-border/80 bg-background px-3 text-xs shadow-sm disabled:opacity-50"
                     disabled={detailLoading || detailPage >= detailTotalPages}
                     onClick={() => fetchDetailPage(detailFilter, detailPage + 1)}
                   >

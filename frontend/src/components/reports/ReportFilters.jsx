@@ -38,8 +38,8 @@ export default function ReportFilters({
   onLogout
 }) {
   const selectItemClass = 'px-3 py-2 rounded-none text-sm data-[selected]:bg-primary data-[selected]:text-primary-foreground';
-  const controlClass = '!h-9 min-h-9';
-  const labelClass = 'text-xs leading-tight text-muted-foreground';
+  const controlClass = '!h-10 min-h-10 shadow-sm border-border/80';
+  const labelClass = 'text-xs font-medium leading-tight text-foreground/80';
   const periodValueClass = `${controlClass} w-full`;
   const [quarterPickerOpen, setQuarterPickerOpen] = useState(false);
   const quarterPickerRef = useRef(null);
@@ -155,14 +155,15 @@ export default function ReportFilters({
   };
 
   return (
-    <div className="border border-border bg-card p-3 sm:p-4">
-      <div className="grid gap-3 md:grid-cols-[1.4fr_0.9fr_0.8fr_0.9fr_auto]">
+    <div className="border border-border/80 bg-card shadow-xl shadow-black/6">
+      <div className="h-1.5 w-full bg-primary" />
+      <div className="grid gap-3 p-4 sm:p-5 md:grid-cols-[1.4fr_0.9fr_0.8fr_0.9fr_auto]">
         <div className="grid gap-2">
           <span className={labelClass}>Site</span>
           <button
             type="button"
             onClick={openSiteModal}
-            className={`${controlClass} w-full border border-input bg-background px-3 text-left text-sm font-medium`}
+            className={`${controlClass} w-full border bg-background px-3 text-left text-sm font-medium transition hover:bg-muted/20`}
           >
             {selectedSite ? `${selectedSite.code} - ${selectedSite.name}` : selectedSiteLabel || 'Select site'}
           </button>
@@ -171,7 +172,7 @@ export default function ReportFilters({
         <div className="grid gap-2">
           <span className={labelClass}>Report</span>
           <Select value={reportType} onValueChange={setReportType}>
-            <SelectTrigger className={`${controlClass} w-full px-3 rounded-none`}>
+            <SelectTrigger className={`${controlClass} w-full rounded-none px-3`}>
               <SelectValue placeholder="Select report" />
             </SelectTrigger>
             <SelectContent className="p-1 rounded-none">
@@ -185,7 +186,7 @@ export default function ReportFilters({
         <div className="grid gap-2">
           <span className={labelClass}>Period</span>
           <Select value={periodType} onValueChange={setPeriodType}>
-            <SelectTrigger className={`${controlClass} w-full px-3 rounded-none`}>
+            <SelectTrigger className={`${controlClass} w-full rounded-none px-3`}>
               <SelectValue placeholder="Select period type" />
             </SelectTrigger>
             <SelectContent className="p-1 rounded-none">
@@ -208,16 +209,16 @@ export default function ReportFilters({
                   : 'Select year'}
           </span>
           {periodType === 'quarter' && (
-            <div className="relative" ref={quarterPickerRef}>
+            <div className="relative z-20" ref={quarterPickerRef}>
               <button
                 type="button"
                 onClick={() => setQuarterPickerOpen((v) => !v)}
-                className={`${controlClass} w-full border border-input bg-background px-3 text-left text-sm font-medium`}
+                className={`${controlClass} w-full border bg-background px-3 text-left text-sm font-medium transition hover:bg-muted/20`}
               >
                 {selectedYear} - Q{selectedQuarter}
               </button>
               {quarterPickerOpen && (
-                <div className="absolute z-50 mt-2 w-full border border-border bg-card p-3 shadow-sm rounded-none">
+                <div className="absolute z-50 mt-2 w-full rounded-none border border-border/80 bg-card p-3 shadow-xl shadow-black/8">
                   <div className="mb-4 flex items-center justify-between">
                     <Button type="button" variant="ghost" size="sm" onClick={previousYear} className="h-10 w-10 p-0">
                       <RiArrowLeftSLine className="size-5" />
@@ -252,7 +253,7 @@ export default function ReportFilters({
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className={`${periodValueClass} border border-input bg-background px-3 text-sm`}
+              className={`${periodValueClass} border border-border/80 bg-background px-3 text-sm shadow-sm`}
             />
           )}
           {periodType === 'month' && (
@@ -260,12 +261,12 @@ export default function ReportFilters({
               type="month"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className={`${periodValueClass} border border-input bg-background px-3 text-sm`}
+              className={`${periodValueClass} border border-border/80 bg-background px-3 text-sm shadow-sm`}
             />
           )}
           {periodType === 'year' && (
             <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger className={`${periodValueClass} px-3 rounded-none`}>
+              <SelectTrigger className={`${periodValueClass} rounded-none px-3`}>
                 <SelectValue placeholder="Year" />
               </SelectTrigger>
               <SelectContent className="p-1 rounded-none">
@@ -281,7 +282,7 @@ export default function ReportFilters({
 
         <div className="grid gap-2">
           <span className={`${labelClass} opacity-0 select-none`}>Run</span>
-          <Button disabled={!canRun || loading} onClick={runReport} className={`${controlClass} min-w-24 rounded-none`}>
+          <Button disabled={!canRun || loading} onClick={runReport} className={`${controlClass} min-w-24 rounded-none bg-primary text-primary-foreground hover:opacity-95`}>
             {loading ? <RiLoader4Line className="size-4 animate-spin" /> : <RiPlayCircleLine className="size-4" />}
             {loading ? 'Running...' : 'Run'}
           </Button>
@@ -289,41 +290,41 @@ export default function ReportFilters({
       </div>
 
       {siteModalOpen && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/40 p-4">
-          <div className="flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden border border-border bg-card shadow-2xl">
-            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/45 p-4 backdrop-blur-[2px]">
+          <div className="flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden bg-card shadow-2xl shadow-black/15">
+            <div className="flex items-center justify-between border-b border-border/80 bg-muted/35 px-6 py-4">
               <div>
                 <div className="text-lg font-semibold text-foreground">Select Site</div>
                 <div className="mt-0.5 text-xs text-muted-foreground">Choose a site by province.</div>
               </div>
               <button
                 type="button"
-              className="inline-flex h-9 w-9 items-center justify-center border border-border hover:bg-muted"
+              className="inline-flex h-9 w-9 items-center justify-center border border-border/80 bg-background/80 hover:bg-muted"
                 onClick={() => setSiteModalOpen(false)}
               >
                 <RiCloseLine className="size-5" />
               </button>
             </div>
-            <div className="border-b border-border px-6 py-4">
+            <div className="border-b border-border/80 px-6 py-4">
               <div className="relative">
                 <RiSearchLine className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <input
                   value={siteSearch}
                   onChange={(e) => setSiteSearch(e.target.value)}
                   placeholder="Filter sites..."
-                className="h-9 w-full border border-input bg-background pl-10 pr-3 text-sm"
+                className="h-10 w-full border border-border/80 bg-background pl-10 pr-3 text-sm shadow-sm"
                 />
               </div>
             </div>
             <div className="min-h-0 flex-1 overflow-auto px-6 py-4">
-              <div className="space-y-2 border border-border bg-background/40 p-3">
+              <div className="space-y-2 border border-border/80 bg-background/60 p-3 shadow-inner">
                 {showCambodiaRoot && (
                   <div className="px-1 py-1">
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => setExpandedCambodia((v) => !v)}
-                        className="inline-flex h-7 w-7 items-center justify-center border border-border"
+                        className="inline-flex h-7 w-7 items-center justify-center border border-border/80 bg-background"
                       >
                         {expandedCambodia ? <RiArrowDownSLine className="size-4" /> : <RiArrowRightSLine className="size-4" />}
                       </button>
@@ -346,7 +347,7 @@ export default function ReportFilters({
                       </button>
                     </div>
                     {expandedCambodia && (
-                      <div className="ml-12 mt-2 space-y-1 border-l border-border pl-4">
+                      <div className="ml-12 mt-2 space-y-1 border-l border-border/80 pl-4">
                         {visibleProvinceEntries.map((group) => {
                           const province = group.province;
                           const provinceSites = group.sites;
@@ -359,7 +360,7 @@ export default function ReportFilters({
                                 <button
                                   type="button"
                                   onClick={() => toggleProvince(group.key)}
-                                  className="inline-flex h-7 w-7 items-center justify-center border border-border"
+                                  className="inline-flex h-7 w-7 items-center justify-center border border-border/80 bg-background"
                                 >
                                   {isExpanded ? <RiArrowDownSLine className="size-4" /> : <RiArrowRightSLine className="size-4" />}
                                 </button>
@@ -376,7 +377,7 @@ export default function ReportFilters({
                                 </button>
                               </div>
                               {isExpanded && (
-                                <div className="ml-12 mt-2 space-y-1 border-l border-border pl-4">
+                                <div className="ml-12 mt-2 space-y-1 border-l border-border/80 pl-4">
                                   {provinceSites.map((site) => {
                                     const isSelected = String(draftSiteCode) === String(site.code);
                                     return (
@@ -407,7 +408,7 @@ export default function ReportFilters({
                 )}
               </div>
             </div>
-            <div className="flex items-center justify-between border-t border-border bg-muted/20 px-6 py-4">
+            <div className="flex items-center justify-between border-t border-border/80 bg-muted/25 px-6 py-4">
               <div className="text-xs text-muted-foreground">
                 Draft:{' '}
                 <span className="font-medium text-primary">
@@ -420,7 +421,7 @@ export default function ReportFilters({
                 </button>
                 <button
                   type="button"
-                  className="h-9 bg-primary px-6 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                  className="h-10 bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-95 disabled:opacity-50"
                   onClick={applySiteSelection}
                   disabled={!String(draftSiteCode || '').trim()}
                 >
