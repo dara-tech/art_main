@@ -5,12 +5,28 @@ const { siteDatabaseManager } = require('../config/siteDatabase');
 const PNTT_SCRIPTS_DIR = path.join(__dirname, '../../queries/PNTT_AGGREGATE_SCRIPTS');
 const PNTT_DETAIL_SCRIPTS_DIR = path.join(__dirname, '../../queries/PNTT_DETAIL_SCRIPTS');
 
+/** MySQL drivers may return column aliases in different casing. */
+function numFromRow(row, keys) {
+  if (!row) return 0;
+  for (const k of keys) {
+    if (Object.prototype.hasOwnProperty.call(row, k) && row[k] != null && row[k] !== '') {
+      const n = Number(row[k]);
+      return Number.isFinite(n) ? n : 0;
+    }
+  }
+  return 0;
+}
+
 function defaultPnttNormalizer(rows) {
   const r = rows && rows[0];
   if (!r) return [{ labelEn: '', labelKh: '', male: 0, female: 0, total: 0 }];
-  const male = Number(r.Male ?? r.male ?? 0);
-  const female = Number(r.Female ?? r.female ?? 0);
-  const total = Number(r.Tsex ?? r.total ?? male + female);
+  const male = numFromRow(r, ['Male', 'male', 'MALE']);
+  const female = numFromRow(r, ['Female', 'female', 'FEMALE']);
+  const tsexKeys = ['Tsex', 'tsex', 'TSEX'];
+  const hasTsex = tsexKeys.some(
+    (k) => Object.prototype.hasOwnProperty.call(r, k) && r[k] != null && r[k] !== ''
+  );
+  const total = hasTsex ? numFromRow(r, tsexKeys) : male + female;
   return [{ labelEn: '', labelKh: '', male, female, total }];
 }
 
@@ -119,8 +135,15 @@ class PnttReportService {
   }
 
   async runDetailScript(siteCode, scriptId, params) {
-    const query = this.detailQueries.get(scriptId);
-    if (!query) return { rows: [], error: `Detail script ${scriptId} not found` };
+    const requestedScriptId = String(scriptId || '').trim();
+    const detailScriptId = requestedScriptId.endsWith('_aggregate')
+      ? requestedScriptId.replace(/_aggregate$/, '_details')
+      : requestedScriptId;
+    const query = this.detailQueries.get(detailScriptId) || this.detailQueries.get(requestedScriptId);
+    if (!query) {
+      // Some aggregate scripts intentionally do not have patient-level detail SQL.
+      return { rows: [], error: null };
+    }
     try {
       const rows = await siteDatabaseManager.executeSiteQuery(siteCode, this.processQuery(query, params));
       return { rows: Array.isArray(rows) ? rows : [], error: null };

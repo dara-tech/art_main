@@ -166,8 +166,11 @@ function mergeSectionRows(listOfSections) {
       });
       return;
     }
-    existing.rows = (existing.rows || []).map((row, idx) =>
-      sumNumericFields(row, (Array.isArray(section?.rows) ? section.rows[idx] : null) || {})
+    const existingRows = Array.isArray(existing.rows) ? existing.rows : [];
+    const incomingRows = Array.isArray(section?.rows) ? section.rows : [];
+    const rowCount = Math.max(existingRows.length, incomingRows.length);
+    existing.rows = Array.from({ length: rowCount }, (_, idx) =>
+      sumNumericFields(existingRows[idx] || {}, incomingRows[idx] || {})
     );
   });
   return Array.from(sections.values());

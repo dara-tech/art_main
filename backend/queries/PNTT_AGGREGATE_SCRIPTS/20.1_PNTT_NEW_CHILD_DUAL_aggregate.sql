@@ -31,5 +31,4 @@ WHERE (adultactive.typeofReturn=-1
 AND adultactive.offIn<>1)
 AND tblapntt.Agree=0
 AND tblapnttchild.PlanChild=3
-AND tblapnttchild.Sex IN (0,1)
 AND tblapntt.DaVisit BETWEEN @StartDate AND @EndDate;

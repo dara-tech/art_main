@@ -376,6 +376,37 @@ export default function ReportHomePage({ onLogout }) {
     if (sex === 0 || String(sex).toLowerCase() === 'female' || String(sex).toLowerCase() === 'f') return 'female';
     return 'unknown';
   };
+
+  /** PNTT aggregates count partner Sex, child Sex, or index patient Sex depending on script; detail SQL uses different column names. */
+  const getPnttDetailCountSex = (record, section) => {
+    const sid = String(section?.scriptId || '');
+    const rawFrom = (displayKeys, codeKeys) => {
+      for (const k of displayKeys) {
+        const v = recordFieldCaseInsensitive(record, k);
+        if (v !== undefined && v !== null && v !== '') return v;
+      }
+      for (const k of codeKeys) {
+        const v = recordFieldCaseInsensitive(record, k);
+        if (v !== undefined && v !== null && v !== '') return v;
+      }
+      return undefined;
+    };
+    let raw;
+    if (sid.includes('_CHILD_') || sid.includes('CHILD_')) {
+      raw = rawFrom(['child_sex_display'], ['child_sex']);
+    } else if (sid.includes('_PART_') || sid.includes('PART_')) {
+      raw = rawFrom(['partner_sex_display'], ['partner_sex']);
+    } else {
+      raw = rawFrom(
+        ['sex_display', 'index_sex_display', 'caregiver_sex_display'],
+        ['sex', 'Sex', 'index_sex', 'caregiver_sex']
+      );
+    }
+    if (raw === undefined) return 'unknown';
+    if (raw === 1 || String(raw).toLowerCase() === 'male' || String(raw).toLowerCase() === 'm') return 'male';
+    if (raw === 0 || String(raw).toLowerCase() === 'female' || String(raw).toLowerCase() === 'f') return 'female';
+    return 'unknown';
+  };
   const getAge = (record) => {
     const v = record?.age ?? record?.Age;
     const n = Number(v);
@@ -546,13 +577,26 @@ export default function ReportHomePage({ onLogout }) {
           const n = Number(raw);
           return Number.isFinite(n) && n === bucket;
         }
-        const sex = getSex(record);
+        const sex = getPnttDetailCountSex(record, section);
         if (column === 'male') return sex === 'male';
         if (column === 'female') return sex === 'female';
         return true;
       });
-      setDetailRows(filtered);
-      setDetailTotal(filtered.length);
+      const withDisplay = filtered.map((r) => {
+        const grp = getPnttDetailCountSex(r, section);
+        return {
+          ...r,
+          sex_display:
+            recordFieldCaseInsensitive(r, 'sex_display') ??
+            recordFieldCaseInsensitive(r, 'partner_sex_display') ??
+            recordFieldCaseInsensitive(r, 'child_sex_display') ??
+            recordFieldCaseInsensitive(r, 'index_sex_display') ??
+            recordFieldCaseInsensitive(r, 'caregiver_sex_display') ??
+            (grp === 'male' ? 'Male' : grp === 'female' ? 'Female' : 'Unknown')
+        };
+      });
+      setDetailRows(withDisplay);
+      setDetailTotal(withDisplay.length);
     } catch (e) {
       setDetailError(e?.response?.data?.error || e?.message || 'Failed to load PNTT details');
     } finally {
@@ -702,8 +746,11 @@ export default function ReportHomePage({ onLogout }) {
             });
             return;
           }
-          existing.rows = (existing.rows || []).map((row, idx) =>
-            sumObjectNumericFields(row, (Array.isArray(section?.rows) ? section.rows[idx] : null) || {})
+          const existingRows = Array.isArray(existing.rows) ? existing.rows : [];
+          const incomingRows = Array.isArray(section?.rows) ? section.rows : [];
+          const rowCount = Math.max(existingRows.length, incomingRows.length);
+          existing.rows = Array.from({ length: rowCount }, (_, idx) =>
+            sumObjectNumericFields(existingRows[idx] || {}, incomingRows[idx] || {})
           );
         });
         return Array.from(sections.values());

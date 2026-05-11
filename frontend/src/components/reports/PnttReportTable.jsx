@@ -48,8 +48,9 @@ const PARTNERS_STRUCTURE = [
 const CHILDREN_STRUCTURE = [
   { displayNum: 19, labelKh: 'ចំនួនកូនអតិថិជនតម្រុយ ដែលបានចុះបញ្ជី', newScriptId: '19_PNTT_NEW_CHILD_REG_aggregate', oldScriptId: '19.1_PNTT_OLD_CHILD_REG_aggregate' },
   { displayNum: 20, labelKh: 'ចំនួនកូន ដែលបានជួប/ជូនព័ត៌មាន', subRows: [
-    { labelKh: 'ដោយអ្នកជំងឺ', newScriptId: '20 PNTT_NEW_CHILD_PROV_aggregate', oldScriptId: '20.1 . PNTT_OLD_CHILD_PROV_aggregate' },
-    { labelKh: 'ដោយអ្នកផ្តល់សេវា', newScriptId: '20_PNTT_NEW_CHILD_REF_aggregate', oldScriptId: '20.1_PNTT_OLD_CHILD_REF_aggregate' },
+    // Align with partner section: REF = index client / អ្នកជំងឺ (PlanChild=0), PROV = provider / អ្នកផ្តល់សេវា (PlanChild=1)
+    { labelKh: 'ដោយអ្នកជំងឺ', newScriptId: '20_PNTT_NEW_CHILD_REF_aggregate', oldScriptId: '20.1_PNTT_OLD_CHILD_REF_aggregate' },
+    { labelKh: 'ដោយអ្នកផ្តល់សេវា', newScriptId: '20 PNTT_NEW_CHILD_PROV_aggregate', oldScriptId: '20.1 . PNTT_OLD_CHILD_PROV_aggregate' },
     { labelKh: 'ដោយមានលក្ខខណ្ឌ', newScriptId: '20.PNTT_NEW_CHILD_CONT_aggregate', oldScriptId: '20.1 PNTT_OLD_CHILD_CONT_aggregate' },
     { labelKh: 'ដោយអ្នកជំងឺ និងអ្នកផ្តល់សេវា', newScriptId: '20.1_PNTT_NEW_CHILD_DUAL_aggregate', oldScriptId: '20.1 PNTT_OLD_CHILD_DUAL_aggregate' }
   ]},
