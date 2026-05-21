@@ -1,6 +1,7 @@
 const express = require('express');
 const dqaService = require('../services/dqaService');
 const { authenticateToken } = require('../middleware/auth');
+const { enforceSiteAccess } = require('../utils/siteAccess');
 
 const router = express.Router();
 
@@ -38,6 +39,7 @@ router.get('/summary', authenticateToken, async (req, res) => {
   try {
     const siteCode = requireSiteCode(req, res);
     if (!siteCode) return;
+    if (!enforceSiteAccess(req, res, siteCode, { resolvedSiteCodes: [siteCode] })) return;
     const data = await dqaService.executeSummary(siteCode);
     res.json({ success: true, siteCode, count: data.length, data });
   } catch (error) {
@@ -49,6 +51,7 @@ router.get('/run/:scriptId', authenticateToken, async (req, res) => {
   try {
     const siteCode = requireSiteCode(req, res);
     if (!siteCode) return;
+    if (!enforceSiteAccess(req, res, siteCode, { resolvedSiteCodes: [siteCode] })) return;
     const scriptId = decodeURIComponent(req.params.scriptId || '');
     const result = await dqaService.executeOnePaged(siteCode, scriptId, {
       page: req.query.page,

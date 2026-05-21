@@ -11,6 +11,7 @@ const {
   resolveFacilityCodesByHierarchy,
   setCache
 } = require('../utils/reportAggregation');
+const { enforceSiteAccess } = require('../utils/siteAccess');
 
 const router = express.Router();
 
@@ -58,13 +59,30 @@ async function resolveAggregateContext(req) {
   return { siteCode, siteLevel, resolvedSiteCodes };
 }
 
+async function requireSiteAccessContext(req, res, options = {}) {
+  const allowAll = Boolean(options.allowAll);
+  const siteCode = requireSiteCode(req, res, { allowAll });
+  if (!siteCode) return null;
+  const ctx = await resolveAggregateContext(req);
+  const codesToCheck =
+    ctx.siteLevel === 'facility'
+      ? [ctx.siteCode]
+      : ctx.resolvedSiteCodes.length > 0
+        ? ctx.resolvedSiteCodes
+        : [ctx.siteCode];
+  if (!enforceSiteAccess(req, res, ctx.siteCode, { allowAll, resolvedSiteCodes: codesToCheck })) {
+    return null;
+  }
+  return ctx;
+}
+
 router.get('/all', authenticateToken, async (req, res) => {
   try {
     refreshIndicatorQueries();
     const allowAll = String(req.query.siteLevel || '').toLowerCase() === 'country';
-    const siteCode = requireSiteCode(req, res, { allowAll });
-    if (!siteCode) return;
-    const { siteLevel, resolvedSiteCodes } = await resolveAggregateContext(req);
+    const ctx = await requireSiteAccessContext(req, res, { allowAll });
+    if (!ctx) return;
+    const { siteCode, siteLevel, resolvedSiteCodes } = ctx;
     const params = queryParams(req);
     if (siteLevel === 'country') {
       const cacheKey = buildCacheKey('indicators-all', { ...params, siteCode: 'all', siteLevel });
@@ -146,9 +164,9 @@ router.get('/all/stream', authenticateToken, async (req, res) => {
   try {
     refreshIndicatorQueries();
     const allowAll = String(req.query.siteLevel || '').toLowerCase() === 'country';
-    const siteCode = requireSiteCode(req, res, { allowAll });
-    if (!siteCode) return;
-    const { siteLevel } = await resolveAggregateContext(req);
+    const ctx = await requireSiteAccessContext(req, res, { allowAll });
+    if (!ctx) return;
+    const { siteCode, siteLevel } = ctx;
     if (siteLevel !== 'facility' && siteLevel !== 'country') {
       return res.status(400).json({
         success: false,
@@ -234,12 +252,11 @@ router.get('/query-reference', authenticateToken, async (req, res) => {
 router.get('/details/:indicatorId', authenticateToken, async (req, res) => {
   try {
     const allowAll = String(req.query.siteLevel || '').toLowerCase() === 'country';
-    const siteCode = requireSiteCode(req, res, { allowAll });
-    if (!siteCode) return;
+    const ctx = await requireSiteAccessContext(req, res, { allowAll });
+    if (!ctx) return;
     refreshIndicatorQueries();
+    const { siteCode, siteLevel } = ctx;
     const sites = await siteDatabaseManager.getAllSitesForManagement();
-    const selected = sites.find((s) => String(s.code) === String(siteCode));
-    const siteLevel = String(req.query.siteLevel || inferSiteLevel(siteCode, selected)).toLowerCase();
     const detailOptions = {
       page: req.query.page,
       limit: req.query.limit,
@@ -279,6 +296,7 @@ router.get('/:indicatorId', authenticateToken, async (req, res) => {
   try {
     const siteCode = requireSiteCode(req, res);
     if (!siteCode) return;
+    if (!enforceSiteAccess(req, res, siteCode, { resolvedSiteCodes: [siteCode] })) return;
     refreshIndicatorQueries();
     const result = await indicatorsService.executeOne(siteCode, req.params.indicatorId, queryParams(req));
     res.json({ success: true, data: result });

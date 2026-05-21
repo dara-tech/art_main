@@ -4,8 +4,30 @@ const jwt = require('jsonwebtoken');
 const { sequelize } = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
 const { siteDatabaseManager } = require('../config/siteDatabase');
+const {
+  buildAuthUser,
+  fetchUserRoleRows,
+  loadAuthProfileForUserId,
+  listAllRoles,
+  roleNameToSlug,
+  filterRegistrySites
+} = require('../services/userRoleService');
 
 const router = express.Router();
+
+function toPublicUser(authUser) {
+  return {
+    id: authUser.userId,
+    username: authUser.username,
+    fullName: authUser.fullName,
+    role: authUser.role,
+    roleId: authUser.roleId,
+    roleName: authUser.roleName,
+    roles: authUser.roles,
+    assignedSites: authUser.assignedSites,
+    orgScope: authUser.orgScope
+  };
+}
 
 router.post('/login', async (req, res) => {
   try {
@@ -14,7 +36,6 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Username and password are required' });
     }
 
-    // Primary auth source: modern `users` table (schema_main_dbs_07-May-26.md).
     const modernRows = await sequelize.query(
       `SELECT id, first_name, last_name, username, password, status_id
        FROM users
@@ -24,7 +45,6 @@ router.post('/login', async (req, res) => {
     );
 
     let safeUser = null;
-    let valid = false;
 
     if (modernRows[0]) {
       const user = modernRows[0];
@@ -32,27 +52,25 @@ router.post('/login', async (req, res) => {
         return res.status(401).json({ success: false, message: 'Account disabled' });
       }
 
+      let valid = false;
       try {
         valid = await bcrypt.compare(password, user.password);
-      } catch (error) {
+      } catch {
         valid = false;
       }
-      // Optional plaintext fallback for environments where passwords were seeded un-hashed.
       if (!valid) valid = String(user.password) === String(password);
       if (!valid) return res.status(401).json({ success: false, message: 'Invalid credentials' });
 
+      const roleRows = await fetchUserRoleRows(user.id);
       const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username;
-      const normalizedUser = String(user.username || '').trim().toLowerCase();
-      const role = normalizedUser === 'portal_admin' ? 'super_admin' : 'viewer';
-      safeUser = {
+      safeUser = await buildAuthUser({
         userId: user.id,
         username: user.username,
         fullName,
-        role,
-        assignedSites: null
-      };
+        statusId: user.status_id,
+        roleRows
+      });
     } else {
-      // Legacy fallback: `tbluser`
       const legacyRows = await sequelize.query(
         `SELECT Uid, Fullname, User, Pass, Status
          FROM tbluser
@@ -66,48 +84,68 @@ router.post('/login', async (req, res) => {
         return res.status(401).json({ success: false, message: 'Account disabled' });
       }
 
+      let valid = false;
       if (user.Pass) {
         try {
           valid = await bcrypt.compare(password, user.Pass);
-        } catch (error) {
+        } catch {
           valid = false;
         }
         if (!valid) valid = String(user.Pass) === String(password);
       }
       if (!valid) return res.status(401).json({ success: false, message: 'Invalid credentials' });
 
-      const normalizedUser = String(user.User || '').trim().toLowerCase();
-      const role = normalizedUser === 'portal_admin' ? 'super_admin' : 'viewer';
-      safeUser = {
+      safeUser = await buildAuthUser({
         userId: user.Uid,
         username: user.User,
         fullName: user.Fullname || user.User,
-        role,
-        assignedSites: null
-      };
+        statusId: user.Status,
+        roleRows: []
+      });
     }
 
     const token = jwt.sign(safeUser, process.env.JWT_SECRET, {
       expiresIn: process.env.JWT_EXPIRES_IN || '24h'
     });
 
-    return res.json({ success: true, token, user: safeUser });
+    return res.json({ success: true, token, user: toPublicUser(safeUser) });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
 });
 
-router.get('/verify', authenticateToken, (req, res) => {
-  res.json({
-    success: true,
-    user: {
-      id: req.user.userId,
-      username: req.user.username,
-      fullName: req.user.fullName,
-      role: req.user.role,
-      assignedSites: req.user.assignedSites
+router.get('/verify', authenticateToken, async (req, res) => {
+  try {
+    const fresh = await loadAuthProfileForUserId(req.user.userId);
+    if (!fresh) {
+      return res.status(401).json({ success: false, message: 'User not found' });
     }
-  });
+    if (Number(fresh.statusId) !== 1) {
+      return res.status(401).json({ success: false, message: 'Account disabled' });
+    }
+    return res.json({ success: true, user: toPublicUser(fresh) });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/** Read-only: all roles defined in the database. */
+router.get('/roles', authenticateToken, async (_req, res) => {
+  try {
+    const rows = await listAllRoles();
+    res.json({
+      success: true,
+      count: rows.length,
+      roles: rows.map((r) => ({
+        id: r.id,
+        name: r.role_name,
+        slug: roleNameToSlug(r.role_name),
+        description: r.role_desc
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 router.get('/sites-registry', authenticateToken, async (req, res, next) => {
@@ -123,10 +161,11 @@ router.get('/sites-registry', authenticateToken, async (req, res, next) => {
       tblsite: site.tblsite,
       province_id: site.province_id,
       province: site.province,
+      od_code: site.od_code,
       type: site.type,
       database_name: site.database_name
     }));
-    res.json(formatted);
+    res.json(filterRegistrySites(formatted, req.user));
   } catch (error) {
     next(error);
   }

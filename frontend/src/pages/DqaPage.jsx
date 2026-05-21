@@ -16,7 +16,8 @@ import SiteSelectModal from '../components/sites/SiteSelectModal';
 import AppPageShell from '../components/layout/AppPageShell';
 import api from '../services/api';
 import siteApi from '../services/siteApi';
-import { isFacilitySite, isFacilitySiteCode } from '../utils/siteSelection';
+import { filterSitesByUserScope, isFacilitySite, isFacilitySiteCode, pickDefaultSiteCode } from '../utils/siteSelection';
+import { useAuth } from '../contexts/AuthContext';
 import { DQA_KH, toDqaColumnLabelKh, toDqaIssueKh, toDqaTitleKh, toDqaValueKh } from './dqaKh';
 
 function formatCell(value) {
@@ -167,6 +168,7 @@ function dqaCellClassName(col, { isIssueCol, isHighlight, hasIssue }) {
 }
 
 export default function DqaPage({ onLogout }) {
+  const { user } = useAuth();
   const [sites, setSites] = useState([]);
   const [scripts, setScripts] = useState([]);
   const [siteCode, setSiteCode] = useState('');
@@ -197,7 +199,10 @@ export default function DqaPage({ onLogout }) {
     ])
       .then(([sitesRes, scriptsRes, refRes]) => {
         if (!active) return;
-        const siteRows = Array.isArray(sitesRes) ? sitesRes : sitesRes?.sites || sitesRes?.data || [];
+        const siteRows = filterSitesByUserScope(
+          Array.isArray(sitesRes) ? sitesRes : sitesRes?.sites || sitesRes?.data || [],
+          user
+        );
         setSites(siteRows);
         const scriptRows = Array.isArray(scriptsRes?.data?.data) ? scriptsRes.data.data : [];
         const refRows = Array.isArray(refRes?.data?.data) ? refRes.data.data : [];
@@ -208,8 +213,8 @@ export default function DqaPage({ onLogout }) {
             sql: sqlById.get(s.id) || ''
           }))
         );
-        const firstFacility = siteRows.find(isFacilitySite) || siteRows[0];
-        if (firstFacility?.code) setSiteCode(String(firstFacility.code));
+        const defaultCode = pickDefaultSiteCode(siteRows);
+        if (defaultCode) setSiteCode(defaultCode);
       })
       .catch((e) => {
         if (!active) return;
@@ -221,7 +226,7 @@ export default function DqaPage({ onLogout }) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [user]);
 
   const filteredScripts = useMemo(() => {
     const q = search.trim().toLowerCase();

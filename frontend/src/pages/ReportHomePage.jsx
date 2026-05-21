@@ -1,16 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { RiFileTextLine, RiLogoutBoxRLine, RiShieldCheckLine } from '@remixicon/react';
+import AppNavActions from '../components/layout/AppNavActions';
 import { RiDraggable, RiSearchLine, RiSettings3Line } from '@remixicon/react';
 import { AnimatePresence, motion } from 'motion/react';
 import { toast } from 'sonner';
-import { Button, buttonVariants } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import siteApi from '../services/siteApi';
 import { infantReportApi, pnttReportApi, reportingApi } from '../services/reportingApi';
 import ReportFilters from '../components/reports/ReportFilters';
 import ReportResultsPanel from '../components/reports/ReportResultsPanel';
-import { isFacilitySite } from '../utils/siteSelection';
+import { filterSitesByUserScope, isFacilitySite, pickDefaultSiteCode } from '../utils/siteSelection';
+import { useAuth } from '../contexts/AuthContext';
 
 const fmt = (d) => {
   const y = d.getFullYear();
@@ -237,6 +235,7 @@ function buildPeriod(periodType, selectedDate, selectedMonth, selectedQuarter, s
 }
 
 export default function ReportHomePage({ onLogout }) {
+  const { user } = useAuth();
   const now = new Date();
   const [sites, setSites] = useState([]);
   const [siteCode, setSiteCode] = useState('');
@@ -274,13 +273,13 @@ export default function ReportHomePage({ onLogout }) {
     siteApi
       .getAllSites()
       .then((data) => {
-        const allSites = data || [];
-        setSites(allSites);
-        const firstFacility = allSites.find(isFacilitySite) || allSites[0];
-        if (firstFacility?.code) setSiteCode(String(firstFacility.code));
+        const scoped = filterSitesByUserScope(data || [], user);
+        setSites(scoped);
+        const defaultCode = pickDefaultSiteCode(scoped);
+        if (defaultCode) setSiteCode(defaultCode);
       })
       .catch((e) => toast.error(e.response?.data?.error || e.message || 'Failed to load sites'));
-  }, []);
+  }, [user]);
 
   const canRun = useMemo(() => Boolean(siteCode), [siteCode]);
   const selectedSite = useMemo(() => sites.find((s) => String(s.code) === String(siteCode)), [siteCode, sites]);
@@ -1152,44 +1151,7 @@ export default function ReportHomePage({ onLogout }) {
   return (
     <div className="mx-auto min-h-screen bg-background px-4 py-4 sm:px-6 sm:py-6 lg:max-w-[300mm]">
       <div className="space-y-4">
-        <div className="fixed right-4 top-4 z-50 flex flex-col gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={onLogout} className="rounded-none border-border/80 bg-card shadow-sm" title="Log out">
-            <RiLogoutBoxRLine className="size-4" />
-          </Button>
-          <Link
-            to="/documents"
-            title="Backend API reference"
-            className={cn(
-              buttonVariants({ variant: 'outline', size: 'sm' }),
-              'inline-flex items-center justify-center gap-1.5 rounded-none border-border/80 bg-card px-2.5 shadow-sm'
-            )}
-          >
-            <RiFileTextLine className="size-4 shrink-0" />
-            <span className="text-xs">API</span>
-          </Link>
-          <Link
-            to="/queries"
-            title="Indicator SQL reference"
-            className={cn(
-              buttonVariants({ variant: 'outline', size: 'sm' }),
-              'inline-flex items-center justify-center gap-1.5 rounded-none border-border/80 bg-card px-2.5 shadow-sm'
-            )}
-          >
-            <RiFileTextLine className="size-4 shrink-0" />
-            <span className="text-xs">Queries</span>
-          </Link>
-          <Link
-            to="/dqa"
-            title="Data quality assessment"
-            className={cn(
-              buttonVariants({ variant: 'outline', size: 'sm' }),
-              'inline-flex items-center justify-center gap-1.5 rounded-none border-border/80 bg-card px-2.5 shadow-sm'
-            )}
-          >
-            <RiShieldCheckLine className="size-4 shrink-0" />
-            <span className="text-xs">DQA</span>
-          </Link>
-        </div>
+        <AppNavActions onLogout={onLogout} showBackToReports={false} />
         <ReportFilters
           sites={sites}
           siteCode={siteCode}

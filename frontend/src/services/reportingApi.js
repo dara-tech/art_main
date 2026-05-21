@@ -1,4 +1,11 @@
 import api from './api';
+import { handleUnauthorized, isUnauthorizedResponse } from './authSession';
+
+function assertOkResponse(response) {
+  if (!isUnauthorizedResponse(response.status)) return;
+  handleUnauthorized();
+  throw new Error('Session expired. Please sign in again.');
+}
 
 async function streamNdjsonReport(relativePath, params, handlers = {}) {
   const token = localStorage.getItem('token');
@@ -18,10 +25,11 @@ async function streamNdjsonReport(relativePath, params, handlers = {}) {
     }
   });
   if (!response.ok) {
+    assertOkResponse(response);
     let message = `Request failed (${response.status})`;
     try {
       const err = await response.json();
-      message = err?.error || message;
+      message = err?.error || err?.message || message;
     } catch {
       /* use default */
     }
@@ -84,10 +92,11 @@ export const reportingApi = {
     });
 
     if (!response.ok) {
+      assertOkResponse(response);
       let message = `Request failed (${response.status})`;
       try {
         const err = await response.json();
-        message = err?.error || message;
+        message = err?.error || err?.message || message;
       } catch {}
       throw new Error(message);
     }

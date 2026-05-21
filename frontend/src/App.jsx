@@ -8,6 +8,8 @@ import QueryLayout from './components/queries/QueryLayout.jsx';
 import QueryReferencePage from './pages/QueryReferencePage.jsx';
 import DqaPage from './pages/DqaPage.jsx';
 import ReportHomePage from './pages/ReportHomePage.jsx';
+import AdminPage from './pages/AdminPage.jsx';
+import RequireAdmin from './components/auth/RequireAdmin.jsx';
 
 function App() {
   const { user, loading, logout } = useAuth();
@@ -51,6 +53,14 @@ function App() {
           <Route index element={<QueryReferencePage />} />
         </Route>
         <Route path="/dqa" element={<DqaPage onLogout={logout} />} />
+        <Route
+          path="/admin"
+          element={
+            <RequireAdmin>
+              <AdminPage onLogout={logout} />
+            </RequireAdmin>
+          }
+        />
         <Route path="/queries/dqa" element={<Navigate to="/dqa" replace />} />
         <Route path="/queries/indicators" element={<Navigate to="/queries" replace />} />
         <Route path="/details/:indicatorId" element={<IndicatorDetailsPage />} />

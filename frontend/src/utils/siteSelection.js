@@ -107,3 +107,52 @@ export function isFacilitySiteCode(sites, siteCode) {
   const site = (sites || []).find((s) => String(s.code) === code);
   return isFacilitySite(site);
 }
+
+/** Match backend filterRegistrySites — client-side fallback when user is in localStorage. */
+export function filterSitesByUserScope(sites, user) {
+  const rows = Array.isArray(sites) ? sites : [];
+  if (!user || user.assignedSites == null) return rows;
+
+  const allowedFacilities = new Set((user.assignedSites || []).map(String));
+  const provinceIds = new Set((user.orgScope?.provinceIds || []).map(String));
+  const odCodes = new Set((user.orgScope?.odCodes || []).map(String));
+
+  if (!allowedFacilities.size && !provinceIds.size && !odCodes.size) return [];
+
+  const facilityList = rows.filter((s) => allowedFacilities.has(String(s.code)));
+
+  return rows.filter((site) => {
+    const code = String(site.code || '');
+    if (allowedFacilities.has(code)) return true;
+
+    if (provinceIds.size && site.province_id != null && provinceIds.has(String(site.province_id))) {
+      return true;
+    }
+
+    if (code.startsWith('province:')) {
+      const pid = code.slice('province:'.length);
+      if (provinceIds.has(pid)) return true;
+    }
+
+    const name = String(site.name || '').toLowerCase();
+    if (name.includes('cambodia')) return false;
+
+    const digits = code.replace(/\D/g, '');
+    if (digits.endsWith('00') || (digits.length === 2 && /^\d{2}$/.test(digits))) {
+      const prefix = digits.length >= 2 ? digits.slice(0, 2) : '';
+      return facilityList.some((f) => String(f.code || '').replace(/\D/g, '').startsWith(prefix));
+    }
+
+    if (odCodes.size) {
+      const siteOd = String(site.od_code || site.odCode || '').trim();
+      if (siteOd && odCodes.has(siteOd)) return true;
+    }
+
+    return false;
+  });
+}
+
+export function pickDefaultSiteCode(sites) {
+  const firstFacility = (sites || []).find(isFacilitySite);
+  return firstFacility?.code ? String(firstFacility.code) : sites[0]?.code ? String(sites[0].code) : '';
+}

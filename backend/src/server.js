@@ -12,6 +12,7 @@ const authRoutes = require('./routes/auth');
 const optimizedIndicatorsRoutes = require('./routes/optimized-indicators');
 const reportsRoutes = require('./routes/reports');
 const dqaRoutes = require('./routes/dqa');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 const port = Number(process.env.PORT || 3001);
@@ -30,6 +31,7 @@ app.use('/apiv1/auth', authRoutes);
 app.use('/apiv1/indicators-optimized', optimizedIndicatorsRoutes);
 app.use('/apiv1/dqa', dqaRoutes);
 app.use('/apiv1/reports', reportsRoutes);
+app.use('/apiv1/admin', adminRoutes);
 
 app.use((error, _req, res, _next) => {
   res.status(500).json({ success: false, error: error.message || 'Internal server error' });
