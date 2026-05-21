@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { RiArrowLeftLine, RiCodeSSlashLine, RiFileTextLine, RiLogoutBoxRLine, RiSearchLine } from '@remixicon/react';
-import { Button } from '@/components/ui/button';
+import { RiCodeSSlashLine, RiSearchLine } from '@remixicon/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import api from '../services/api';
 
-export default function QueryReferencePage({ onLogout }) {
+export default function QueryReferencePage() {
   const [queries, setQueries] = useState([]);
   const [paramsUsed, setParamsUsed] = useState({});
   const [loading, setLoading] = useState(true);
@@ -63,27 +61,7 @@ export default function QueryReferencePage({ onLogout }) {
   };
 
   return (
-    <div className="mx-auto min-h-screen bg-background px-4 py-4 sm:px-6 sm:py-6 lg:max-w-[300mm]">
-      <div className="fixed right-4 top-4 z-50 flex flex-col gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={onLogout} className="rounded-none border-border/80 bg-card shadow-sm" title="Log out">
-          <RiLogoutBoxRLine className="size-4" />
-        </Button>
-        <Button type="button" variant="outline" size="sm" asChild className="rounded-none border-border/80 bg-card shadow-sm" title="Back to reports">
-          <Link to="/" className="inline-flex items-center justify-center gap-1.5">
-            <RiArrowLeftLine className="size-4" />
-            <span className="text-xs">Reports</span>
-          </Link>
-        </Button>
-        <Button type="button" variant="outline" size="sm" asChild className="rounded-none border-border/80 bg-card px-2.5 shadow-sm" title="Backend API reference">
-          <Link to="/documents" className="inline-flex items-center justify-center gap-1.5">
-            <RiFileTextLine className="size-4" />
-            <span className="text-xs">API</span>
-          </Link>
-        </Button>
-      </div>
-
-      <div className="space-y-4">
-        <Card className="rounded-none border-border/80 py-0 shadow-xl shadow-black/6 gap-0 overflow-hidden">
+    <Card className="rounded-none border-border/80 py-0 shadow-xl shadow-black/6 gap-0 overflow-hidden">
           <div className="h-1.5 w-full bg-primary" />
           <CardHeader className="border-b border-border/80 bg-muted/65 px-4 pb-3 pt-4">
             <CardTitle className="inline-flex items-center gap-2">
@@ -179,8 +157,6 @@ export default function QueryReferencePage({ onLogout }) {
               </div>
             </div>
           </CardContent>
-        </Card>
-      </div>
-    </div>
+    </Card>
   );
 }

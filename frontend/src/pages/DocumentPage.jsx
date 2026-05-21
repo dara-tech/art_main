@@ -1,7 +1,5 @@
-import { Link } from 'react-router-dom';
-import { RiArrowLeftLine, RiFileTextLine, RiLogoutBoxRLine } from '@remixicon/react';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import AppPageShell from '../components/layout/AppPageShell';
 
 /**
  * Reference for `main_art_new/backend` Express routes (base URL + /apiv1).
@@ -66,6 +64,34 @@ export const BACKEND_API_ROUTES = [
   },
   {
     method: 'GET',
+    path: '/apiv1/dqa/scripts',
+    auth: true,
+    description: 'List DQA validation scripts from backend/queries/DQA.',
+    notes: 'No query params'
+  },
+  {
+    method: 'GET',
+    path: '/apiv1/dqa/query-reference',
+    auth: true,
+    description: 'DQA SQL reference (raw scripts).',
+    notes: 'No query params'
+  },
+  {
+    method: 'GET',
+    path: '/apiv1/dqa/summary',
+    auth: true,
+    description: 'Run all DQA scripts for a facility and return issue counts per script.',
+    notes: 'Query: siteCode (single facility required)'
+  },
+  {
+    method: 'GET',
+    path: '/apiv1/dqa/run/:scriptId',
+    auth: true,
+    description: 'Run one DQA script with paginated rows.',
+    notes: 'Query: siteCode, page?, limit?, search?'
+  },
+  {
+    method: 'GET',
     path: '/apiv1/reports/infant-report',
     auth: true,
     description: 'Infant report sections (aggregates).',
@@ -115,25 +141,7 @@ export default function DocumentPage({ onLogout }) {
       : '(set VITE_API_URL in frontend .env)';
 
   return (
-    <div className="min-h-screen bg-background mx-auto lg:max-w-[300mm] px-4 sm:px-6 py-4 sm:py-6">
-      <div className="fixed right-4 top-4 z-50 flex flex-col gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={onLogout} className="rounded-none bg-card" title="Log out">
-          <RiLogoutBoxRLine className="size-4" />
-        </Button>
-        <Button type="button" variant="outline" size="sm" asChild className="rounded-none bg-card">
-          <Link to="/" className="inline-flex items-center justify-center gap-1.5" title="Back to reports">
-            <RiArrowLeftLine className="size-4" />
-            <span className="text-xs">Reports</span>
-          </Link>
-        </Button>
-        <Button type="button" variant="outline" size="sm" asChild className="rounded-none bg-card">
-          <Link to="/queries" className="inline-flex items-center justify-center gap-1.5" title="Indicator SQL reference">
-            <RiFileTextLine className="size-4" />
-            <span className="text-xs">Queries</span>
-          </Link>
-        </Button>
-      </div>
-
+    <AppPageShell onLogout={onLogout}>
       <Card className="rounded-none border-border py-0 shadow-sm gap-0 overflow-visible ring-1 ring-[#e0dbd3] dark:ring-stone-600">
         <CardHeader className="border-b border-[#e0dbd3] px-4 pb-3 pt-4 dark:border-stone-600">
           <CardTitle>Backend API</CardTitle>
@@ -192,6 +200,6 @@ export default function DocumentPage({ onLogout }) {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </AppPageShell>
   );
 }

@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { RiFileTextLine, RiLogoutBoxRLine } from '@remixicon/react';
+import { RiFileTextLine, RiLogoutBoxRLine, RiShieldCheckLine } from '@remixicon/react';
 import { RiDraggable, RiSearchLine, RiSettings3Line } from '@remixicon/react';
 import { AnimatePresence, motion } from 'motion/react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import siteApi from '../services/siteApi';
 import { infantReportApi, pnttReportApi, reportingApi } from '../services/reportingApi';
 import ReportFilters from '../components/reports/ReportFilters';
 import ReportResultsPanel from '../components/reports/ReportResultsPanel';
+import { isFacilitySite } from '../utils/siteSelection';
 
 const fmt = (d) => {
   const y = d.getFullYear();
@@ -190,17 +192,6 @@ const PROVINCE_NAME_BY_PREFIX = {
   '23': 'Kep',
   '24': 'Pailin',
   '25': 'Tbong Khmum'
-};
-
-const isFacilitySite = (site) => {
-  if (!site) return false;
-  const codeDigits = String(site.code || '').replace(/\D/g, '');
-  const name = String(site.name || '').toLowerCase();
-  // Exclude country/province summary rows when possible.
-  if (!codeDigits || codeDigits.length < 4) return false;
-  if (codeDigits.endsWith('00')) return false;
-  if (name.includes('cambodia') || name.includes('province')) return false;
-  return true;
 };
 
 const provinceIdFromSelection = (value) => {
@@ -1139,18 +1130,39 @@ export default function ReportHomePage({ onLogout }) {
           <Button type="button" variant="outline" size="sm" onClick={onLogout} className="rounded-none border-border/80 bg-card shadow-sm" title="Log out">
             <RiLogoutBoxRLine className="size-4" />
           </Button>
-          <Button type="button" variant="outline" size="sm" asChild className="rounded-none border-border/80 bg-card px-2.5 shadow-sm" title="Backend API reference">
-            <Link to="/documents" className="inline-flex items-center justify-center gap-1.5">
-              <RiFileTextLine className="size-4 shrink-0" />
-              <span className="text-xs">API</span>
-            </Link>
-          </Button>
-          <Button type="button" variant="outline" size="sm" asChild className="rounded-none border-border/80 bg-card px-2.5 shadow-sm" title="Indicator SQL reference">
-            <Link to="/queries" className="inline-flex items-center justify-center gap-1.5">
-              <RiFileTextLine className="size-4 shrink-0" />
-              <span className="text-xs">Queries</span>
-            </Link>
-          </Button>
+          <Link
+            to="/documents"
+            title="Backend API reference"
+            className={cn(
+              buttonVariants({ variant: 'outline', size: 'sm' }),
+              'inline-flex items-center justify-center gap-1.5 rounded-none border-border/80 bg-card px-2.5 shadow-sm'
+            )}
+          >
+            <RiFileTextLine className="size-4 shrink-0" />
+            <span className="text-xs">API</span>
+          </Link>
+          <Link
+            to="/queries"
+            title="Indicator SQL reference"
+            className={cn(
+              buttonVariants({ variant: 'outline', size: 'sm' }),
+              'inline-flex items-center justify-center gap-1.5 rounded-none border-border/80 bg-card px-2.5 shadow-sm'
+            )}
+          >
+            <RiFileTextLine className="size-4 shrink-0" />
+            <span className="text-xs">Queries</span>
+          </Link>
+          <Link
+            to="/dqa"
+            title="Data quality assessment"
+            className={cn(
+              buttonVariants({ variant: 'outline', size: 'sm' }),
+              'inline-flex items-center justify-center gap-1.5 rounded-none border-border/80 bg-card px-2.5 shadow-sm'
+            )}
+          >
+            <RiShieldCheckLine className="size-4 shrink-0" />
+            <span className="text-xs">DQA</span>
+          </Link>
         </div>
         <ReportFilters
           sites={sites}

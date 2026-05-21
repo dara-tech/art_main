@@ -11,6 +11,7 @@ const { testConnections } = require('./config/siteDatabase');
 const authRoutes = require('./routes/auth');
 const optimizedIndicatorsRoutes = require('./routes/optimized-indicators');
 const reportsRoutes = require('./routes/reports');
+const dqaRoutes = require('./routes/dqa');
 
 const app = express();
 const port = Number(process.env.PORT || 3001);
@@ -27,6 +28,7 @@ app.get('/health', (_req, res) => {
 
 app.use('/apiv1/auth', authRoutes);
 app.use('/apiv1/indicators-optimized', optimizedIndicatorsRoutes);
+app.use('/apiv1/dqa', dqaRoutes);
 app.use('/apiv1/reports', reportsRoutes);
 
 app.use((error, _req, res, _next) => {
