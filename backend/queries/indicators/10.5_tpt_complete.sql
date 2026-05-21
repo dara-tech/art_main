@@ -1,323 +1,190 @@
--- TPT Complete (10.5)
--- TPT sources: visit drugs (tblavtptdrug/tblcvtptdrug) preferred; Form A (tblaimain/tblcimain) fallback
-
-with tblactive as (
-    with tblvisit as (
-        select 
+-- TPT Complete (10.5) — visit TPT preferred; Form A fallback
+WITH tblvisit AS (
+    SELECT clinicid
+    FROM (
+        SELECT
             clinicid,
-            DatVisit,
-            ARTnum,
-            DaApp,
-            vid,
-            ROW_NUMBER() OVER (PARTITION BY clinicid ORDER BY DatVisit DESC) as id 
-        from tblavmain 
-        where DatVisit <= :EndDate
-        
-        union all 
-        
-        select 
-            clinicid,
-            DatVisit,
-            ARTnum,
-            DaApp,
-            vid,
-            ROW_NUMBER() OVER (PARTITION BY clinicid ORDER BY DatVisit DESC) as id 
-        from tblcvmain 
-        where DatVisit <= :EndDate
+            ROW_NUMBER() OVER (PARTITION BY clinicid ORDER BY DatVisit DESC) AS rn
+        FROM (
+            SELECT clinicid, DatVisit
+            FROM tblavmain
+            WHERE DatVisit <= :EndDate
+            UNION ALL
+            SELECT clinicid, DatVisit
+            FROM tblcvmain
+            WHERE DatVisit <= :EndDate
+        ) all_visits
+    ) latest_visit
+    WHERE rn = 1
+),
+tblimain AS (
+    SELECT ClinicID, "15+" AS typepatients, Sex
+    FROM tblaimain
+    WHERE DafirstVisit <= :EndDate
+    UNION ALL
+    SELECT ClinicID, "≤14" AS typepatients, Sex
+    FROM tblcimain
+    WHERE DafirstVisit <= :EndDate
+),
+tblart AS (
+    SELECT ClinicID, ART
+    FROM tblaart
+    WHERE DaArt <= :EndDate
+    UNION ALL
+    SELECT ClinicID, ART
+    FROM tblcart
+    WHERE DaArt <= :EndDate
+),
+tblexit AS (
+    SELECT clinicid, status
+    FROM tblavpatientstatus
+    WHERE da <= :EndDate
+    UNION ALL
+    SELECT clinicid, status
+    FROM tblcvpatientstatus
+    WHERE da <= :EndDate
+),
+tbltptdrug_visit AS (
+    WITH tbltptdrugs AS (
+        SELECT DrugName, Status, Da, Vid
+        FROM tblavtptdrug
+        WHERE DrugName != "B6"
+        UNION ALL
+        SELECT DrugName, Status, Da, Vid
+        FROM tblcvtptdrug
+        WHERE DrugName != "B6"
     ),
-    
-    tblimain as (
-        select 
-            ClinicID,
-            DafirstVisit,
-            "15+" as typepatients,
-            TypeofReturn,
-            LClinicID,
-            SiteNameold,
-            DaBirth,
-            timestampdiff(year, DaBirth, :EndDate) as age,
-            Sex,
-            DaHIV,
-            OffIn 
-        from tblaimain 
-        where DafirstVisit <= :EndDate
-        
-        union all 
-        
-        select 
-            ClinicID,
-            DafirstVisit,
-            "≤14" as typepatients,
-            '' as TypeofReturn,
-            LClinicID,
-            SiteNameold,
-            DaBirth,
-            timestampdiff(year, DaBirth, :EndDate) as age,
-            Sex,
-            DaTest as DaHIV,
-            OffIn 
-        from tblcimain 
-        where DafirstVisit <= :EndDate
+    tptvisit AS (
+        SELECT clinicid, DatVisit, vid
+        FROM tblavmain
+        UNION ALL
+        SELECT clinicid, DatVisit, vid
+        FROM tblcvmain
     ),
-    
-    tblart as (
-        select 
-            *,
-            timestampdiff(month, DaArt, :EndDate) as nmonthART 
-        from tblaart 
-        where DaArt <= :EndDate 
-        
-        union all 
-        
-        select 
-            *,
-            timestampdiff(month, DaArt, :EndDate) as nmonthART 
-        from tblcart 
-        where DaArt <= :EndDate
+    tbltptall AS (
+        SELECT
+            v.clinicid,
+            v.DatVisit,
+            tp.DrugName,
+            tp.Status,
+            tp.Da
+        FROM tbltptdrugs tp
+        LEFT JOIN tptvisit v ON tp.vid = v.vid
     ),
-    
-    tblexit as (
-        select * from tblavpatientstatus where da <= :EndDate  
-        
-        union all 
-        
-        select * from tblcvpatientstatus where da <= :EndDate
+    tbltptstart AS (
+        SELECT *
+        FROM (
+            SELECT
+                *,
+                ROW_NUMBER() OVER (PARTITION BY clinicid ORDER BY DatVisit ASC) AS rn
+            FROM tbltptall
+            WHERE status = 0
+              AND DatVisit <= :EndDate
+        ) s
+        WHERE rn = 1
     ),
-    
-    tblarvdrug as (
-        with tbldrug as (
-            select 
-                vid,
-                group_concat(distinct DrugName order by DrugName asc SEPARATOR '+') as drugname 
-            from tblavarvdrug 
-            where status <> 1 
-            group by vid 
-            
-            union all 
-            
-            select 
-                vid,
-                group_concat(distinct DrugName order by DrugName asc SEPARATOR '+') as drugname 
-            from tblcvarvdrug 
-            where status <> 1 
-            group by vid
-        )
-        select 
-            vid,
-            drugname,
-            if(LOCATE('3TC+DTG+TDF', drugname) > 0, "TLD", "Not-TLD") as TLDStatus 
-        from tbldrug
-    ),
-    
-    tblvltested as (
-        with tblvltest as (
-            select 
-                ClinicID,
-                if(DaArrival < Dat, Dat, DaArrival) as DateResult,
-                HIVLoad 
-            from tblpatienttest 
-            where HIVLoad != ''
-            having DateResult <= :EndDate
-        ) 
-        select distinct 
-            ClinicID,
-            DateResult,
-            HIVLoad,
-            if(DateResult > datelast, "Do_VL_in_12M", "Do_VL_greatn_12M") as VLdostatus,
-            if(HIVLoad < 1000, "VL-Suppression", "Not-Suppression") as vlresultstatus  
-        from (
-            select 
-                ClinicID,
-                DateResult,
-                HIVLoad,
-                date_sub(:EndDate, interval 1 year) as datelast, 
-                row_number() over (partition by clinicid order by DateResult desc) as id 
-            from tblvltest 
-        ) pt 
-        where pt.id = 1
-    ),
-    
-    tbltptdrug_visit as (
-        with tbltptdrugs as (
-            select DrugName, Status, Da, Vid 
-            from tblavtptdrug 
-            where DrugName != "B6" 
-            
-            union all 
-            
-            select DrugName, Status, Da, Vid 
-            from tblcvtptdrug 
-            where DrugName != "B6"
-        ),
-        
-        tblvisit_tpt as (
-            select clinicid, DatVisit, vid 
-            from tblavmain 
-            
-            union all 
-            
-            select clinicid, DatVisit, vid 
-            from tblcvmain
-        ),
-        
-        tbltptall as (
-            select 
-                clinicid,
-                DatVisit,
-                DrugName, 
-                Status, 
-                Da 
-            from tbltptdrugs tp 
-            left join tblvisit_tpt v on tp.vid = v.vid
-        ),
-        
-        tbltptstart as (
-            select * 
-            from (
-                select 
-                    *,
-                    row_number() over(partition by clinicid order by DatVisit asc) as id 
-                from tbltptall 
-                where status = 0 and DatVisit <= :EndDate
-            ) s 
-            where id = 1
-        ),
-        
-        tbltptstope as (
-            select * 
-            from (
-                select 
-                    *,
-                    row_number() over(partition by clinicid order by Da desc) as id 
-                from tbltptall 
-                where status = 1 and Da <= :EndDate
-            ) s 
-            where id = 1
-        )
-        
-        select 
-            s.clinicid,
-            s.DatVisit as dateStart,
-            s.DrugName as Tptdrugname,
-            st.da as Datestop,
-            datediff(st.da, s.DatVisit) / 30 as duration  
-        from tbltptstart s
-        left join tbltptstope st on s.clinicid = st.clinicid
-    ),
-
-    -- Form A / initial registration TPT (transfer-in, return from other site, etc.)
-    tbltptdrug_forma as (
-        select 
-            ClinicID as clinicid,
-            DaStartTPT as dateStart,
-            case TPTdrug
-                when 0 then '3HP'
-                when 1 then '6H'
-                when 2 then '3RH'
-                when 3 then 'INH'
-                else null
-            end as Tptdrugname,
-            if(DaEndTPT >= '1990-01-02', DaEndTPT, null) as Datestop,
-            if(DaEndTPT >= '1990-01-02', datediff(DaEndTPT, DaStartTPT) / 30, null) as duration,
-            TPT as forma_tpt
-        from tblaimain
-        where DaStartTPT >= '1990-01-02'
-            and TPTdrug >= 0
-            and TPT in (1, 2)
-            and DafirstVisit <= :EndDate
-
-        union all
-
-        -- Child initial form uses Inh (not TPT): 0=Yes, 1=No, 2=Unknown, 3=Ongoing
-        select 
-            ClinicID as clinicid,
-            DaStartTPT as dateStart,
-            case TPTdrug
-                when 0 then '3HP'
-                when 1 then '6H'
-                when 2 then '3RH'
-                when 3 then 'INH'
-                else null
-            end as Tptdrugname,
-            if(DaEndTPT >= '1990-01-02', DaEndTPT, null) as Datestop,
-            if(DaEndTPT >= '1990-01-02', datediff(DaEndTPT, DaStartTPT) / 30, null) as duration,
-            case Inh when 0 then 1 when 3 then 2 else 0 end as forma_tpt
-        from tblcimain
-        where DaStartTPT >= '1990-01-02'
-            and TPTdrug >= 0
-            and Inh in (0, 3)
-            and DaFirstVisit <= :EndDate
+    tbltptstope AS (
+        SELECT *
+        FROM (
+            SELECT
+                *,
+                ROW_NUMBER() OVER (PARTITION BY clinicid ORDER BY Da DESC) AS rn
+            FROM tbltptall
+            WHERE status = 1
+              AND Da <= :EndDate
+        ) s
+        WHERE rn = 1
     )
-
-    select 
-        i.clinicid, 
-        i.DafirstVisit,
-        i.typepatients, 
-        i.TypeofReturn, 
-        i.LClinicID, 
-        i.SiteNameold, 
-        i.DaBirth,
-        i.age, 
-        i.Sex, 
-        i.DaHIV, 
-        i.OffIn, 
-        a.ART, 
-        a.DaArt,
-        v.DatVisit, 
-        v.ARTnum, 
-        v.DaApp,
-        a.nmonthART,
-        if(a.nmonthART >= 6, ">6M", "<6M") as Startartstatus,
-        datediff(v.DaApp, v.DatVisit) as ndays,
-        if(datediff(v.DaApp, v.DatVisit) > 80, "MMD", "Not-MMD") as MMDStatus,
-        rd.drugname,
-        if(left(i.clinicid, 1) = "P" and rd.TLDStatus != "TLD" and LOCATE('DTG', drugname) > 0, "TLD", rd.TLDStatus) as TLDStatus,
-        vl.DateResult,
-        vl.HIVLoad,
-        vl.VLdostatus,
-        vl.vlresultstatus,
-        if(tv.Tptdrugname is not null, tv.Tptdrugname, tf.Tptdrugname) as Tptdrugname,
-        if(tv.Tptdrugname is not null, tv.dateStart, tf.dateStart) as dateStart,
-        if(tv.Tptdrugname is not null, tv.Datestop, tf.Datestop) as Datestop,
-        if(tv.Tptdrugname is not null, tv.duration, tf.duration) as duration,
-        if(tv.Tptdrugname is not null, 'Visit', if(tf.Tptdrugname is not null, 'Form A', null)) as tpt_source,
-        if(
-            tv.Tptdrugname is not null,
-            if(
-                left(tv.Tptdrugname, 1) = 3 and tv.duration >= 2.50, "TPT Complete",
-                if(
-                    left(tv.Tptdrugname, 1) = 6 and tv.duration >= 5.50, "TPT Complete",
-                    if(tv.Tptdrugname is null, "Not Start", "Not complete")
+    SELECT
+        s.clinicid,
+        s.DatVisit AS dateStart,
+        s.DrugName AS Tptdrugname,
+        st.Da AS Datestop,
+        DATEDIFF(st.Da, s.DatVisit) / 30 AS duration
+    FROM tbltptstart s
+    LEFT JOIN tbltptstope st ON s.clinicid = st.clinicid
+),
+tbltptdrug_forma AS (
+    SELECT
+        ClinicID AS clinicid,
+        DaStartTPT AS dateStart,
+        CASE TPTdrug
+            WHEN 0 THEN '3HP'
+            WHEN 1 THEN '6H'
+            WHEN 2 THEN '3RH'
+            WHEN 3 THEN 'INH'
+            ELSE NULL
+        END AS Tptdrugname,
+        IF(DaEndTPT >= '1990-01-02', DaEndTPT, NULL) AS Datestop,
+        IF(DaEndTPT >= '1990-01-02', DATEDIFF(DaEndTPT, DaStartTPT) / 30, NULL) AS duration,
+        TPT AS forma_tpt
+    FROM tblaimain
+    WHERE DaStartTPT >= '1990-01-02'
+      AND TPTdrug >= 0
+      AND TPT IN (1, 2)
+      AND DafirstVisit <= :EndDate
+    UNION ALL
+    SELECT
+        ClinicID AS clinicid,
+        DaStartTPT AS dateStart,
+        CASE TPTdrug
+            WHEN 0 THEN '3HP'
+            WHEN 1 THEN '6H'
+            WHEN 2 THEN '3RH'
+            WHEN 3 THEN 'INH'
+            ELSE NULL
+        END AS Tptdrugname,
+        IF(DaEndTPT >= '1990-01-02', DaEndTPT, NULL) AS Datestop,
+        IF(DaEndTPT >= '1990-01-02', DATEDIFF(DaEndTPT, DaStartTPT) / 30, NULL) AS duration,
+        CASE Inh WHEN 0 THEN 1 WHEN 3 THEN 2 ELSE 0 END AS forma_tpt
+    FROM tblcimain
+    WHERE DaStartTPT >= '1990-01-02'
+      AND TPTdrug >= 0
+      AND Inh IN (0, 3)
+      AND DaFirstVisit <= :EndDate
+),
+tpt_merged AS (
+    SELECT
+        v.clinicid,
+        i.typepatients,
+        i.Sex,
+        IF(tv.Tptdrugname IS NOT NULL, tv.Tptdrugname, tf.Tptdrugname) AS Tptdrugname,
+        IF(tv.Tptdrugname IS NOT NULL, tv.duration, tf.duration) AS duration,
+        IF(
+            tv.Tptdrugname IS NOT NULL,
+            IF(
+                LEFT(tv.Tptdrugname, 1) = 3 AND tv.duration >= 2.50, 'TPT Complete',
+                IF(
+                    LEFT(tv.Tptdrugname, 1) = 6 AND tv.duration >= 5.50, 'TPT Complete',
+                    IF(tv.Tptdrugname IS NULL, 'Not Start', 'Not complete')
                 )
             ),
-            if(
-                left(tf.Tptdrugname, 1) = 3 and tf.duration >= 2.50, "TPT Complete",
-                if(
-                    left(tf.Tptdrugname, 1) = 6 and tf.duration >= 5.50, "TPT Complete",
-                    if(tf.forma_tpt = 1, "TPT Complete",
-                        if(tf.Tptdrugname is null, "Not Start", "Not complete")
+            IF(
+                LEFT(tf.Tptdrugname, 1) = 3 AND tf.duration >= 2.50, 'TPT Complete',
+                IF(
+                    LEFT(tf.Tptdrugname, 1) = 6 AND tf.duration >= 5.50, 'TPT Complete',
+                    IF(tf.forma_tpt = 1, 'TPT Complete',
+                        IF(tf.Tptdrugname IS NULL, 'Not Start', 'Not complete')
                     )
                 )
             )
-        ) as tptstatus 
-    from tblvisit v
-    left join tblimain i on i.clinicid = v.clinicid
-    left join tblart a on a.clinicid = v.clinicid
-    left join tblexit e on v.clinicid = e.clinicid
-    left join tblarvdrug rd on rd.vid = v.vid
-    left join tblvltested vl on vl.clinicid = v.clinicid
-    left join tbltptdrug_visit tv on tv.clinicid = v.clinicid
-    left join tbltptdrug_forma tf on tf.clinicid = v.clinicid
-    where id = 1 and e.status is null and a.ART is not null 
+        ) AS tptstatus
+    FROM tblvisit v
+    LEFT JOIN tblimain i ON i.ClinicID = v.clinicid
+    LEFT JOIN tblart a ON a.ClinicID = v.clinicid
+    LEFT JOIN tblexit e ON e.clinicid = v.clinicid
+    LEFT JOIN tbltptdrug_visit tv ON tv.clinicid = v.clinicid
+    LEFT JOIN tbltptdrug_forma tf ON tf.clinicid = v.clinicid
+    WHERE e.status IS NULL
+      AND a.ART IS NOT NULL
 )
 
-select 
-    '10.5. TPT Complete' as Indicator, 
-    sum(if(sex = 1 and typepatients = '≤14', 1, 0)) as Male_0_14,
-    sum(if(sex = 0 and typepatients = '≤14', 1, 0)) as Female_0_14,
-    sum(if(sex = 1 and typepatients = '15+', 1, 0)) as Male_over_14,
-    sum(if(sex = 0 and typepatients = '15+', 1, 0)) as Female_over_14,
-    count(*) as TOTAL
-from tblactive
-where ART is not null and tptstatus = 'TPT Complete';
-
+SELECT
+    '10.5. TPT Complete' AS Indicator,
+    IFNULL(SUM(IF(Sex = 1 AND typepatients = '≤14', 1, 0)), 0) AS Male_0_14,
+    IFNULL(SUM(IF(Sex = 0 AND typepatients = '≤14', 1, 0)), 0) AS Female_0_14,
+    IFNULL(SUM(IF(Sex = 1 AND typepatients = '15+', 1, 0)), 0) AS Male_over_14,
+    IFNULL(SUM(IF(Sex = 0 AND typepatients = '15+', 1, 0)), 0) AS Female_over_14,
+    IFNULL(COUNT(*), 0) AS TOTAL
+FROM tpt_merged
+WHERE tptstatus = 'TPT Complete';
