@@ -1,4 +1,5 @@
--- 10.4 TPT Start - Detailed Records (matching corrected aggregate logic)
+-- 10.4 TPT Start - Detailed Records (matching aggregate logic)
+-- TPT sources: visit drugs preferred; Form A (tblaimain/tblcimain) fallback
 WITH tblactive AS (
     -- Visit data CTE
     WITH tblvisit AS (
@@ -139,8 +140,8 @@ WITH tblactive AS (
         WHERE pt.id = 1
     ),
     
-    -- TPT drug data CTE
-    tbltptdrug AS (
+    -- TPT drug data from visits
+    tbltptdrug_visit AS (
         WITH tbltptdrugs AS (
             SELECT DrugName, Status, Da, Vid 
             FROM tblavtptdrug 
@@ -152,7 +153,7 @@ WITH tblactive AS (
             FROM tblcvtptdrug 
             WHERE DrugName != "B6"
         ),
-        tblvisit AS (
+        tblvisit_tpt AS (
             SELECT clinicid, DatVisit, vid 
             FROM tblavmain 
             
@@ -169,7 +170,7 @@ WITH tblactive AS (
                 Status, 
                 Da 
             FROM tbltptdrugs tp 
-            LEFT JOIN tblvisit v ON tp.vid = v.vid
+            LEFT JOIN tblvisit_tpt v ON tp.vid = v.vid
         ),
         tbltptstart AS (
             SELECT * 
@@ -209,6 +210,48 @@ WITH tblactive AS (
             END) / 30 AS duration  
         FROM tbltptstart s
         LEFT JOIN tbltptstope st ON s.clinicid = st.clinicid
+    ),
+
+    tbltptdrug_forma AS (
+        SELECT 
+            ClinicID AS clinicid,
+            DaStartTPT AS dateStart,
+            CASE TPTdrug
+                WHEN 0 THEN '3HP'
+                WHEN 1 THEN '6H'
+                WHEN 2 THEN '3RH'
+                WHEN 3 THEN 'INH'
+                ELSE NULL
+            END AS Tptdrugname,
+            IF(DaEndTPT >= '1990-01-02', DaEndTPT, NULL) AS Datestop,
+            IF(DaEndTPT >= '1990-01-02', DATEDIFF(DaEndTPT, DaStartTPT) / 30, NULL) AS duration,
+            TPT AS forma_tpt
+        FROM tblaimain
+        WHERE DaStartTPT >= '1990-01-02'
+            AND TPTdrug >= 0
+            AND TPT IN (1, 2)
+            AND DafirstVisit <= :EndDate
+
+        UNION ALL
+
+        SELECT 
+            ClinicID AS clinicid,
+            DaStartTPT AS dateStart,
+            CASE TPTdrug
+                WHEN 0 THEN '3HP'
+                WHEN 1 THEN '6H'
+                WHEN 2 THEN '3RH'
+                WHEN 3 THEN 'INH'
+                ELSE NULL
+            END AS Tptdrugname,
+            IF(DaEndTPT >= '1990-01-02', DaEndTPT, NULL) AS Datestop,
+            IF(DaEndTPT >= '1990-01-02', DATEDIFF(DaEndTPT, DaStartTPT) / 30, NULL) AS duration,
+            CASE Inh WHEN 0 THEN 1 WHEN 3 THEN 2 ELSE 0 END AS forma_tpt
+        FROM tblcimain
+        WHERE DaStartTPT >= '1990-01-02'
+            AND TPTdrug >= 0
+            AND Inh IN (0, 3)
+            AND DaFirstVisit <= :EndDate
     )
 
     -- Main query combining all CTEs
@@ -239,15 +282,26 @@ WITH tblactive AS (
         vl.HIVLoad,
         vl.VLdostatus,
         vl.vlresultstatus,
-        tp.Tptdrugname,
-        tp.dateStart,
-        tp.Datestop,
-        tp.duration,
+        IF(tv.Tptdrugname IS NOT NULL, tv.Tptdrugname, tf.Tptdrugname) AS Tptdrugname,
+        IF(tv.Tptdrugname IS NOT NULL, tv.dateStart, tf.dateStart) AS dateStart,
+        IF(tv.Tptdrugname IS NOT NULL, tv.Datestop, tf.Datestop) AS Datestop,
+        IF(tv.Tptdrugname IS NOT NULL, tv.duration, tf.duration) AS duration,
+        IF(tv.Tptdrugname IS NOT NULL, 'Visit', IF(tf.Tptdrugname IS NOT NULL, 'Form A', NULL)) AS tpt_source,
         IF(
-            LEFT(tp.Tptdrugname, 1) = 3 AND tp.duration >= 2.50, "TPT Complete",
+            tv.Tptdrugname IS NOT NULL,
             IF(
-                LEFT(tp.Tptdrugname, 1) = 6 AND tp.duration >= 5.50, "TPT Complete",
-                IF(tp.Tptdrugname IS NULL, "Not Start", "Not complete")
+                LEFT(tv.Tptdrugname, 1) = 3 AND tv.duration >= 2.50, "TPT Complete",
+                IF(
+                    LEFT(tv.Tptdrugname, 1) = 6 AND tv.duration >= 5.50, "TPT Complete",
+                    IF(tv.Tptdrugname IS NULL, "Not Start", "Not complete")
+                )
+            ),
+            IF(
+                LEFT(tf.Tptdrugname, 1) = 3 AND tf.duration >= 2.50, "TPT Complete",
+                IF(
+                    LEFT(tf.Tptdrugname, 1) = 6 AND tf.duration >= 5.50, "TPT Complete",
+                    IF(tf.Tptdrugname IS NOT NULL, "Not complete", "Not Start")
+                )
             )
         ) AS tptstatus 
     FROM tblvisit v
@@ -256,7 +310,8 @@ WITH tblactive AS (
     LEFT JOIN tblexit e ON v.clinicid = e.clinicid
     LEFT JOIN tblarvdrug rd ON rd.vid = v.vid
     LEFT JOIN tblvltested vl ON vl.clinicid = v.clinicid
-    LEFT JOIN tbltptdrug tp ON tp.clinicid = v.clinicid
+    LEFT JOIN tbltptdrug_visit tv ON tv.clinicid = v.clinicid
+    LEFT JOIN tbltptdrug_forma tf ON tf.clinicid = v.clinicid
     WHERE id = 1 AND e.status IS NULL AND a.ART IS NOT NULL
 )
 
@@ -281,9 +336,10 @@ SELECT
     DafirstVisit,
     DaBirth,
     OffIn,
+    TypeofReturn,
     CASE 
         WHEN OffIn = 0 THEN 'Not Transferred'
-        WHEN OffIn = 2 THEN 'Transferred In'
+        WHEN OffIn = 1 THEN 'Transferred In'
         WHEN OffIn = 3 THEN 'Transferred Out'
         ELSE CONCAT('Status: ', OffIn)
     END AS transfer_status,
@@ -292,6 +348,7 @@ SELECT
     TLDStatus,
     Tptdrugname,
     dateStart,
+    tpt_source,
     tptstatus
 FROM tblactive
 WHERE ART IS NOT NULL AND tptstatus != 'Not Start'

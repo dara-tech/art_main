@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { RiFileTextLine, RiLogoutBoxRLine } from '@remixicon/react';
 import { RiDraggable, RiSearchLine, RiSettings3Line } from '@remixicon/react';
@@ -148,7 +148,17 @@ const DETAIL_COLUMN_LABELS = {
   Startartstatus: 'ART Status',
   OffIn: 'Registration Type',
   transfer_status: 'Transfer Status',
-  Status: 'Status'
+  Status: 'Status',
+  Tptdrugname: 'TPT Drug',
+  dateStart: 'TPT Start Date',
+  Datestop: 'TPT Stop Date',
+  duration: 'TPT Duration (months)',
+  tpt_source: 'TPT Source',
+  tptstatus: 'TPT Status',
+  step: 'Indicator',
+  MMDStatus: 'MMD Status',
+  TLDStatus: 'TLD Status',
+  TypeofReturn: 'Return Type'
 };
 
 const toDetailColumnLabel = (key) => DETAIL_COLUMN_LABELS[key] || key;
@@ -257,6 +267,8 @@ export default function ReportHomePage({ onLogout }) {
   const [showColumnConfig, setShowColumnConfig] = useState(false);
   const [selectedDetailColumns, setSelectedDetailColumns] = useState([]);
   const [detailColumnSearch, setDetailColumnSearch] = useState('');
+  const [detailRowSearch, setDetailRowSearch] = useState('');
+  const detailRowSearchRef = useRef('');
   const [dragColumnKey, setDragColumnKey] = useState('');
   const [detailSortKey, setDetailSortKey] = useState('');
   const [detailSortDirection, setDetailSortDirection] = useState('asc');
@@ -521,7 +533,7 @@ export default function ReportHomePage({ onLogout }) {
     });
   }, [isAdultChild, previewRows]);
 
-  const fetchDetailPage = async (filter, page = 1) => {
+  const fetchDetailPage = async (filter, page = 1, searchText = detailRowSearch) => {
     if (!effectiveSiteCode || !filter?.rawIndicator) return;
     const indicatorKey = indicatorApiMap[filter.rawIndicator] || filter.rawIndicator;
     setDetailLoading(true);
@@ -535,6 +547,8 @@ export default function ReportHomePage({ onLogout }) {
         page,
         limit: detailLimit
       };
+      const q = String(searchText || '').trim();
+      if (q) params.search = q;
       if (filter.gender === 'male' || filter.gender === 'female') params.gender = filter.gender;
       if (filter.ageGroup === 'younger') params.ageGroup = '0-14';
       if (filter.ageGroup === 'older') params.ageGroup = '>14';
@@ -563,6 +577,8 @@ export default function ReportHomePage({ onLogout }) {
     if (!effectiveSiteCode || !item?.rawIndicator) return;
     const filter = { rawIndicator: item.rawIndicator, ageGroup, gender };
     setDetailFilter(filter);
+    setDetailRowSearch('');
+    detailRowSearchRef.current = '';
     setDetailCountFootnote('');
     setDetailTitle(`${item.indicator} - ${ageGroup}/${gender}`);
     setDetailOpen(true);
@@ -576,6 +592,8 @@ export default function ReportHomePage({ onLogout }) {
     const scriptId = getDetailScriptId(section, rowIdx);
     if (!effectiveSiteCode || !scriptId) return;
     setDetailFilter(null);
+    setDetailRowSearch('');
+    detailRowSearchRef.current = '';
     setDetailTitle(`${section?.sectionNumber || ''}. ${section?.sectionLabelKh || section?.sectionLabelEn || 'Infant Detail'}`);
     setDetailOpen(true);
     setDetailLoading(true);
@@ -614,6 +632,8 @@ export default function ReportHomePage({ onLogout }) {
     const scriptId = getDetailScriptId(section, rowIdx);
     if (!effectiveSiteCode || !scriptId) return;
     setDetailFilter(null);
+    setDetailRowSearch('');
+    detailRowSearchRef.current = '';
     setDetailTitle(`${section?.sectionNumber || ''}. ${section?.sectionLabelKh || section?.sectionLabelEn || 'PNTT Detail'}`);
     setDetailOpen(true);
     setDetailLoading(true);
@@ -738,9 +758,27 @@ export default function ReportHomePage({ onLogout }) {
       return next;
     });
   };
+  const filteredDetailRows = useMemo(() => {
+    const q = detailRowSearch.trim().toLowerCase();
+    if (!q || detailFilter) return detailRows;
+    return detailRows.filter((row) =>
+      Object.values(row || {}).some((v) => String(v ?? '').toLowerCase().includes(q))
+    );
+  }, [detailRows, detailRowSearch, detailFilter]);
+
+  useEffect(() => {
+    if (!detailOpen || !detailFilter) return;
+    if (detailRowSearch === detailRowSearchRef.current) return;
+    detailRowSearchRef.current = detailRowSearch;
+    const timer = setTimeout(() => {
+      fetchDetailPage(detailFilter, 1, detailRowSearch);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [detailRowSearch, detailOpen, detailFilter]);
+
   const sortedDetailRows = useMemo(() => {
-    if (!detailSortKey) return detailRows;
-    const rowsCopy = [...detailRows];
+    if (!detailSortKey) return filteredDetailRows;
+    const rowsCopy = [...filteredDetailRows];
     rowsCopy.sort((a, b) => {
       const av = a?.[detailSortKey];
       const bv = b?.[detailSortKey];
@@ -755,7 +793,13 @@ export default function ReportHomePage({ onLogout }) {
       return detailSortDirection === 'asc' ? cmp : -cmp;
     });
     return rowsCopy;
-  }, [detailRows, detailSortDirection, detailSortKey]);
+  }, [filteredDetailRows, detailSortDirection, detailSortKey]);
+
+  const detailListCount = detailFilter ? detailTotal : sortedDetailRows.length;
+  const detailListFootnote =
+    !detailFilter && detailRowSearch.trim() && filteredDetailRows.length !== detailRows.length
+      ? `Showing ${filteredDetailRows.length} of ${detailRows.length} loaded`
+      : '';
   const isSectionedReport =
     !isAdultChild &&
     hasRows &&
@@ -1158,6 +1202,8 @@ export default function ReportHomePage({ onLogout }) {
               onClick={() => {
                 setDetailOpen(false);
                 setDetailFilter(null);
+                setDetailRowSearch('');
+                detailRowSearchRef.current = '';
                 setDetailCountFootnote('');
               }}
             >
@@ -1194,11 +1240,33 @@ export default function ReportHomePage({ onLogout }) {
                   onClick={() => {
                     setDetailOpen(false);
                     setDetailFilter(null);
+                    setDetailRowSearch('');
+                    detailRowSearchRef.current = '';
                     setDetailCountFootnote('');
                   }}
                 >
                   Close
                 </button>
+              </div>
+              <div className="border-b border-border/80 px-4 py-2.5">
+                <div className="relative">
+                  <RiSearchLine className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    value={detailRowSearch}
+                    onChange={(e) => setDetailRowSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && detailFilter) {
+                        detailRowSearchRef.current = detailRowSearch;
+                        fetchDetailPage(detailFilter, 1, detailRowSearch);
+                      }
+                    }}
+                    placeholder="Search records (clinic ID, ART, TPT drug, status, source...)"
+                    className="h-8 w-full border border-border/80 bg-background pl-8 pr-2 text-xs shadow-sm"
+                  />
+                </div>
+                {detailListFootnote ? (
+                  <div className="mt-1 text-[11px] text-muted-foreground">{detailListFootnote}</div>
+                ) : null}
               </div>
               <div className="flex items-center justify-between border-b border-border/80 px-4 py-2.5">
                 <div className="text-xs text-muted-foreground">Column settings</div>
@@ -1286,8 +1354,10 @@ export default function ReportHomePage({ onLogout }) {
                   </div>
                 ) : detailError ? (
                   <div className="text-xs text-destructive">{detailError}</div>
-                ) : detailRows.length === 0 ? (
-                  <div className="text-xs text-muted-foreground">No detail records found.</div>
+                ) : sortedDetailRows.length === 0 ? (
+                  <div className="text-xs text-muted-foreground">
+                    {detailRowSearch.trim() ? 'No records match your search.' : 'No detail records found.'}
+                  </div>
                 ) : (
                   <div className="overflow-auto border border-border/80 shadow-sm">
                   <table className="w-full border-collapse text-xs">
@@ -1334,24 +1404,34 @@ export default function ReportHomePage({ onLogout }) {
                 )}
               </div>
               <div className="flex items-center justify-between border-t border-border/80 bg-muted/20 px-4 py-2.5">
-                <div className="text-xs text-muted-foreground">Page {detailPage} / {detailTotalPages}</div>
+                <div className="text-xs text-muted-foreground">
+                  {detailFilter ? (
+                    <>Page {detailPage} / {detailTotalPages}</>
+                  ) : (
+                    <>{formatDetailCellValue(detailListCount)} record(s)</>
+                  )}
+                </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    className="h-7 border border-border/80 bg-background px-3 text-xs shadow-sm disabled:opacity-50"
-                    disabled={detailLoading || detailPage <= 1}
-                    onClick={() => fetchDetailPage(detailFilter, detailPage - 1)}
-                  >
-                    Prev
-                  </button>
-                  <button
-                    type="button"
-                    className="h-7 border border-border/80 bg-background px-3 text-xs shadow-sm disabled:opacity-50"
-                    disabled={detailLoading || detailPage >= detailTotalPages}
-                    onClick={() => fetchDetailPage(detailFilter, detailPage + 1)}
-                  >
-                    Next
-                  </button>
+                  {detailFilter ? (
+                    <>
+                      <button
+                        type="button"
+                        className="h-7 border border-border/80 bg-background px-3 text-xs shadow-sm disabled:opacity-50"
+                        disabled={detailLoading || detailPage <= 1}
+                        onClick={() => fetchDetailPage(detailFilter, detailPage - 1, detailRowSearch)}
+                      >
+                        Prev
+                      </button>
+                      <button
+                        type="button"
+                        className="h-7 border border-border/80 bg-background px-3 text-xs shadow-sm disabled:opacity-50"
+                        disabled={detailLoading || detailPage >= detailTotalPages}
+                        onClick={() => fetchDetailPage(detailFilter, detailPage + 1, detailRowSearch)}
+                      >
+                        Next
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               </div>
             </motion.div>
