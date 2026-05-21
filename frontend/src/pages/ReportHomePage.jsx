@@ -89,7 +89,13 @@ const INDICATOR_LABEL_MAP = {
   '10.5. TPT Complete': '10.5. ចំនួនអ្នកជំងឺដែលបានបញ្ចប់ការបង្ការជំងឺរបេង (Number of patients completed TPT)',
   '10.6. Eligible for VL test': '10.6. ចំនួនអ្នកជំងឺដែលសមស្របធ្វើតេស្ត Viral Load (Eligible for Viral Load test)',
   '10.7. VL tested in 12M': '10.7. ចំនួនអ្នកជំងឺធ្វើតេស្ត Viral Load ក្នុងរយៈពេល ១២ ខែចុងក្រោយ (Receive VL test in last 12 months)',
-  '10.8. VL suppression': '10.8. ចំនួនអ្នកជំងឺដែលមានលទ្ធផល VL ចុងក្រោយតិចជាង 1000 copies (Last VL is suppressed)'
+  '10.8. VL suppression': '10.8. ចំនួនអ្នកជំងឺដែលមានលទ្ធផល VL ចុងក្រោយតិចជាង 1000 copies (Last VL is suppressed)',
+  '10.9. Eligible for EAC (VL 40+)': '10.9. ចំនួនអ្នកជំងឺសមស្របប្រឹក្សាប្រកប (VL 40-999 ឬ ≥1000) (Eligible for EAC)',
+  '10.10. EAC session 1 (EAC1)': '10.10. ចំនួនអ្នកជំងឺទទួល EAC លើកទី១ (EAC session 1)',
+  '10.11. EAC session 2 (EAC2)': '10.11. ចំនួនអ្នកជំងឺទទួល EAC លើកទី២ (EAC session 2)',
+  '10.12. EAC session 3 (EAC3)': '10.12. ចំនួនអ្នកជំងឺទទួល EAC លើកទី៣ (EAC session 3)',
+  '10.13. VL follow-up within 6 months after EAC': '10.13. ចំនួនអ្នកជំងឺធ្វើតេស្ត VL តាមដានក្នុង ៦ ខែបន្ទាប់ពី EAC (Follow-up VL within 6 months after EAC)',
+  '10.14. VL follow-up 6+ months after high VL': '10.14. ចំនួនអ្នកជំងឺធ្វើតេស្ត VL តាមដាន ≥៦ ខែបន្ទាប់ពី VL ខ្ពស់ (Follow-up VL 6+ months after high VL)'
 };
 
 const formatIndicatorLabel = (name) => INDICATOR_LABEL_MAP[name] || name || '-';
@@ -494,7 +500,14 @@ export default function ReportHomePage({ onLogout }) {
     '10.5. TPT Complete': '10.5_tpt_complete',
     '10.6. Eligible for VL test': '10.6_eligible_vl_test',
     '10.7. VL tested in 12M': '10.7_vl_tested_12m',
-    '10.8. VL suppression': '10.8_vl_suppression'
+    '10.8. VL suppression': '10.8_vl_suppression',
+    '10.9. Eligible for EAC (VL 40+)': '10.9_eligible_eac_high_vl',
+    '10.9. Eligible for EAC (VL >=1000)': '10.9_eligible_eac_high_vl',
+    '10.10. EAC session 1 (EAC1)': '10.10_eac_session_1',
+    '10.11. EAC session 2 (EAC2)': '10.11_eac_session_2',
+    '10.12. EAC session 3 (EAC3)': '10.12_eac_session_3',
+    '10.13. VL follow-up within 6 months after EAC': '10.13_vl_followup_6m_after_eac',
+    '10.14. VL follow-up 6+ months after high VL': '10.14_vl_followup_6m_apart_high_vl'
   };
   const getDetailScriptId = (section, rowIdx = 0) => {
     if (!section) return null;
@@ -524,9 +537,22 @@ export default function ReportHomePage({ onLogout }) {
     });
   }, [isAdultChild, previewRows]);
 
+  const resolveIndicatorScriptId = (rawIndicator) => {
+    const raw = String(rawIndicator || '').trim();
+    if (indicatorApiMap[raw]) return indicatorApiMap[raw];
+    const entry = Object.entries(indicatorApiMap).find(([label]) => raw.startsWith(label) || label.startsWith(raw));
+    if (entry) return entry[1];
+    const num = raw.match(/^(\d+(?:\.\d+)*)/)?.[1];
+    if (num) {
+      const byNum = Object.entries(indicatorApiMap).find(([label]) => label.startsWith(`${num}.`));
+      if (byNum) return byNum[1];
+    }
+    return raw.replace(/\s+/g, '_').toLowerCase();
+  };
+
   const fetchDetailPage = async (filter, page = 1, searchText = detailRowSearch) => {
     if (!effectiveSiteCode || !filter?.rawIndicator) return;
-    const indicatorKey = indicatorApiMap[filter.rawIndicator] || filter.rawIndicator;
+    const indicatorKey = resolveIndicatorScriptId(filter.rawIndicator);
     setDetailLoading(true);
     setDetailError('');
     setDetailCountFootnote('');

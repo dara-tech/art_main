@@ -37,6 +37,12 @@ class IndicatorsService {
     this.load();
   }
 
+  reload() {
+    this.queries.clear();
+    this.detailQueries.clear();
+    this.load();
+  }
+
   load() {
     const files = fs.readdirSync(BASE_DIR).filter((f) => f.endsWith('.sql') && f !== 'variables.sql');
     files.forEach((filename) => {

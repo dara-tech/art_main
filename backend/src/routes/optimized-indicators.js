@@ -14,6 +14,12 @@ const {
 
 const router = express.Router();
 
+function refreshIndicatorQueries() {
+  if (process.env.NODE_ENV !== 'production') {
+    indicatorsService.reload();
+  }
+}
+
 function requireSiteCode(req, res, options = {}) {
   const siteCode = String(req.query.siteCode || '').trim();
   const allowAll = Boolean(options.allowAll);
@@ -54,6 +60,7 @@ async function resolveAggregateContext(req) {
 
 router.get('/all', authenticateToken, async (req, res) => {
   try {
+    refreshIndicatorQueries();
     const allowAll = String(req.query.siteLevel || '').toLowerCase() === 'country';
     const siteCode = requireSiteCode(req, res, { allowAll });
     if (!siteCode) return;
@@ -137,6 +144,7 @@ router.get('/all', authenticateToken, async (req, res) => {
 
 router.get('/all/stream', authenticateToken, async (req, res) => {
   try {
+    refreshIndicatorQueries();
     const allowAll = String(req.query.siteLevel || '').toLowerCase() === 'country';
     const siteCode = requireSiteCode(req, res, { allowAll });
     if (!siteCode) return;
@@ -223,22 +231,12 @@ router.get('/query-reference', authenticateToken, async (req, res) => {
   }
 });
 
-router.get('/:indicatorId', authenticateToken, async (req, res) => {
-  try {
-    const siteCode = requireSiteCode(req, res);
-    if (!siteCode) return;
-    const result = await indicatorsService.executeOne(siteCode, req.params.indicatorId, queryParams(req));
-    res.json({ success: true, data: result });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 router.get('/details/:indicatorId', authenticateToken, async (req, res) => {
   try {
     const allowAll = String(req.query.siteLevel || '').toLowerCase() === 'country';
     const siteCode = requireSiteCode(req, res, { allowAll });
     if (!siteCode) return;
+    refreshIndicatorQueries();
     const sites = await siteDatabaseManager.getAllSitesForManagement();
     const selected = sites.find((s) => String(s.code) === String(siteCode));
     const siteLevel = String(req.query.siteLevel || inferSiteLevel(siteCode, selected)).toLowerCase();
@@ -272,6 +270,18 @@ router.get('/details/:indicatorId', authenticateToken, async (req, res) => {
       }
     }
     res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/:indicatorId', authenticateToken, async (req, res) => {
+  try {
+    const siteCode = requireSiteCode(req, res);
+    if (!siteCode) return;
+    refreshIndicatorQueries();
+    const result = await indicatorsService.executeOne(siteCode, req.params.indicatorId, queryParams(req));
+    res.json({ success: true, data: result });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
