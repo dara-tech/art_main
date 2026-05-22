@@ -2,9 +2,13 @@ const { sequelize } = require('./database');
 const { getAggregateSequelize } = require('./aggregateDatabase');
 const { applyMainDbsSiteScope } = require('../utils/mainDbsSiteScope');
 
+const SITES_CACHE_TTL_MS = Number(process.env.SITES_CACHE_TTL_MS || 15 * 60 * 1000);
+
 class SiteDatabaseManager {
   constructor() {
     this.parentCodeColumn = null;
+    this.sitesCache = null;
+    this.sitesCacheExpiresAt = 0;
   }
 
   async getParentCodeColumn() {
@@ -36,10 +40,13 @@ class SiteDatabaseManager {
     return rows[0] || null;
   }
 
-  async getAllSitesForManagement() {
+  async getAllSitesForManagement({ bypassCache = false } = {}) {
+    if (!bypassCache && this.sitesCache && this.sitesCacheExpiresAt > Date.now()) {
+      return this.sitesCache;
+    }
     const parentCodeColumn = await this.getParentCodeColumn();
     const parentCodeSelect = parentCodeColumn ? `s.${parentCodeColumn} as tblsite,` : `NULL as tblsite,`;
-    return sequelize.query(
+    const rows = await sequelize.query(
       `SELECT 
         s.art_site_code as code,
         s.site_name as name,
@@ -57,6 +64,9 @@ class SiteDatabaseManager {
       ORDER BY s.art_site_code`,
       { type: sequelize.QueryTypes.SELECT }
     );
+    this.sitesCache = rows;
+    this.sitesCacheExpiresAt = Date.now() + SITES_CACHE_TTL_MS;
+    return rows;
   }
 
   async getSiteConnection(siteCode) {

@@ -406,4 +406,6 @@ class InfantReportService {
   }
 }
 
-module.exports = new InfantReportService();
+const infantReportService = new InfantReportService();
+module.exports = infantReportService;
+module.exports.SECTION_DEFS = SECTION_DEFS;

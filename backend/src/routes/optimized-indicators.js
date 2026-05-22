@@ -2,6 +2,7 @@ const express = require('express');
 const indicatorsService = require('../services/indicatorsService');
 const { authenticateToken } = require('../middleware/auth');
 const { siteDatabaseManager } = require('../config/siteDatabase');
+const { runPool } = require('../utils/asyncPool');
 const {
   buildCacheKey,
   getCache,
@@ -15,10 +16,16 @@ const { enforceSiteAccess } = require('../utils/siteAccess');
 
 const router = express.Router();
 
-function refreshIndicatorQueries() {
-  if (process.env.NODE_ENV !== 'production') {
-    indicatorsService.reload();
-  }
+const STREAM_INDICATOR_CONCURRENCY = Number(process.env.STREAM_INDICATOR_CONCURRENCY || 2);
+const SITE_BATCH_CONCURRENCY = Number(process.env.SITE_BATCH_CONCURRENCY || 2);
+
+async function resolveAggregateContext(req) {
+  const siteCode = String(req.query.siteCode || '').trim();
+  const sites = await siteDatabaseManager.getAllSitesForManagement();
+  const selected = sites.find((s) => String(s.code) === siteCode);
+  const siteLevel = String(req.query.siteLevel || inferSiteLevel(siteCode, selected)).toLowerCase();
+  const resolvedSiteCodes = resolveFacilityCodesByHierarchy(sites, siteCode, siteLevel);
+  return { siteCode, siteLevel, resolvedSiteCodes, sites };
 }
 
 function requireSiteCode(req, res, options = {}) {
@@ -50,15 +57,6 @@ function queryParams(req) {
   };
 }
 
-async function resolveAggregateContext(req) {
-  const siteCode = String(req.query.siteCode || '').trim();
-  const sites = await siteDatabaseManager.getAllSitesForManagement();
-  const selected = sites.find((s) => String(s.code) === siteCode);
-  const siteLevel = String(req.query.siteLevel || inferSiteLevel(siteCode, selected)).toLowerCase();
-  const resolvedSiteCodes = resolveFacilityCodesByHierarchy(sites, siteCode, siteLevel);
-  return { siteCode, siteLevel, resolvedSiteCodes };
-}
-
 async function requireSiteAccessContext(req, res, options = {}) {
   const allowAll = Boolean(options.allowAll);
   const siteCode = requireSiteCode(req, res, { allowAll });
@@ -78,7 +76,6 @@ async function requireSiteAccessContext(req, res, options = {}) {
 
 router.get('/all', authenticateToken, async (req, res) => {
   try {
-    refreshIndicatorQueries();
     const allowAll = String(req.query.siteLevel || '').toLowerCase() === 'country';
     const ctx = await requireSiteAccessContext(req, res, { allowAll });
     if (!ctx) return;
@@ -134,13 +131,17 @@ router.get('/all', authenticateToken, async (req, res) => {
       });
     }
 
-    const settled = await Promise.allSettled(
-      resolvedSiteCodes.map((childCode) => indicatorsService.executeAll(childCode, params))
-    );
+    const batchResults = await runPool(resolvedSiteCodes, SITE_BATCH_CONCURRENCY, async (childCode) => {
+      try {
+        const value = await indicatorsService.executeAll(childCode, params);
+        return { ok: true, value };
+      } catch (error) {
+        return { ok: false, error };
+      }
+    });
+
     const merged = mergeIndicatorRows(
-      settled
-        .filter((r) => r.status === 'fulfilled')
-        .map((r) => (Array.isArray(r.value?.data) ? r.value.data : []))
+      batchResults.filter((r) => r.ok).map((r) => (Array.isArray(r.value?.data) ? r.value.data : []))
     );
     const payload = {
       success: true,
@@ -162,7 +163,6 @@ router.get('/all', authenticateToken, async (req, res) => {
 
 router.get('/all/stream', authenticateToken, async (req, res) => {
   try {
-    refreshIndicatorQueries();
     const allowAll = String(req.query.siteLevel || '').toLowerCase() === 'country';
     const ctx = await requireSiteAccessContext(req, res, { allowAll });
     if (!ctx) return;
@@ -191,34 +191,32 @@ router.get('/all/stream', authenticateToken, async (req, res) => {
     const total = ids.length;
     res.write(`${JSON.stringify({ type: 'start', total, timestamp: new Date().toISOString() })}\n`);
 
-    await Promise.all(
-      ids.map(async (id) => {
-        try {
-          const row = await indicatorsService.executeOne(runSiteCode, id, params);
-          completed += 1;
-          res.write(
-            `${JSON.stringify({
-              type: 'indicator',
-              indicatorId: id,
-              completed,
-              total,
-              data: row
-            })}\n`
-          );
-        } catch (error) {
-          completed += 1;
-          res.write(
-            `${JSON.stringify({
-              type: 'indicator_error',
-              indicatorId: id,
-              completed,
-              total,
-              error: error.message
-            })}\n`
-          );
-        }
-      })
-    );
+    await runPool(ids, STREAM_INDICATOR_CONCURRENCY, async (id) => {
+      try {
+        const row = await indicatorsService.executeOne(runSiteCode, id, params);
+        completed += 1;
+        res.write(
+          `${JSON.stringify({
+            type: 'indicator',
+            indicatorId: id,
+            completed,
+            total,
+            data: row
+          })}\n`
+        );
+      } catch (error) {
+        completed += 1;
+        res.write(
+          `${JSON.stringify({
+            type: 'indicator_error',
+            indicatorId: id,
+            completed,
+            total,
+            error: error.message
+          })}\n`
+        );
+      }
+    });
 
     res.write(
       `${JSON.stringify({
@@ -254,9 +252,7 @@ router.get('/details/:indicatorId', authenticateToken, async (req, res) => {
     const allowAll = String(req.query.siteLevel || '').toLowerCase() === 'country';
     const ctx = await requireSiteAccessContext(req, res, { allowAll });
     if (!ctx) return;
-    refreshIndicatorQueries();
-    const { siteCode, siteLevel } = ctx;
-    const sites = await siteDatabaseManager.getAllSitesForManagement();
+    const { siteCode, siteLevel, sites } = ctx;
     const detailOptions = {
       page: req.query.page,
       limit: req.query.limit,
@@ -297,12 +293,27 @@ router.get('/:indicatorId', authenticateToken, async (req, res) => {
     const siteCode = requireSiteCode(req, res);
     if (!siteCode) return;
     if (!enforceSiteAccess(req, res, siteCode, { resolvedSiteCodes: [siteCode] })) return;
-    refreshIndicatorQueries();
     const result = await indicatorsService.executeOne(siteCode, req.params.indicatorId, queryParams(req));
     res.json({ success: true, data: result });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
+});
+
+/** Dev only: reload indicator SQL from disk without restarting Node. */
+router.post('/reload-queries', authenticateToken, (req, res) => {
+  if (process.env.ENABLE_INDICATOR_HOT_RELOAD !== 'true') {
+    return res.status(403).json({
+      success: false,
+      error: 'Set ENABLE_INDICATOR_HOT_RELOAD=true to reload SQL at runtime'
+    });
+  }
+  indicatorsService.reload();
+  res.json({
+    success: true,
+    count: indicatorsService.queries.size,
+    detailCount: indicatorsService.detailQueries.size
+  });
 });
 
 module.exports = router;

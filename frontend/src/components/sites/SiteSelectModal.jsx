@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
@@ -12,8 +13,12 @@ import {
   isFacilitySite,
   isFacilitySiteCode
 } from '@/utils/siteSelection';
+import { filterControlClass, filterLabelClass } from '@/components/ui/RunButton';
+import { cn } from '@/lib/utils';
+import { p360ControlClass } from '../layout/appNavStyles';
 
-const controlClass = '!h-10 min-h-10 shadow-sm border-border/80';
+const controlClass = (compact) =>
+  compact ? p360ControlClass : `${filterControlClass} rounded-none bg-background shadow-sm border-border/80`;
 
 const SITE_MODAL_TEXT_DEFAULTS = {
   selectPlaceholder: 'Select site',
@@ -23,7 +28,8 @@ const SITE_MODAL_TEXT_DEFAULTS = {
   hintSite: 'Choose a site by province.',
   filterPlaceholder: 'Filter sites...',
   cancel: 'Cancel',
-  apply: 'Apply Selection'
+  apply: 'Apply Selection',
+  draft: 'Draft:'
 };
 
 export default function SiteSelectModal({
@@ -34,7 +40,9 @@ export default function SiteSelectModal({
   label = 'Site',
   disabled = false,
   className = '',
-  modalText = null
+  modalText = null,
+  showLabel = true,
+  compact = false
 }) {
   const mt = { ...SITE_MODAL_TEXT_DEFAULTS, ...(modalText || {}) };
   const [open, setOpen] = useState(false);
@@ -117,26 +125,51 @@ export default function SiteSelectModal({
     setOpen(false);
   };
 
+  useEffect(() => {
+    if (!open) return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
   return (
     <>
-      <div className={`grid gap-2 ${className}`}>
-        <span className="text-xs font-medium leading-tight text-foreground/80">{label}</span>
+      <div className={cn('grid', showLabel ? 'gap-2' : 'gap-0', className)}>
+        {showLabel ? (
+          <span
+            className={
+              compact
+                ? 'text-[11px] font-medium leading-none text-muted-foreground'
+                : filterLabelClass
+            }
+          >
+            {label}
+          </span>
+        ) : null}
         <button
           type="button"
           onClick={openModal}
           disabled={disabled}
-          className={`${controlClass} w-full border bg-background px-3 text-left text-sm font-medium transition hover:bg-muted/20 disabled:opacity-50`}
+          className={`${controlClass(compact)} w-full border bg-background px-3 text-left font-medium transition hover:bg-muted/20 disabled:opacity-50`}
         >
           {selectedLabel || mt.selectPlaceholder}
         </button>
       </div>
 
-      {open && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/45 p-4 backdrop-blur-[2px]">
+      {open &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 backdrop-blur-[2px]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="site-select-modal-title"
+          >
           <div className="flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden bg-card shadow-2xl shadow-black/15">
             <div className="flex items-center justify-between border-b border-border/80 bg-muted/35 px-6 py-4">
               <div>
-                <div className="text-lg font-semibold text-foreground">
+                <div id="site-select-modal-title" className="text-lg font-semibold text-foreground">
                   {facilityOnly ? mt.titleFacility : mt.titleSite}
                 </div>
                 <div className="mt-0.5 text-xs text-muted-foreground">
@@ -336,7 +369,7 @@ export default function SiteSelectModal({
             </div>
             <div className="flex items-center justify-between border-t border-border/80 bg-muted/25 px-6 py-4">
               <div className="text-xs text-muted-foreground">
-                Draft:{' '}
+                {mt.draft}{' '}
                 <span
                   className={
                     facilityOnly && draftCode && !draftIsFacility
@@ -344,7 +377,7 @@ export default function SiteSelectModal({
                       : 'font-medium text-primary'
                   }
                 >
-                  {draftLabel || 'None'}
+                  {draftLabel || mt.none || 'None'}
                   {facilityOnly && draftCode && !draftIsFacility ? ' (select a facility)' : ''}
                 </span>
               </div>
@@ -367,8 +400,9 @@ export default function SiteSelectModal({
               </div>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+          document.body
+        )}
     </>
   );
 }

@@ -13,13 +13,18 @@ const optimizedIndicatorsRoutes = require('./routes/optimized-indicators');
 const reportsRoutes = require('./routes/reports');
 const dqaRoutes = require('./routes/dqa');
 const adminRoutes = require('./routes/admin');
+const patient360Routes = require('./routes/patient360');
+const visualizeRoutes = require('./routes/visualize');
+const insightRoutes = require('./routes/insight');
 
 const app = express();
 const port = Number(process.env.PORT || 3001);
 
 app.use(cors({ origin: true, credentials: true }));
 app.use(compression());
-app.use(morgan('combined'));
+if (process.env.NODE_ENV !== 'production' && process.env.ENABLE_HTTP_LOG !== 'false') {
+  app.use(morgan('combined'));
+}
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -32,6 +37,9 @@ app.use('/apiv1/indicators-optimized', optimizedIndicatorsRoutes);
 app.use('/apiv1/dqa', dqaRoutes);
 app.use('/apiv1/reports', reportsRoutes);
 app.use('/apiv1/admin', adminRoutes);
+app.use('/apiv1/patient-360', patient360Routes);
+app.use('/apiv1/visualize', visualizeRoutes);
+app.use('/apiv1/insight', insightRoutes);
 
 app.use((error, _req, res, _next) => {
   res.status(500).json({ success: false, error: error.message || 'Internal server error' });
@@ -42,14 +50,19 @@ app.use('*', (req, res) => {
 });
 
 async function start() {
-  app.listen(port, '0.0.0.0', () => {
-    console.log(`main_art_new backend running on ${port}`);
-  });
   await testConnection().catch((error) => {
     console.error('Primary DB check failed:', error.message);
   });
   await testConnections().catch((error) => {
     console.error('Aggregate DB check failed:', error.message);
+  });
+  const { registerNationalityValueMaps } = require('./services/patient360Nationality');
+  await registerNationalityValueMaps()
+    .then(({ count }) => console.log(`Patient 360° nationality map loaded (${count} codes)`))
+    .catch((error) => console.error('Nationality map load failed:', error.message));
+
+  app.listen(port, '0.0.0.0', () => {
+    console.log(`main_art_new backend running on ${port}`);
   });
 }
 

@@ -101,6 +101,21 @@ export function buildSiteSelectionModel(sites = []) {
   };
 };
 
+/** Align with backend inferSiteLevel / Report Home. */
+export function inferSiteLevelFromCode(siteCode, sites = []) {
+  const code = String(siteCode || '').trim();
+  if (!code) return 'facility';
+  if (code === '__CAMBODIA__' || code.toLowerCase() === 'all') return 'country';
+  if (code.startsWith('province:')) return 'province';
+  const site = (sites || []).find((s) => String(s.code) === code);
+  const name = String(site?.name || '').toLowerCase();
+  if (name.includes('cambodia')) return 'country';
+  const digits = code.replace(/\D/g, '');
+  if (digits.length <= 2) return 'province';
+  if (digits.length >= 4 && digits.endsWith('00')) return 'province';
+  return 'facility';
+}
+
 export function isFacilitySiteCode(sites, siteCode) {
   const code = String(siteCode || '').trim();
   if (!code || code.startsWith('province:') || code === '__CAMBODIA__') return false;

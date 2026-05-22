@@ -17,6 +17,12 @@ function getAggregateSequelize() {
       port: Number(process.env.AGGREGATE_DB_PORT || process.env.DB_PORT || 3306),
       dialect: 'mysql',
       logging: false,
+      pool: {
+        max: Number(process.env.DB_POOL_MAX || 3),
+        min: 0,
+        idle: 10000,
+        acquire: 30000
+      },
       dialectOptions: {
         connectTimeout: 15000,
         multipleStatements: true

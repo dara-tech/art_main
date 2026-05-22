@@ -115,7 +115,7 @@ export default function AdminPage({ onLogout }) {
   const roleRows = useMemo(() => stats?.roleBreakdown || [], [stats]);
 
   return (
-    <AppPageShell onLogout={onLogout}>
+    <AppPageShell>
       <Card className="rounded-none border-border/80 py-0 shadow-xl shadow-black/6 gap-0 overflow-hidden">
         <div className="h-1.5 w-full bg-violet-600" />
         <CardHeader className="border-b border-border/80 bg-muted/65 px-4 pb-3 pt-4">

@@ -1,6 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 const { siteDatabaseManager } = require('../config/siteDatabase');
+const { runPool } = require('../utils/asyncPool');
+
+const INDICATOR_CONCURRENCY = Number(process.env.INDICATOR_CONCURRENCY || 3);
 
 const BASE_DIR = path.resolve(__dirname, '../../queries/indicators');
 
@@ -60,11 +63,12 @@ class IndicatorsService {
   async executeAll(siteCode, params) {
     const startedAt = Date.now();
     const ids = Array.from(this.queries.keys()).sort();
-    const settled = await Promise.allSettled(ids.map((id) => this.executeOne(siteCode, id, params)));
-
-    const data = settled.map((result, idx) => {
-      if (result.status === 'fulfilled') return result.value;
-      return { Indicator: ids[idx], TOTAL: 0, error: result.reason?.message || 'Failed to execute indicator' };
+    const data = await runPool(ids, INDICATOR_CONCURRENCY, async (id) => {
+      try {
+        return await this.executeOne(siteCode, id, params);
+      } catch (error) {
+        return { Indicator: id, TOTAL: 0, error: error?.message || 'Failed to execute indicator' };
+      }
     });
 
     return {

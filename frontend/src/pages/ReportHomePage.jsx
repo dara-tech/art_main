@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import AppNavActions from '../components/layout/AppNavActions';
-import { RiDraggable, RiSearchLine, RiSettings3Line } from '@remixicon/react';
+import { RiDownloadLine, RiDraggable, RiSearchLine, RiSettings3Line } from '@remixicon/react';
 import { AnimatePresence, motion } from 'motion/react';
 import { toast } from 'sonner';
-import siteApi from '../services/siteApi';
+import { useSites } from '../contexts/SitesContext';
 import { infantReportApi, pnttReportApi, reportingApi } from '../services/reportingApi';
 import ReportFilters from '../components/reports/ReportFilters';
 import ReportResultsPanel from '../components/reports/ReportResultsPanel';
 import { filterSitesByUserScope, isFacilitySite, pickDefaultSiteCode } from '../utils/siteSelection';
 import { useAuth } from '../contexts/AuthContext';
+import { downloadCsv, rowsToCsv, safeExportFilename } from '../utils/exportCsv';
+
+const DETAIL_EXPORT_PAGE_SIZE = 500;
+const DETAIL_EXPORT_MAX = 50000;
 
 const fmt = (d) => {
   const y = d.getFullYear();
@@ -236,6 +239,7 @@ function buildPeriod(periodType, selectedDate, selectedMonth, selectedQuarter, s
 
 export default function ReportHomePage({ onLogout }) {
   const { user } = useAuth();
+  const { sites: registrySites } = useSites();
   const now = new Date();
   const [sites, setSites] = useState([]);
   const [siteCode, setSiteCode] = useState('');
@@ -268,18 +272,14 @@ export default function ReportHomePage({ onLogout }) {
   const [dragColumnKey, setDragColumnKey] = useState('');
   const [detailSortKey, setDetailSortKey] = useState('');
   const [detailSortDirection, setDetailSortDirection] = useState('asc');
+  const [detailExporting, setDetailExporting] = useState(false);
 
   useEffect(() => {
-    siteApi
-      .getAllSites()
-      .then((data) => {
-        const scoped = filterSitesByUserScope(data || [], user);
-        setSites(scoped);
-        const defaultCode = pickDefaultSiteCode(scoped);
-        if (defaultCode) setSiteCode(defaultCode);
-      })
-      .catch((e) => toast.error(e.response?.data?.error || e.message || 'Failed to load sites'));
-  }, [user]);
+    const scoped = filterSitesByUserScope(registrySites || [], user);
+    setSites(scoped);
+    const defaultCode = pickDefaultSiteCode(scoped);
+    if (defaultCode) setSiteCode(defaultCode);
+  }, [registrySites, user]);
 
   const canRun = useMemo(() => Boolean(siteCode), [siteCode]);
   const selectedSite = useMemo(() => sites.find((s) => String(s.code) === String(siteCode)), [siteCode, sites]);
@@ -549,6 +549,100 @@ export default function ReportHomePage({ onLogout }) {
     return raw.replace(/\s+/g, '_').toLowerCase();
   };
 
+  const normalizeDetailRecord = (record) => ({
+    ...record,
+    sex_display:
+      record?.sex_display ||
+      (getSex(record) === 'male' ? 'Male' : getSex(record) === 'female' ? 'Female' : 'Unknown'),
+    age: getAge(record)
+  });
+
+  const buildDetailRequestParams = (filter, page, limit, searchText) => {
+    const params = {
+      siteCode: effectiveSiteCode,
+      siteLevel: selectedSiteLevel,
+      ...currentPeriod,
+      page,
+      limit
+    };
+    const q = String(searchText || '').trim();
+    if (q) params.search = q;
+    if (filter?.gender === 'male' || filter?.gender === 'female') params.gender = filter.gender;
+    if (filter?.ageGroup === 'younger') params.ageGroup = '0-14';
+    if (filter?.ageGroup === 'older') params.ageGroup = '>14';
+    return params;
+  };
+
+  const fetchAllDetailRecords = async (filter, searchText = '') => {
+    const indicatorKey = resolveIndicatorScriptId(filter.rawIndicator);
+    const all = [];
+    let page = 1;
+    let totalPages = 1;
+    do {
+      const params = buildDetailRequestParams(filter, page, DETAIL_EXPORT_PAGE_SIZE, searchText);
+      const response = await reportingApi.getIndicatorDetails(indicatorKey, params);
+      const list = Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : [];
+      all.push(...list.map(normalizeDetailRecord));
+      totalPages = Number(response?.pagination?.totalPages ?? 1);
+      page += 1;
+    } while (page <= totalPages && all.length < DETAIL_EXPORT_MAX);
+    return all;
+  };
+
+  const sortDetailRowsForExport = (rows) => {
+    if (!detailSortKey) return rows;
+    const rowsCopy = [...rows];
+    rowsCopy.sort((a, b) => {
+      const av = a?.[detailSortKey];
+      const bv = b?.[detailSortKey];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      const an = Number(av);
+      const bn = Number(bv);
+      let cmp;
+      if (!Number.isNaN(an) && !Number.isNaN(bn)) cmp = an - bn;
+      else cmp = String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: 'base' });
+      return detailSortDirection === 'asc' ? cmp : -cmp;
+    });
+    return rowsCopy;
+  };
+
+  const handleExportAllDetails = async () => {
+    if (!detailColumns.length) {
+      toast.error('No columns selected for export.');
+      return;
+    }
+    const exportCount = detailFilter ? detailTotal : sortedDetailRows.length;
+    if (!exportCount) {
+      toast.error('No records to export.');
+      return;
+    }
+    setDetailExporting(true);
+    try {
+      let rows;
+      if (detailFilter) {
+        rows = await fetchAllDetailRecords(detailFilter, detailRowSearch);
+        if (detailTotal > DETAIL_EXPORT_MAX) {
+          toast.warning(`Exported first ${DETAIL_EXPORT_MAX.toLocaleString()} of ${detailTotal.toLocaleString()} records.`);
+        }
+      } else {
+        rows = sortDetailRowsForExport(filteredDetailRows);
+      }
+      rows = sortDetailRowsForExport(rows);
+      const csv = rowsToCsv(detailColumns, rows, {
+        labelForKey: toDetailColumnLabel,
+        formatValue: formatDetailCellValue
+      });
+      downloadCsv(safeExportFilename(detailTitle), csv);
+      toast.success(`Exported ${rows.length.toLocaleString()} record(s)`);
+    } catch (e) {
+      toast.error(e?.response?.data?.error || e?.message || 'Export failed');
+    } finally {
+      setDetailExporting(false);
+    }
+  };
+
   const fetchDetailPage = async (filter, page = 1, searchText = detailRowSearch) => {
     if (!effectiveSiteCode || !filter?.rawIndicator) return;
     const indicatorKey = resolveIndicatorScriptId(filter.rawIndicator);
@@ -556,26 +650,10 @@ export default function ReportHomePage({ onLogout }) {
     setDetailError('');
     setDetailCountFootnote('');
     try {
-      const params = {
-        siteCode: effectiveSiteCode,
-        siteLevel: selectedSiteLevel,
-        ...currentPeriod,
-        page,
-        limit: detailLimit
-      };
-      const q = String(searchText || '').trim();
-      if (q) params.search = q;
-      if (filter.gender === 'male' || filter.gender === 'female') params.gender = filter.gender;
-      if (filter.ageGroup === 'younger') params.ageGroup = '0-14';
-      if (filter.ageGroup === 'older') params.ageGroup = '>14';
-
+      const params = buildDetailRequestParams(filter, page, detailLimit, searchText);
       const response = await reportingApi.getIndicatorDetails(indicatorKey, params);
       const list = Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : [];
-      const normalized = list.map((record) => ({
-        ...record,
-        sex_display: record?.sex_display || (getSex(record) === 'male' ? 'Male' : getSex(record) === 'female' ? 'Female' : 'Unknown'),
-        age: getAge(record)
-      }));
+      const normalized = list.map(normalizeDetailRecord);
       setDetailRows(normalized);
       const totalCount = Number(response?.pagination?.totalCount ?? normalized.length ?? 0);
       const totalPages = Number(response?.pagination?.totalPages ?? Math.max(1, Math.ceil(totalCount / detailLimit)));
@@ -1149,9 +1227,8 @@ export default function ReportHomePage({ onLogout }) {
   };
 
   return (
-    <div className="mx-auto min-h-screen bg-background px-4 py-4 sm:px-6 sm:py-6 lg:max-w-[300mm]">
+    <div className="mx-auto bg-background px-3 py-3 sm:px-5 sm:py-4 lg:max-w-[300mm]">
       <div className="space-y-4">
-        <AppNavActions onLogout={onLogout} showBackToReports={false} />
         <ReportFilters
           sites={sites}
           siteCode={siteCode}
@@ -1268,17 +1345,33 @@ export default function ReportHomePage({ onLogout }) {
                   <div className="mt-1 text-[11px] text-muted-foreground">{detailListFootnote}</div>
                 ) : null}
               </div>
-              <div className="flex items-center justify-between border-b border-border/80 px-4 py-2.5">
+              <div className="flex items-center justify-between gap-2 border-b border-border/80 px-4 py-2.5">
                 <div className="text-xs text-muted-foreground">Column settings</div>
-                <button
-                  type="button"
-                  className="inline-flex h-7 w-7 items-center justify-center border border-border/80 bg-background hover:bg-muted"
-                  onClick={() => setShowColumnConfig((v) => !v)}
-                  title={showColumnConfig ? 'Hide column settings' : 'Show column settings'}
-                  aria-label={showColumnConfig ? 'Hide column settings' : 'Show column settings'}
-                >
-                  <RiSettings3Line className="size-4" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="inline-flex h-7 items-center gap-1 border border-border/80 bg-background px-2.5 text-xs font-medium shadow-sm hover:bg-muted disabled:opacity-50"
+                    disabled={detailLoading || detailExporting || detailListCount === 0}
+                    onClick={handleExportAllDetails}
+                    title="Download all matching records as CSV"
+                  >
+                    {detailExporting ? (
+                      <span className="size-3.5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
+                    ) : (
+                      <RiDownloadLine className="size-3.5" aria-hidden />
+                    )}
+                    {detailExporting ? 'Exporting…' : 'Export all'}
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex h-7 w-7 items-center justify-center border border-border/80 bg-background hover:bg-muted"
+                    onClick={() => setShowColumnConfig((v) => !v)}
+                    title={showColumnConfig ? 'Hide column settings' : 'Show column settings'}
+                    aria-label={showColumnConfig ? 'Hide column settings' : 'Show column settings'}
+                  >
+                    <RiSettings3Line className="size-4" />
+                  </button>
+                </div>
               </div>
               {showColumnConfig && (
                 <div className="border-b border-border/80 bg-muted/20 px-4 py-3">

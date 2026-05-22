@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import SiteSelectModal from '../components/sites/SiteSelectModal';
 import AppPageShell from '../components/layout/AppPageShell';
 import api from '../services/api';
-import siteApi from '../services/siteApi';
+import { useSites } from '../contexts/SitesContext';
 import { filterSitesByUserScope, isFacilitySite, isFacilitySiteCode, pickDefaultSiteCode } from '../utils/siteSelection';
 import { useAuth } from '../contexts/AuthContext';
 import { DQA_KH, toDqaColumnLabelKh, toDqaIssueKh, toDqaTitleKh, toDqaValueKh } from './dqaKh';
@@ -169,6 +169,7 @@ function dqaCellClassName(col, { isIssueCol, isHighlight, hasIssue }) {
 
 export default function DqaPage({ onLogout }) {
   const { user } = useAuth();
+  const { sites: registrySites } = useSites();
   const [sites, setSites] = useState([]);
   const [scripts, setScripts] = useState([]);
   const [siteCode, setSiteCode] = useState('');
@@ -192,17 +193,10 @@ export default function DqaPage({ onLogout }) {
     let active = true;
     setLoadingMeta(true);
     setError('');
-    Promise.all([
-      siteApi.getAllSites(),
-      api.get('/apiv1/dqa/scripts'),
-      api.get('/apiv1/dqa/query-reference')
-    ])
-      .then(([sitesRes, scriptsRes, refRes]) => {
+    Promise.all([api.get('/apiv1/dqa/scripts'), api.get('/apiv1/dqa/query-reference')])
+      .then(([scriptsRes, refRes]) => {
         if (!active) return;
-        const siteRows = filterSitesByUserScope(
-          Array.isArray(sitesRes) ? sitesRes : sitesRes?.sites || sitesRes?.data || [],
-          user
-        );
+        const siteRows = filterSitesByUserScope(registrySites || [], user);
         setSites(siteRows);
         const scriptRows = Array.isArray(scriptsRes?.data?.data) ? scriptsRes.data.data : [];
         const refRows = Array.isArray(refRes?.data?.data) ? refRes.data.data : [];
@@ -226,7 +220,7 @@ export default function DqaPage({ onLogout }) {
     return () => {
       active = false;
     };
-  }, [user]);
+  }, [registrySites, user]);
 
   const filteredScripts = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -358,7 +352,7 @@ export default function DqaPage({ onLogout }) {
   }, [detailPagination]);
 
   return (
-    <AppPageShell onLogout={onLogout}>
+    <AppPageShell>
     <Card className="rounded-none border-border/80 py-0 shadow-xl shadow-black/6 gap-0 overflow-hidden">
       <div className="h-1.5 w-full bg-primary" />
       <CardHeader className="border-b border-border/80 bg-muted/65 px-4 pb-3 pt-4">

@@ -9,6 +9,8 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  --app-topbar-h: 2rem;
+  --p360-row-h: 2rem;
   /* Warm paper + ink (Claude-inspired neutrals) */
   --background: oklch(0.968 0.009 78);
   --foreground: oklch(0.28 0.022 55);
@@ -131,6 +133,17 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer utilities {
+  .pt-topbar {
+    padding-top: var(--app-topbar-h);
+  }
+
+  /* Measured by Patient360Layout → --p360-toolbar-h (fallback only) */
+  .pt-p360-toolbar {
+    padding-top: var(--p360-toolbar-h, calc(var(--p360-row-h) * 3));
+  }
 }
 
 @layer base {

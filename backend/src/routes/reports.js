@@ -15,6 +15,9 @@ const {
   resolveFacilityCodesByHierarchy,
   setCache
 } = require('../utils/reportAggregation');
+const { runPool } = require('../utils/asyncPool');
+
+const SITE_BATCH_CONCURRENCY = Number(process.env.SITE_BATCH_CONCURRENCY || 2);
 
 const router = express.Router();
 
@@ -167,13 +170,16 @@ router.get('/infant-report', authenticateToken, async (req, res) => {
       });
     }
 
-    const settled = await Promise.allSettled(
-      resolvedSiteCodes.map((childCode) => infantReportService.getReportData(childCode, params))
-    );
+    const batchResults = await runPool(resolvedSiteCodes, SITE_BATCH_CONCURRENCY, async (childCode) => {
+      try {
+        const value = await infantReportService.getReportData(childCode, params);
+        return { ok: true, value };
+      } catch (error) {
+        return { ok: false, error };
+      }
+    });
     const merged = mergeSectionRows(
-      settled
-        .filter((r) => r.status === 'fulfilled')
-        .map((r) => (Array.isArray(r.value?.data) ? r.value.data : []))
+      batchResults.filter((r) => r.ok).map((r) => (Array.isArray(r.value?.data) ? r.value.data : []))
     );
     const payload = {
       success: true,
@@ -316,13 +322,16 @@ router.get('/pntt-report', authenticateToken, async (req, res) => {
       });
     }
 
-    const settled = await Promise.allSettled(
-      resolvedSiteCodes.map((childCode) => pnttReportService.getReportData(childCode, params))
-    );
+    const batchResults = await runPool(resolvedSiteCodes, SITE_BATCH_CONCURRENCY, async (childCode) => {
+      try {
+        const value = await pnttReportService.getReportData(childCode, params);
+        return { ok: true, value };
+      } catch (error) {
+        return { ok: false, error };
+      }
+    });
     const merged = mergeSectionRows(
-      settled
-        .filter((r) => r.status === 'fulfilled')
-        .map((r) => (Array.isArray(r.value?.data) ? r.value.data : []))
+      batchResults.filter((r) => r.ok).map((r) => (Array.isArray(r.value?.data) ? r.value.data : []))
     );
     const payload = {
       success: true,

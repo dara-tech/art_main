@@ -1,6 +1,8 @@
 const AGGREGATE_SITE_TABLES = new Set([
   'tblaimain',
+  'tblaumain',
   'tblcimain',
+  'tblcumain',
   'tbleimain',
   'tblavmain',
   'tblcvmain',
@@ -17,7 +19,6 @@ const AGGREGATE_SITE_TABLES = new Set([
   'tblevarvdrug',
   'tblavtptdrug',
   'tblcvtptdrug',
-  'tblreason',
   'tbletest',
   'tblapntt',
   'tblapnttpart',

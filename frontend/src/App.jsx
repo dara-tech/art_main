@@ -1,15 +1,31 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { useAuth } from './contexts/AuthContext.jsx';
-import DocumentPage from './pages/DocumentPage.jsx';
-import IndicatorDetailsPage from './pages/IndicatorDetailsPage.jsx';
+import { SitesProvider } from './contexts/SitesContext.jsx';
+import AppLayout from './components/layout/AppLayout.jsx';
+import AppPageShell from './components/layout/AppPageShell.jsx';
+import { Patient360LoadingPanel } from './components/patient360/Patient360LoadingPanel.jsx';
 import LoginPage from './pages/LoginPage.jsx';
-import QueryLayout from './components/queries/QueryLayout.jsx';
-import QueryReferencePage from './pages/QueryReferencePage.jsx';
-import DqaPage from './pages/DqaPage.jsx';
+import Patient360Page from './pages/Patient360Page.jsx';
+import VisualizePage from './pages/VisualizePage.jsx';
 import ReportHomePage from './pages/ReportHomePage.jsx';
-import AdminPage from './pages/AdminPage.jsx';
-import RequireAdmin from './components/auth/RequireAdmin.jsx';
+
+const DocumentPage = lazy(() => import('./pages/DocumentPage.jsx'));
+const IndicatorDetailsPage = lazy(() => import('./pages/IndicatorDetailsPage.jsx'));
+const QueryLayout = lazy(() => import('./components/queries/QueryLayout.jsx'));
+const QueryReferencePage = lazy(() => import('./pages/QueryReferencePage.jsx'));
+const DqaPage = lazy(() => import('./pages/DqaPage.jsx'));
+const AdminPage = lazy(() => import('./pages/AdminPage.jsx'));
+const RequireAdmin = lazy(() => import('./components/auth/RequireAdmin.jsx'));
+
+function PageFallback() {
+  return (
+    <AppPageShell wide>
+      <Patient360LoadingPanel label="កំពុងផ្ទុកទំព័រ…" minHeight="min-h-[40vh]" />
+    </AppPageShell>
+  );
+}
 
 function App() {
   const { user, loading, logout } = useAuth();
@@ -32,7 +48,11 @@ function App() {
   };
 
   if (loading) {
-    return <div className="page-shell text-xs text-muted-foreground">Loading…</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <Patient360LoadingPanel label="កំពុងផ្ទុក…" className="w-full max-w-lg" minHeight="min-h-[12rem]" />
+      </div>
+    );
   }
 
   if (!user) {
@@ -45,29 +65,36 @@ function App() {
   }
 
   return (
-    <>
-      <Routes>
-        <Route path="/" element={<ReportHomePage onLogout={logout} />} />
-        <Route path="/documents" element={<DocumentPage onLogout={logout} />} />
-        <Route path="/queries" element={<QueryLayout onLogout={logout} />}>
-          <Route index element={<QueryReferencePage />} />
-        </Route>
-        <Route path="/dqa" element={<DqaPage onLogout={logout} />} />
-        <Route
-          path="/admin"
-          element={
-            <RequireAdmin>
-              <AdminPage onLogout={logout} />
-            </RequireAdmin>
-          }
-        />
-        <Route path="/queries/dqa" element={<Navigate to="/dqa" replace />} />
-        <Route path="/queries/indicators" element={<Navigate to="/queries" replace />} />
-        <Route path="/details/:indicatorId" element={<IndicatorDetailsPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+    <SitesProvider>
+      <AppLayout onLogout={logout}>
+        <Suspense fallback={<PageFallback />}>
+          <Routes>
+            <Route path="/" element={<ReportHomePage onLogout={logout} />} />
+            <Route path="/documents" element={<DocumentPage onLogout={logout} />} />
+            <Route path="/queries" element={<QueryLayout />}>
+              <Route index element={<QueryReferencePage />} />
+            </Route>
+            <Route path="/dqa" element={<DqaPage onLogout={logout} />} />
+            <Route path="/patient-360" element={<Patient360Page onLogout={logout} />} />
+            <Route path="/visualize" element={<VisualizePage onLogout={logout} />} />
+            <Route path="/event-report" element={<Navigate to="/visualize" replace />} />
+            <Route
+              path="/admin"
+              element={
+                <RequireAdmin>
+                  <AdminPage onLogout={logout} />
+                </RequireAdmin>
+              }
+            />
+            <Route path="/queries/dqa" element={<Navigate to="/dqa" replace />} />
+            <Route path="/queries/indicators" element={<Navigate to="/queries" replace />} />
+            <Route path="/details/:indicatorId" element={<IndicatorDetailsPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </AppLayout>
       <Toaster {...toasterProps} />
-    </>
+    </SitesProvider>
   );
 }
 

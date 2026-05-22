@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { labelKhForPnttScript } = require('../constants/pnttIndicatorLabels');
 const { siteDatabaseManager } = require('../config/siteDatabase');
 
 const PNTT_SCRIPTS_DIR = path.join(__dirname, '../../queries/PNTT_AGGREGATE_SCRIPTS');
@@ -106,7 +107,7 @@ class PnttReportService {
         detailScriptId: this.detailQueries.has(detailScriptId) ? detailScriptId : null,
         sectionNumber,
         sectionLabelEn: labelFromScriptId(scriptId),
-        sectionLabelKh: '',
+        sectionLabelKh: labelKhForPnttScript(scriptId) || '',
         normalizer: isRisk ? riskPnttNormalizer : defaultPnttNormalizer
       });
     });

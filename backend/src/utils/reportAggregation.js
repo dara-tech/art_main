@@ -1,8 +1,29 @@
 const DEFAULT_TTL_MS = Number(process.env.REPORT_CACHE_TTL_MS || 5 * 60 * 1000);
+const MAX_CACHE_ENTRIES = Number(process.env.REPORT_CACHE_MAX_ENTRIES || 32);
 
 const cacheStore = new Map();
 
+function pruneExpiredCache() {
+  const now = Date.now();
+  for (const [key, entry] of cacheStore) {
+    if (entry.expiresAt <= now) cacheStore.delete(key);
+  }
+}
+
+function evictOldestCacheEntry() {
+  let oldestKey = null;
+  let oldestAt = Infinity;
+  for (const [key, entry] of cacheStore) {
+    if (entry.expiresAt < oldestAt) {
+      oldestAt = entry.expiresAt;
+      oldestKey = key;
+    }
+  }
+  if (oldestKey != null) cacheStore.delete(oldestKey);
+}
+
 function getCache(key) {
+  pruneExpiredCache();
   const hit = cacheStore.get(key);
   if (!hit) return null;
   if (hit.expiresAt <= Date.now()) {
@@ -13,6 +34,12 @@ function getCache(key) {
 }
 
 function setCache(key, value, ttlMs = DEFAULT_TTL_MS) {
+  if (ttlMs <= 0) return;
+  pruneExpiredCache();
+  while (cacheStore.size >= MAX_CACHE_ENTRIES) {
+    evictOldestCacheEntry();
+    if (!cacheStore.size) break;
+  }
   cacheStore.set(key, { value, expiresAt: Date.now() + ttlMs });
 }
 

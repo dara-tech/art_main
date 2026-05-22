@@ -1,9 +1,9 @@
 import { Outlet } from 'react-router-dom';
 import AppPageShell from '../layout/AppPageShell';
 
-export default function QueryLayout({ onLogout }) {
+export default function QueryLayout() {
   return (
-    <AppPageShell onLogout={onLogout}>
+    <AppPageShell>
       <Outlet />
     </AppPageShell>
   );

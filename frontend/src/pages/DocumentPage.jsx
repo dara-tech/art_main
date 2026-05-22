@@ -141,7 +141,7 @@ export default function DocumentPage({ onLogout }) {
       : '(set VITE_API_URL in frontend .env)';
 
   return (
-    <AppPageShell onLogout={onLogout}>
+    <AppPageShell>
       <Card className="rounded-none border-border py-0 shadow-sm gap-0 overflow-visible ring-1 ring-[#e0dbd3] dark:ring-stone-600">
         <CardHeader className="border-b border-[#e0dbd3] px-4 pb-3 pt-4 dark:border-stone-600">
           <CardTitle>Backend API</CardTitle>
