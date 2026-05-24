@@ -171,3 +171,84 @@ export function pickDefaultSiteCode(sites) {
   const firstFacility = (sites || []).find(isFacilitySite);
   return firstFacility?.code ? String(firstFacility.code) : sites[0]?.code ? String(sites[0].code) : '';
 }
+
+/** Facility sites grouped by operational district (od_code). */
+export function groupFacilitiesByOd(facilitySites = []) {
+  const byOd = new Map();
+  for (const site of facilitySites || []) {
+    if (!isFacilitySite(site)) continue;
+    const raw = String(site.od_code || site.odCode || '').trim();
+    const key = raw || '__NO_OD__';
+    if (!byOd.has(key)) {
+      byOd.set(key, {
+        key,
+        odCode: raw,
+        label: raw ? `OD ${raw}` : 'Other',
+        sites: []
+      });
+    }
+    byOd.get(key).sites.push(site);
+  }
+  return [...byOd.values()].sort((a, b) => String(a.label).localeCompare(String(b.label)));
+}
+
+export function facilityCodesFromSites(sites = []) {
+  return (sites || []).filter(isFacilitySite).map((s) => String(s.code));
+}
+
+export function isProvinceCompareCode(code) {
+  return String(code || '').trim().startsWith('province:');
+}
+
+export function inferCompareSelectionLevel(codes = []) {
+  const list = (codes || []).map(String).filter(Boolean);
+  if (!list.length) return 'facility';
+  return list.every(isProvinceCompareCode) ? 'province' : 'facility';
+}
+
+/** Normalize siteCode + siteLevel for indicator detail APIs (rollup / compare province / country). */
+export function resolveDetailSiteParams(siteCode, siteLevel, sites = []) {
+  let code = String(siteCode || '').trim();
+  let level = String(siteLevel || '').trim().toLowerCase();
+
+  if (code.startsWith('province:')) {
+    return { siteCode: code, siteLevel: 'province' };
+  }
+
+  if (code === '__CAMBODIA__' || code.toLowerCase() === 'all') {
+    return { siteCode: 'all', siteLevel: 'country' };
+  }
+
+  const inferred = inferSiteLevelFromCode(code, sites);
+  if (!level) level = inferred;
+
+  if (inferred === 'country' || level === 'country') {
+    const site = (sites || []).find((s) => String(s.code) === code);
+    const name = String(site?.name || '').toLowerCase();
+    if (inferred === 'country' || name.includes('cambodia')) {
+      return { siteCode: 'all', siteLevel: 'country' };
+    }
+  }
+
+  if (inferred === 'province' && level !== 'country') {
+    level = 'province';
+  }
+
+  return {
+    siteCode: code,
+    siteLevel: level || inferred || 'facility'
+  };
+}
+
+/** VCCT site code mapped from tblsites.vcct_site_code for an ART facility code. */
+export function resolveVcctSiteFromRegistry(sites, artSiteCode) {
+  const art = String(artSiteCode || '').trim();
+  if (!art) return { code: null, known: false };
+  const site = (sites || []).find((s) => String(s.code || '').trim() === art);
+  if (!site) return { code: null, known: false };
+  if (!('vcctSiteCode' in site) && !('vcct_site_code' in site)) {
+    return { code: null, known: false };
+  }
+  const mapped = String(site.vcctSiteCode ?? site.vcct_site_code ?? '').trim();
+  return { code: mapped || null, known: true };
+}

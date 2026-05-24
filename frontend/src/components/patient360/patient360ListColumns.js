@@ -1,8 +1,10 @@
+import { createElement } from 'react';
 import { P360_KH } from '../../pages/patient360Kh';
 import { columnWidthForField } from './patient360ColumnWidths';
+import Patient360ListVcctCell from './Patient360ListVcctCell';
 
 const H = P360_KH.listHeaders;
-const STORAGE_KEY = 'p360-list-column-order-v2';
+const STORAGE_KEY = 'p360-list-column-order-v4';
 export const P360_LIST_LOCKED_COLUMN = 'clinicId';
 
 function formatDate(value) {
@@ -73,6 +75,11 @@ export const P360_LIST_COLUMN_DEFS = [
     id: 'art',
     label: H.art,
     hideWhen: () => false
+  },
+  {
+    id: 'vcct',
+    label: H.vcct,
+    hideWhen: (programFilter) => programFilter === 'infant'
   },
   {
     id: 'daArt',
@@ -238,6 +245,15 @@ export function buildListTableColumns(programFilter = '', columnOrder = []) {
       width: columnWidthForField('art', H.art, colCount),
       sortValue: (r) => r.artNumber,
       getValue: (r) => (r.artNumber ? String(r.artNumber).trim() : '—')
+    },
+    vcct: {
+      id: 'vcct',
+      label: H.vcct,
+      width: columnWidthForField('vcct', H.vcct, colCount) + 16,
+      mono: true,
+      sortValue: (r) => r.vcctId,
+      getValue: (r) => (r.vcctId ? String(r.vcctId).trim() : '—'),
+      renderCell: (row) => createElement(Patient360ListVcctCell, { row })
     },
     daArt: {
       id: 'daArt',

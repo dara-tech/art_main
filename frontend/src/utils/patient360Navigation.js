@@ -1,3 +1,5 @@
+import { isProvinceCompareCode } from './siteSelection';
+
 /** Map visualize / report indicator → Patient 360 section tab. */
 export function indicatorToP360Section(indicatorId) {
   const key = String(indicatorId || '')
@@ -34,21 +36,28 @@ export function resolveClinicIdFromRow(row = {}) {
 export function resolveP360SiteCode(row = {}, detail = {}, pageContext = {}) {
   const fromRow = row.site_code ?? row.siteCode;
   if (fromRow) return String(fromRow).trim();
-  if (detail?.raw?.facilityCode) return String(detail.raw.facilityCode).trim();
-  if (pageContext.scopeMode === 'compare' && pageContext.compareSiteCodes?.length) {
-    return String(pageContext.compareSiteCodes[0]).trim();
+  const fromDetail = detail?.raw?.facilityCode;
+  if (fromDetail && !isProvinceCompareCode(fromDetail) && fromDetail !== '__CAMBODIA__' && fromDetail !== 'all') {
+    return String(fromDetail).trim();
   }
-  if (pageContext.siteCode) return String(pageContext.siteCode).trim();
+  if (pageContext.scopeMode === 'compare' && pageContext.compareSiteCodes?.length) {
+    const code = String(pageContext.compareSiteCodes[0]).trim();
+    if (!isProvinceCompareCode(code) && code !== '__CAMBODIA__' && code !== 'all') return code;
+  }
+  const pageCode = pageContext.siteCode ? String(pageContext.siteCode).trim() : '';
+  if (pageCode && !isProvinceCompareCode(pageCode) && pageCode !== '__CAMBODIA__' && pageCode !== 'all') {
+    return pageCode;
+  }
   return '';
 }
 
 /** Build path + metadata for opening Patient 360 from visualize detail. */
-export function buildPatient360Target(row = {}, { detail, pageContext, indicatorId } = {}) {
+export function buildPatient360Target(row = {}, { detail, pageContext, indicatorId, section: sectionOverride } = {}) {
   const clinicId = resolveClinicIdFromRow(row);
   if (!clinicId) return null;
   const siteCode = resolveP360SiteCode(row, detail, pageContext);
   const program = patientProgramFromDetailRow(row);
-  const section = indicatorToP360Section(indicatorId);
+  const section = sectionOverride || indicatorToP360Section(indicatorId);
   return {
     clinicId,
     siteCode,

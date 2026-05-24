@@ -1227,7 +1227,7 @@ export default function ReportHomePage({ onLogout }) {
   };
 
   return (
-    <div className="mx-auto bg-background px-3 py-3 sm:px-5 sm:py-4 lg:max-w-[300mm]">
+    <div className="mx-auto bg-card px-3 py-3 sm:px-5 sm:py-4 lg:max-w-[300mm]">
       <div className="space-y-4">
         <ReportFilters
           sites={sites}

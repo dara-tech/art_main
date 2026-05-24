@@ -11,10 +11,11 @@
 :root {
   --app-topbar-h: 2rem;
   --p360-row-h: 2rem;
-  /* Warm paper + ink (Claude-inspired neutrals) */
-  --background: oklch(0.968 0.009 78);
+  /* Unified warm paper surface — top nav, page canvas, and cards */
+  --app-surface: oklch(0.995 0.004 82);
+  --background: var(--app-surface);
   --foreground: oklch(0.28 0.022 55);
-  --card: oklch(0.995 0.004 82);
+  --card: var(--app-surface);
   --card-foreground: oklch(0.28 0.022 55);
   --popover: oklch(0.993 0.005 82);
   --popover-foreground: oklch(0.28 0.022 55);
@@ -52,9 +53,10 @@
 }
 
 .dark {
-  --background: oklch(0.2 0.018 55);
+  --app-surface: oklch(0.24 0.02 55);
+  --background: var(--app-surface);
   --foreground: oklch(0.94 0.012 82);
-  --card: oklch(0.24 0.02 55);
+  --card: var(--app-surface);
   --card-foreground: oklch(0.94 0.012 82);
   --popover: oklch(0.24 0.02 55);
   --popover-foreground: oklch(0.94 0.012 82);
@@ -154,7 +156,7 @@
     @apply font-sans antialiased;
   }
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-card text-foreground font-sans antialiased;
     margin: 0;
   }
 }

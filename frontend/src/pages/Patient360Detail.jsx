@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { APP_NAV_MUTED, P360_TABLE_PAD, P360_TABLE_TEXT, p360CardClass } from '../components/layout/appNavStyles';
 import { P360_KH } from './patient360Kh';
 import { Patient360LoadingPanel } from '../components/patient360/Patient360LoadingPanel';
+import Patient360VcctPanel from '../components/patient360/Patient360VcctPanel';
 
 const PEEK_VISITS = 5;
 
@@ -123,7 +124,15 @@ const CARE_BLOCK_KEYS = [
 ];
 
 function anyBlockRows(block, keys) {
-  return keys.some((k) => Array.isArray(block?.[k]) && block[k].length > 0);
+  return keys.some((k) => {
+    if (k === 'vcctSnapshot') {
+      const snap = block?.vcctSnapshot;
+      if (snap?.notApplicable) return false;
+      if (snap?.displaySections?.some((s) => s.rows?.length || s.tableRows?.length)) return true;
+      return Boolean(snap?.linked || snap?.artVcctId || snap?.message);
+    }
+    return Array.isArray(block?.[k]) && block[k].length > 0;
+  });
 }
 
 function statusCauseColumnHeader(rows) {
@@ -233,6 +242,8 @@ export default function Patient360Detail({
   const inFlightTabRef = useRef(null);
   const profileRef = useRef(null);
   const ensureTabLoadedRef = useRef(async () => {});
+  const profileReadyRef = useRef(false);
+  const skipNextTabEffectRef = useRef(false);
   const activeProgramRef = useRef(activeProgram);
 
   useEffect(() => {
@@ -340,14 +351,21 @@ export default function Patient360Detail({
 
   ensureTabLoadedRef.current = ensureTabLoaded;
 
+  // Stable deps only — never `profile` or `loading` (size must not change; profile merge must not re-trigger).
   useEffect(() => {
-    if (!profileRef.current) return;
+    if (!profileReadyRef.current || !profileRef.current) return;
+    if (activeSection === 'overview') return;
+    if (skipNextTabEffectRef.current) {
+      skipNextTabEffectRef.current = false;
+      return;
+    }
     ensureTabLoadedRef.current(activeSection, activeProgram);
-  }, [activeSection, activeProgram]);
+  }, [activeSection, activeProgram, clinicId]);
 
   const loadProfile = useCallback(async () => {
     const cid = String(clinicId || '').trim();
     if (!siteCode || !cid) return;
+    profileReadyRef.current = false;
     setLoading(true);
     setProfile(null);
     loadedTabsRef.current = {};
@@ -361,10 +379,15 @@ export default function Patient360Detail({
           : res.programs?.find((p) => p !== 'pntt') || res.programs?.[0] || 'adult';
       loadedTabsRef.current[first] = { summary: true, overview: true };
       profileRef.current = res;
+      profileReadyRef.current = true;
       setProfile(res);
       setActiveProgram(first);
       const tab =
         initialSection && initialSection !== 'overview' ? initialSection : 'overview';
+      if (tab !== 'overview') {
+        skipNextTabEffectRef.current = true;
+        void ensureTabLoadedRef.current(tab, first);
+      }
       setActiveSection(tab);
     } catch (e) {
       toast.error(e.response?.data?.message || e.message || P360_KH.toast.notFound);
@@ -444,7 +467,7 @@ export default function Patient360Detail({
       {toolbar}
       <Patient360Layout lockViewport>
       <AppPageShell wide className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col !p-0">
-        <Card className={cn(p360CardClass, 'flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col bg-background')}>
+        <Card className={cn(p360CardClass, 'flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col bg-card')}>
           <CardContent className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col gap-0 border-0 border-t-0 p-0 pt-0">
           {profile ? (
             <>
@@ -470,6 +493,9 @@ export default function Patient360Detail({
                         skipKeys={SKIP_REG_KEYS}
                         formatValue={cellDisplay}
                       />
+                      {(activeProgram === 'adult' || activeProgram === 'child') && block?.vcctSnapshot ? (
+                        <Patient360VcctPanel snapshot={block.vcctSnapshot} artSiteCode={siteCode} />
+                      ) : null}
                       {!isPnttOnly ? (
                         <SectionTable
                           caption={P360_KH.blocks.art}

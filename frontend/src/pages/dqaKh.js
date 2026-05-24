@@ -12,7 +12,9 @@ export const DQA_KH = {
   close: 'បិទ',
 
   pageTitle: 'ការវាយតម្លៃគុណភាពទិន្នន័យ (DQA)',
+  pageTitleShort: 'DQA',
   pageDescription: 'ដំណើរការកូដ SQL ពិនិត្យពី backend/queries/DQA សម្រាប់មូលដ្ឋានសុខាភិបាលនីមួយៗ។',
+  emptyHint: 'ជ្រើសរើសមូលដ្ឋាន រួចចុច «ដំណើរការ» ដើម្បីពិនិត្យគុណភាពទិន្នន័យ។',
   filterPlaceholder: 'ស្វែងរកតាមលេខ ឬចំណងជើង…', // standardizing placeholder naming style
   filterChecksPlaceholder: 'ស្វែងរកតាមលេខ ឬចំណងជើង…',
   summaryScripts: 'ចំនួនស្គ្រីប',
@@ -99,7 +101,9 @@ export const DQA_KH = {
     'VL test row exists but HIV load result is blank': 
       'មានជួរទិន្នន័យតេស្ត VL ប៉ុន្តែលទ្ធផលផ្ទុកមេរោគ (HIV Load) នៅទទេ',
     'Marked transfer-out (OffIn) but no exit/outcome record':
-      'បានចំណាំថាផ្ទេរចេញ (OffIn) ប៉ុន្តែមិនមានកំណត់ត្រាបញ្ឈប់ការព្យាបាល/លទ្ធផល'
+      'បានចំណាំថាផ្ទេរចេញ (OffIn) ប៉ុន្តែមិនមានកំណត់ត្រាបញ្ឈប់ការព្យាបាល/លទ្ធផល',
+    'VCCT linked on ART but mapping issue (site / not found)':
+      'VCCT ភ្ជាប់លើ ART ប៉ុន្តែភ្ជាប់មូលដ្ឋាន VCCT មិនត្រឹមត្រូវ / រកមិនឃើញ'
   },
 
   /** SQL column key → Khmer header */
@@ -154,7 +158,13 @@ export const DQA_KH = {
     TypeofReturn: 'ប្រភេទត្រឡប់មកវិញ',
     last_vl_date: 'ថ្ងៃតេស្ត VL ចុងក្រោយ',
     appt_gap: 'ចន្លោះណាត់ជួប (ថ្ងៃ)',
-    TPTdrug: 'កូដថ្នាំ TPT'
+    TPTdrug: 'កូដថ្នាំ TPT',
+    vcct_id: 'លេខ VCCT',
+    vcct_code: 'Vcctcode (ART)',
+    art_default_vcct_site: 'VCCT default (ART)',
+    resolved_vcct_site: 'VCCT site (resolved)',
+    found_vcct_sites: 'រកឃើញក្នុង vccts',
+    mapping_status: 'ស្ថានភាពភ្ជាប់'
   },
 
   /** English issue_type from SQL → Khmer */
@@ -199,7 +209,11 @@ export const DQA_KH = {
     'Form A TPT without visit TPT': 'មាន TPT ក្នុងទម្រង់ Form A ប៉ុន្តែគ្មានក្នុងកំណត់ត្រាមកទទួលសេវា',
     'Birth date after first visit': 'ថ្ងៃខែឆ្នាំកំណើត ក្រោយថ្ងៃមកទទួលសេវាដំបូង',
     'VL result blank': 'លទ្ធផល VL ទទេ',
-    'Transfer out without exit record': 'មានស្ថានភាពផ្ទេរចេញ តែគ្មានកំណត់ត្រាបញ្ឈប់ការព្យាបាល'
+    'Transfer out without exit record': 'មានស្ថានភាពផ្ទេរចេញ តែគ្មានកំណត់ត្រាបញ្ឈប់ការព្យាបាល',
+    'VCCT record not found': 'មិនរកឃើញកំណត់ត្រា VCCT',
+    'VCCT site unmapped': 'គ្មានកូដ VCCT site',
+    'VCCT at other site': 'VCCT នៅមូលដ្ឋានផ្សេង',
+    'VCCT ID at multiple sites': 'លេខ VCCT ដូចគ្នាច្រើនមូលដ្ឋាន'
   },
 
   values: {

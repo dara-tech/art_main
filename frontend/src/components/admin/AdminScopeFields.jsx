@@ -1,4 +1,8 @@
+import { cn } from '@/lib/utils';
 import { getProvinceName } from '../../utils/provinces';
+import { P360_TABLE_TEXT, p360ControlClass } from '../layout/appNavStyles';
+
+const selectClass = cn(p360ControlClass, 'h-8 w-full');
 
 /**
  * Shared scope picker: facility, province, or OD.
@@ -23,7 +27,7 @@ export default function AdminScopeFields({
         <select
           value={scopeType}
           onChange={(e) => onScopeTypeChange(e.target.value)}
-          className="h-9 w-full border border-border/80 bg-background px-2 text-sm"
+          className={selectClass}
         >
           <option value="site">Single facility</option>
           <option value="province">Whole province</option>
@@ -35,7 +39,7 @@ export default function AdminScopeFields({
         <select
           value={siteId}
           onChange={(e) => onSiteIdChange(e.target.value)}
-          className="h-9 w-full border border-border/80 bg-background px-2 text-sm"
+          className={selectClass}
         >
           {(sites || []).map((s) => (
             <option key={s.id} value={s.id}>
@@ -49,7 +53,7 @@ export default function AdminScopeFields({
         <select
           value={provinceId}
           onChange={(e) => onProvinceIdChange(e.target.value)}
-          className="h-9 w-full border border-border/80 bg-background px-2 text-sm"
+          className={selectClass}
         >
           {(provinces || []).map((p) => (
             <option key={p.id} value={p.id}>
@@ -63,7 +67,7 @@ export default function AdminScopeFields({
         <select
           value={odCode}
           onChange={(e) => onOdCodeChange(e.target.value)}
-          className="h-9 w-full border border-border/80 bg-background px-2 text-sm"
+          className={selectClass}
         >
           {(ods || []).map((o) => (
             <option key={o.code} value={o.code}>
@@ -74,7 +78,7 @@ export default function AdminScopeFields({
       ) : null}
 
       {scopeType === 'province' ? (
-        <p className="text-[11px] text-muted-foreground">
+        <p className={cn('text-muted-foreground', P360_TABLE_TEXT)}>
           User can run reports and DQA for all facilities in this province.
         </p>
       ) : null}

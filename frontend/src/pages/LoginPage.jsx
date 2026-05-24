@@ -30,7 +30,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col justify-center bg-background px-3 py-6 sm:px-4">
+    <div className="flex min-h-screen flex-col justify-center bg-card px-3 py-6 sm:px-4">
       <div className="mx-auto w-full max-w-sm overflow-hidden border border-border/80 bg-card shadow-xl shadow-black/8">
         <div className="h-1.5 w-full bg-primary" />
         <div className="border-b border-border/80 bg-muted/70 px-4 py-4 text-center">

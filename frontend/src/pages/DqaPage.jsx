@@ -9,11 +9,13 @@ import {
   RiShieldCheckLine
 } from '@remixicon/react';
 import { Button } from '@/components/ui/button';
-import RunButton, { filterLabelClass } from '@/components/ui/RunButton';
 import { cn } from '@/lib/utils';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import SiteSelectModal from '../components/sites/SiteSelectModal';
+import { Card, CardContent } from '@/components/ui/card';
 import AppPageShell from '../components/layout/AppPageShell';
+import { p360CardClass, P360_TABLE_TEXT } from '../components/layout/appNavStyles';
+import Patient360Layout from '../components/patient360/Patient360Layout';
+import { Patient360LoadingPanel } from '../components/patient360/Patient360LoadingPanel';
+import DqaToolbar from '../components/dqa/DqaToolbar';
 import api from '../services/api';
 import { useSites } from '../contexts/SitesContext';
 import { filterSitesByUserScope, isFacilitySite, isFacilitySiteCode, pickDefaultSiteCode } from '../utils/siteSelection';
@@ -31,6 +33,12 @@ const DQA_COLUMN_PRIORITY = [
   'clinicid',
   'ClinicID',
   'patient_type',
+  'vcct_id',
+  'vcct_code',
+  'resolved_vcct_site',
+  'art_default_vcct_site',
+  'found_vcct_sites',
+  'mapping_status',
   'ART',
   'DaArt',
   'Tptdrugname',
@@ -85,7 +93,11 @@ const ISSUE_HIGHLIGHT_BY_TYPE = {
   'Form A TPT without visit TPT': ['Date_Start_TPT', 'TPTdrug'],
   'Birth date after first visit': ['DaBirth', 'DafirstVisit'],
   'VL result blank': ['HIVLoad', 'Dat', 'DaCollect'],
-  'Transfer out without exit record': ['OffIn', 'DafirstVisit']
+  'Transfer out without exit record': ['OffIn', 'DafirstVisit'],
+  'VCCT record not found': ['vcct_id', 'vcct_code', 'art_default_vcct_site'],
+  'VCCT site unmapped': ['vcct_id', 'vcct_code', 'art_default_vcct_site'],
+  'VCCT at other site': ['vcct_id', 'resolved_vcct_site', 'art_default_vcct_site', 'vcct_code'],
+  'VCCT ID at multiple sites': ['vcct_id', 'found_vcct_sites', 'resolved_vcct_site', 'art_default_vcct_site']
 };
 
 function orderDqaColumns(keys) {
@@ -351,160 +363,165 @@ export default function DqaPage({ onLogout }) {
     return buildDetailPageItems(detailPagination.page, detailPagination.totalPages);
   }, [detailPagination]);
 
+  const canRun = Boolean(siteCode) && !loadingMeta && isFacilitySiteCode(sites, siteCode);
+  const listPending = loadingMeta || (loadingSummary && !summary.length);
+
+  const toolbar = (
+    <DqaToolbar
+      sites={sites}
+      siteCode={siteCode}
+      onSiteChange={setSiteCode}
+      loadingMeta={loadingMeta}
+      loadingSummary={loadingSummary}
+      onRun={runSummary}
+      canRun={canRun}
+      search={search}
+      onSearchChange={setSearch}
+      summaryCount={summary.length}
+      totalIssues={totalIssues}
+    />
+  );
+
   return (
-    <AppPageShell>
-    <Card className="rounded-none border-border/80 py-0 shadow-xl shadow-black/6 gap-0 overflow-hidden">
-      <div className="h-1.5 w-full bg-primary" />
-      <CardHeader className="border-b border-border/80 bg-muted/65 px-4 pb-3 pt-4">
-        <CardTitle className="inline-flex items-center gap-2">
-          <RiShieldCheckLine className="size-5" />
-          {DQA_KH.pageTitle}
-        </CardTitle>
-        <CardDescription className="mt-1">{DQA_KH.pageDescription}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4 p-0">
-        <div className="border-b border-border/80 bg-muted/20 p-4 sm:p-5">
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-            <SiteSelectModal
-              sites={sites}
-              value={siteCode}
-              onChange={setSiteCode}
-              facilityOnly
-              label={DQA_KH.facility}
-              modalText={DQA_KH.siteModal}
-              disabled={loadingMeta}
-            />
-            <div className="grid gap-2">
-              <span className={`${filterLabelClass} opacity-0 select-none`}>{DQA_KH.run}</span>
-              <RunButton
-                disabled={!siteCode || loadingMeta || !isFacilitySiteCode(sites, siteCode)}
-                loading={loadingSummary}
-                onClick={runSummary}
-                label={DQA_KH.run}
-                loadingLabel={DQA_KH.running}
-              />
-            </div>
-          </div>
-          {summary.length > 0 && (
-            <div className="mt-3 text-xs text-muted-foreground">
-              {summary.length} {DQA_KH.summaryScripts} · {totalIssues} {DQA_KH.summaryIssueRows}
-            </div>
-          )}
-        </div>
+    <>
+      {toolbar}
+      <Patient360Layout lockViewport>
+        <AppPageShell wide className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col !p-0">
+          <Card className={cn(p360CardClass, 'flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col bg-card')}>
+            <CardContent className="relative flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col p-0">
+              {listPending ? (
+                <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/35 backdrop-blur-[3px]">
+                  <Patient360LoadingPanel
+                    label={loadingMeta ? DQA_KH.loadingScripts : DQA_KH.running}
+                    className="border-0 bg-transparent"
+                    minHeight="min-h-0"
+                  />
+                </div>
+              ) : null}
+              <div
+                className={cn(
+                  'flex min-h-0 flex-1 flex-col',
+                  loadingSummary && summary.length && 'pointer-events-none opacity-75'
+                )}
+              >
+                {error ? (
+                  <div
+                    className={cn(
+                      'shrink-0 border-b border-destructive/30 bg-destructive/10 px-4 py-3 text-destructive',
+                      P360_TABLE_TEXT
+                    )}
+                  >
+                    {error}
+                  </div>
+                ) : null}
 
-        <div className="space-y-4 p-4">
-
-        {loadingMeta ? (
-          <div className="border border-border/80 bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
-            {DQA_KH.loadingScripts}
-          </div>
-        ) : error ? (
-          <div className="border border-destructive/30 bg-destructive/10 px-4 py-4 text-sm text-destructive">
-            {error}
-          </div>
-        ) : (
-          <>
-            <div className="relative">
-              <RiSearchLine className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={DQA_KH.filterChecksPlaceholder}
-                className="h-10 w-full rounded-none border border-border/80 bg-background pl-10 pr-3 text-sm shadow-sm"
-              />
-            </div>
-
-            <div className="overflow-auto border border-border/80">
-              <table className="w-full min-w-[640px] text-left text-xs">
-                <thead className="border-b border-border/80 bg-muted/40">
-                  <tr>
-                    <th className="w-12 px-3 py-2 font-semibold">{DQA_KH.table.number}</th>
-                    <th className="px-3 py-2 font-semibold">{DQA_KH.table.check}</th>
-                    <th className="w-24 px-3 py-2 text-right font-semibold">{DQA_KH.table.issues}</th>
-                    <th className="w-28 px-3 py-2 text-right font-semibold">{DQA_KH.table.ms}</th>
-                    <th className="w-40 px-3 py-2 text-right font-semibold">{DQA_KH.table.actions}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredScripts.map((script) => {
-                    const row = summaryById.get(script.id);
-                    const count = row?.rowCount;
-                    const hasRun = row != null;
-                    const hasIssues = hasRun && count > 0;
-                    const isOk = hasRun && count === 0;
-                    return (
-                      <tr key={script.id} className="border-b border-border/50 hover:bg-muted/15">
-                        <td className="px-3 py-2.5 font-mono text-xs text-muted-foreground">
-                          {script.checkNumber || '—'}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <div className="font-medium text-foreground">{toDqaTitleKh(script.title)}</div>
-                          {row?.error ? (
-                            <div className="mt-1 text-[10px] text-destructive">{row.error}</div>
-                          ) : null}
-                        </td>
-                        <td className="px-3 py-2.5 text-right">
-                          {!hasRun ? (
-                            <span className="text-muted-foreground">—</span>
-                          ) : hasIssues ? (
-                            <button
-                              type="button"
-                              className="inline-flex items-center gap-1 font-semibold text-amber-700 hover:underline"
-                              onClick={() => openRowsModal(script)}
-                            >
-                              <RiAlertLine className="size-3.5" />
-                              {count}
-                            </button>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-emerald-700">
-                              <RiCheckLine className="size-3.5" />
-                              0
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2.5 text-right text-muted-foreground">
-                          {row?.queryMs != null ? row.queryMs : '—'}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <div className="flex justify-end gap-1">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className={cn(
-                                'h-9 gap-1 rounded-none px-2.5 text-xs',
-                                'border-border/80 shadow-sm'
-                              )}
-                              onClick={() => openSqlModal(script)}
-                            >
-                              <RiCodeSSlashLine className="size-3.5" />
-                              {DQA_KH.sql}
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className={cn(
-                                'h-9 gap-1 rounded-none px-2.5 text-xs',
-                                'border-border/80 shadow-sm'
-                              )}
-                              disabled={!siteCode || (hasRun && !hasIssues && !row?.error)}
-                              onClick={() => openRowsModal(script)}
-                            >
-                              {DQA_KH.rows}
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-        </div>
-
-      </CardContent>
-    </Card>
+                {!loadingMeta && !error && !scripts.length ? (
+                  <div
+                    className={cn(
+                      'flex flex-1 flex-col items-center justify-center gap-2 px-6 py-12 text-center text-muted-foreground',
+                      P360_TABLE_TEXT
+                    )}
+                  >
+                    <RiShieldCheckLine className="size-10 text-primary/40" aria-hidden />
+                    <p>{DQA_KH.loadingScripts}</p>
+                  </div>
+                ) : !loadingMeta && !error ? (
+                  <div className="flex min-h-0 flex-1 flex-col">
+                    {summary.length === 0 && !loadingSummary ? (
+                      <p
+                        className={cn(
+                          'shrink-0 border-b border-border/80 bg-muted/20 px-4 py-2 text-muted-foreground',
+                          P360_TABLE_TEXT
+                        )}
+                      >
+                        {DQA_KH.emptyHint}
+                      </p>
+                    ) : null}
+                    <div className="min-h-0 flex-1 overflow-auto">
+                    <table className={cn('w-full min-w-[640px] border-collapse text-left', P360_TABLE_TEXT)}>
+                      <thead className="sticky top-0 z-10 border-b border-border/80 bg-muted">
+                        <tr>
+                          <th className="w-12 px-3 py-2 font-semibold">{DQA_KH.table.number}</th>
+                          <th className="px-3 py-2 font-semibold">{DQA_KH.table.check}</th>
+                          <th className="w-24 px-3 py-2 text-right font-semibold">{DQA_KH.table.issues}</th>
+                          <th className="w-28 px-3 py-2 text-right font-semibold">{DQA_KH.table.ms}</th>
+                          <th className="w-40 px-3 py-2 text-right font-semibold">{DQA_KH.table.actions}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredScripts.map((script) => {
+                          const row = summaryById.get(script.id);
+                          const count = row?.rowCount;
+                          const hasRun = row != null;
+                          const hasIssues = hasRun && count > 0;
+                          return (
+                            <tr key={script.id} className="border-b border-border/40 hover:bg-muted/25">
+                              <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
+                                {script.checkNumber || '—'}
+                              </td>
+                              <td className="px-3 py-2">
+                                <div className="font-medium text-foreground">{toDqaTitleKh(script.title)}</div>
+                                {row?.error ? (
+                                  <div className="mt-0.5 text-[10px] text-destructive">{row.error}</div>
+                                ) : null}
+                              </td>
+                              <td className="px-3 py-2 text-right">
+                                {!hasRun ? (
+                                  <span className="text-muted-foreground">—</span>
+                                ) : hasIssues ? (
+                                  <button
+                                    type="button"
+                                    className="inline-flex items-center gap-1 font-semibold text-amber-700 hover:underline"
+                                    onClick={() => openRowsModal(script)}
+                                  >
+                                    <RiAlertLine className="size-3.5" />
+                                    {count}
+                                  </button>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-emerald-700">
+                                    <RiCheckLine className="size-3.5" />
+                                    0
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                                {row?.queryMs != null ? row.queryMs : '—'}
+                              </td>
+                              <td className="px-3 py-2">
+                                <div className="flex justify-end gap-1">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="h-8 gap-1 rounded-none border-border/80 px-2.5 text-xs shadow-sm"
+                                    onClick={() => openSqlModal(script)}
+                                  >
+                                    <RiCodeSSlashLine className="size-3.5" />
+                                    {DQA_KH.sql}
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="h-8 gap-1 rounded-none border-border/80 px-2.5 text-xs shadow-sm"
+                                    disabled={!siteCode || (hasRun && !hasIssues && !row?.error)}
+                                    onClick={() => openRowsModal(script)}
+                                  >
+                                    {DQA_KH.rows}
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </CardContent>
+          </Card>
+        </AppPageShell>
+      </Patient360Layout>
 
       <AnimatePresence>
         {sqlModalOpen && sqlPreview && (
@@ -779,6 +796,6 @@ export default function DqaPage({ onLogout }) {
           </motion.div>
         )}
       </AnimatePresence>
-    </AppPageShell>
+    </>
   );
 }

@@ -4,14 +4,14 @@ const infantReportService = require('./infantReportService');
 const { SECTION_DEFS: INFANT_SECTION_DEFS } = require('./infantReportService');
 const pnttReportService = require('./pnttReportService');
 const { runPool } = require('../utils/asyncPool');
-const { resolveFacilityCodesByHierarchy } = require('../utils/reportAggregation');
+const { resolveFacilityCodesByHierarchy, provinceIdFromCode } = require('../utils/reportAggregation');
 
 const VISUALIZE_CONCURRENCY = Number(process.env.VISUALIZE_CONCURRENCY || 2);
 /** 0 = no cap on periods per run */
 const VISUALIZE_MAX_PERIODS = Number(process.env.VISUALIZE_MAX_PERIODS || 0);
 const VISUALIZE_MAX_INDICATORS = Number(process.env.VISUALIZE_MAX_INDICATORS || 0);
 const VISUALIZE_MAX_RUNS = Number(process.env.VISUALIZE_MAX_RUNS || 0);
-const VISUALIZE_MAX_COMPARE_FACILITIES = Number(process.env.VISUALIZE_MAX_COMPARE_FACILITIES || 8);
+const VISUALIZE_MAX_COMPARE_FACILITIES = Number(process.env.VISUALIZE_MAX_COMPARE_FACILITIES || 80);
 const VISUALIZE_MAX_ROLLUP_FACILITIES = Number(process.env.VISUALIZE_MAX_ROLLUP_FACILITIES || 80);
 
 const PROGRAM = {
@@ -273,7 +273,9 @@ function buildScopeMeta(ctx, sites = []) {
     const site = (sites || []).find((s) => String(s.code) === siteCode);
     scopeLabel = site?.province || site?.name || siteCode;
   } else if (scopeMode === 'compare') {
-    scopeLabel = `${ctx.compareSiteCodes?.length || 0} facilities`;
+    const compareLevel = ctx.compareLevel === 'province' ? 'province' : 'facility';
+    const unitLabel = compareLevel === 'province' ? 'provinces' : 'facilities';
+    scopeLabel = `${ctx.compareSiteCodes?.length || 0} ${unitLabel}`;
   } else {
     const site = (sites || []).find((s) => String(s.code) === siteCode);
     scopeLabel = site ? `${site.code} - ${site.name}` : siteCode;
@@ -295,14 +297,16 @@ function resolveExecutionScope(ctx) {
   const siteCode = String(ctx.siteCode || '').trim();
 
   if (scopeMode === 'compare') {
-    const facilityCodes = [...new Set((ctx.compareSiteCodes || []).map(String).filter(Boolean))];
+    const compareUnits = buildCompareUnits(ctx);
     return {
       scopeMode: 'compare',
-      siteLevel: 'facility',
+      compareLevel: ctx.compareLevel === 'province' ? 'province' : 'facility',
+      siteLevel: ctx.compareLevel === 'province' ? 'province' : 'facility',
       siteCode,
-      facilityCodes,
+      compareUnits,
+      facilityCodes: compareUnits.flatMap((u) => u.facilityCodes),
       useAll: false,
-      facilityMultiplier: facilityCodes.length
+      facilityMultiplier: compareUnits.length
     };
   }
 
@@ -346,6 +350,33 @@ function resolveExecutionScope(ctx) {
 function facilityLabelFor(sites, code) {
   const site = (sites || []).find((s) => String(s.code) === String(code));
   return site ? `${site.code} - ${site.name}` : String(code);
+}
+
+function provinceLabelFor(sites, provinceCode) {
+  const code = String(provinceCode || '').trim();
+  const provinceId = provinceIdFromCode(code);
+  if (provinceId) {
+    const match = (sites || []).find((s) => String(s.province_id ?? s.provinceId ?? '') === provinceId);
+    if (match?.province) return String(match.province);
+  }
+  return code.startsWith('province:') ? `Province ${provinceIdFromCode(code)}` : code;
+}
+
+function buildCompareUnits(ctx) {
+  const sites = ctx.sites || [];
+  const codes = [...new Set((ctx.compareSiteCodes || []).map(String).filter(Boolean))];
+  if (ctx.compareLevel === 'province') {
+    return codes.map((code) => ({
+      code,
+      facilityCodes: resolveFacilityCodesByHierarchy(sites, code, 'province'),
+      label: provinceLabelFor(sites, code)
+    }));
+  }
+  return codes.map((code) => ({
+    code,
+    facilityCodes: [code],
+    label: facilityLabelFor(sites, code)
+  }));
 }
 
 function validateRunInput({ siteCode, periods, indicatorIds, facilityMultiplier = 1 }) {
@@ -551,10 +582,18 @@ async function runAggregatedRollup(facilityCodes, indicatorId, period, useAll) {
 function buildTasks(execScope, periods, indicatorIds) {
   const tasks = [];
   if (execScope.scopeMode === 'compare') {
-    for (const facilityCode of execScope.facilityCodes) {
+    for (const unit of execScope.compareUnits || []) {
       for (const period of periods) {
         for (const indicatorId of indicatorIds) {
-          tasks.push({ kind: 'compare', facilityCode, period, indicatorId });
+          tasks.push({
+            kind: execScope.compareLevel === 'province' ? 'compareProvince' : 'compare',
+            compareCode: unit.code,
+            compareLabel: unit.label,
+            facilityCodes: unit.facilityCodes,
+            facilityCode: execScope.compareLevel === 'province' ? null : unit.code,
+            period,
+            indicatorId
+          });
         }
       }
     }
@@ -590,6 +629,17 @@ async function executeTask(task, execScope, sites, scopeMeta) {
       task.period,
       task.indicatorId,
       { ...baseMeta, facilityCode, facilityLabel, aggregated: false }
+    );
+  }
+
+  if (task.kind === 'compareProvince') {
+    const facilityCode = task.compareCode;
+    const facilityLabel = task.compareLabel;
+    return runOneScoped(
+      () => runAggregatedRollup(task.facilityCodes, task.indicatorId, task.period, false),
+      task.period,
+      task.indicatorId,
+      { ...baseMeta, facilityCode, facilityLabel, aggregated: true }
     );
   }
 

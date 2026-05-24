@@ -59,6 +59,34 @@ export const VIZ_COLOR_PALETTES = {
 
 export const CHART_PALETTE_IDS = Object.keys(VIZ_COLOR_PALETTES);
 
+export const CHART_FONT_SIZE_OPTIONS = [9, 10, 11, 12, 13, 14];
+export const CHART_FONT_WEIGHT_OPTIONS = ['normal', 'medium', 'bold'];
+
+const CHART_AXIS_FILL = '#73695c';
+
+export function resolveChartFontWeight(weight = 'medium') {
+  if (weight === 'bold') return 700;
+  if (weight === 'normal') return 400;
+  return 500;
+}
+
+/** Recharts tick / axis / HTML period strip typography from chart settings. */
+export function resolveChartTypography(settings = DEFAULT_CHART_SETTINGS) {
+  const rawSize = Number(settings.chartFontSize);
+  const fontSize = CHART_FONT_SIZE_OPTIONS.includes(rawSize) ? rawSize : 11;
+  const fontWeight = resolveChartFontWeight(settings.chartFontWeight);
+  const axisTitleWeight = settings.chartFontWeight === 'bold' ? 700 : 600;
+  return {
+    fontSize,
+    fontWeight,
+    fill: CHART_AXIS_FILL,
+    tick: { fontSize, fill: CHART_AXIS_FILL, fontWeight },
+    axisTitle: { fill: CHART_AXIS_FILL, fontSize, fontWeight: axisTitleWeight },
+    periodDenseSize: Math.max(9, fontSize - 1),
+    labelList: { fontSize, fontWeight, fill: 'var(--foreground)' }
+  };
+}
+
 export const DEFAULT_CHART_SETTINGS = {
   yFromZero: true,
   yMaxMode: 'auto',
@@ -76,7 +104,9 @@ export const DEFAULT_CHART_SETTINGS = {
   barRadius: 0,
   lineCurve: 'monotone',
   lineStrokeWidth: 2,
-  yTicks: 5
+  yTicks: 5,
+  chartFontSize: 11,
+  chartFontWeight: 'medium'
 };
 
 export function getPaletteColors(paletteId = 'default') {
@@ -97,18 +127,22 @@ export function applySeriesColors(series = [], settings = DEFAULT_CHART_SETTINGS
   }));
 }
 
-export function resolveXAxisLayout(denseX, settings = DEFAULT_CHART_SETTINGS) {
+export function resolveXAxisLayout(denseX, settings = DEFAULT_CHART_SETTINGS, pointCount = 0) {
   const mode = settings.xLabelAngle || 'auto';
   if (mode === 'straight') {
-    return { angle: 0, textAnchor: 'middle', height: 30, bottom: 8 };
+    return { angle: 0, textAnchor: 'middle', height: 52, bottom: 40, axisTitleOffset: 14 };
   }
   if (mode === 'slanted') {
-    return { angle: -32, textAnchor: 'end', height: 72, bottom: 56 };
+    return { angle: -35, textAnchor: 'end', height: 80, bottom: 64, axisTitleOffset: 14 };
   }
   if (denseX) {
-    return { angle: -32, textAnchor: 'end', height: 72, bottom: 56 };
+    return { angle: -35, textAnchor: 'end', height: 80, bottom: 64, axisTitleOffset: 14 };
   }
-  return { angle: 0, textAnchor: 'middle', height: 30, bottom: 8 };
+  if (pointCount > 8) {
+    return { angle: -35, textAnchor: 'end', height: 80, bottom: 64, axisTitleOffset: 14 };
+  }
+  /* Multiple quarters/months: horizontal period labels under bars */
+  return { angle: 0, textAnchor: 'middle', height: 56, bottom: 44, axisTitleOffset: 16 };
 }
 
 /** Best-effort hex for native color input (oklch falls back to theme primary). */

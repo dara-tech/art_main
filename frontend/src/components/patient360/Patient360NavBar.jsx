@@ -60,10 +60,10 @@ export function Patient360NavRow({ tone = 'default', className, children }) {
     tone === 'filters'
       ? 'border-b border-border/80 bg-muted/15'
       : tone === 'plain'
-        ? 'border-0 bg-background'
+        ? 'border-0 bg-card/95'
         : tone === 'tabs'
-          ? 'border-b border-border/80 bg-background'
-          : 'border-b border-border/80 bg-background';
+          ? 'border-b border-border/80 bg-card/95'
+          : 'border-b border-border/80 bg-card/95';
 
   return <div className={p360ToolbarRowClass(cn(toneClass, className))}>{children}</div>;
 }

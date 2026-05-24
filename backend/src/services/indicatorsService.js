@@ -60,6 +60,24 @@ class IndicatorsService {
     });
   }
 
+  /** Load a detail-only SQL file added after server start (e.g. viz_compare_patient_status). */
+  loadDetailQueryIfPresent(id) {
+    if (this.detailQueries.has(id)) return true;
+    const filePath = path.join(BASE_DIR, `${id}_details.sql`);
+    if (!fs.existsSync(filePath)) return false;
+    const sql = fs.readFileSync(filePath, 'utf8');
+    this.detailQueries.set(id, sql);
+    return true;
+  }
+
+  getDetailQuery(id) {
+    let sql = this.detailQueries.get(id);
+    if (!sql && this.loadDetailQueryIfPresent(id)) {
+      sql = this.detailQueries.get(id);
+    }
+    return sql || null;
+  }
+
   async executeAll(siteCode, params) {
     const startedAt = Date.now();
     const ids = Array.from(this.queries.keys()).sort();
@@ -102,7 +120,7 @@ class IndicatorsService {
   }
 
   async fetchDetailRowsFromDb(siteCode, id, params) {
-    const sql = this.detailQueries.get(id);
+    const sql = this.getDetailQuery(id);
     if (!sql) throw new Error(`Indicator detail query not found: ${id}`);
     const scopedSql = processQuery(sql, params);
     const conn = await siteDatabaseManager.getSiteConnection(siteCode);

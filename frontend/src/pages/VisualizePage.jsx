@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import AppPageShell from '../components/layout/AppPageShell';
 import Patient360Layout from '../components/patient360/Patient360Layout';
 import VisualizeToolbar from '../components/visualize/VisualizeToolbar';
+import { VIZ_COMPARE_MAX } from '../components/visualize/VisualizeCompareSitesModal';
 import VisualizePickerModal from '../components/visualize/VisualizePickerModal';
 import VisualizeResults from '../components/visualize/VisualizeResults';
 import { Patient360LoadingPanel } from '../components/patient360/Patient360LoadingPanel';
@@ -13,6 +14,7 @@ import { useSites } from '../contexts/SitesContext';
 import { useAuth } from '../contexts/AuthContext';
 import {
   filterSitesByUserScope,
+  inferCompareSelectionLevel,
   inferSiteLevelFromCode,
   isFacilitySite,
   isFacilitySiteCode,
@@ -95,6 +97,7 @@ export default function VisualizePage() {
     return d ? [d] : [];
   });
   const [catalog, setCatalog] = useState([]);
+  const [vizLimits, setVizLimits] = useState({ maxCompareFacilities: VIZ_COMPARE_MAX });
   const [indicatorIds, setIndicatorIds] = useState(DEFAULT_INDICATOR_IDS);
   const [periodKeys, setPeriodKeys] = useState(() => {
     const q = listRecentQuarters(1)[0];
@@ -233,6 +236,9 @@ export default function VisualizePage() {
       .then((res) => {
         const list = res?.indicators || [];
         setCatalog(list);
+        if (res?.limits?.maxCompareFacilities) {
+          setVizLimits(res.limits);
+        }
         if (list.length) {
           setIndicatorIds((prev) => {
             const kept = prev.filter((id) => list.some((c) => c.id === id));
@@ -256,10 +262,12 @@ export default function VisualizePage() {
     [navigate, persistVisualizeSession]
   );
 
-  const siteLevel = useMemo(
-    () => (scopeMode === 'compare' ? 'facility' : inferSiteLevelFromCode(siteCode, sites)),
-    [scopeMode, siteCode, sites]
-  );
+  const siteLevel = useMemo(() => {
+    if (scopeMode === 'compare') {
+      return inferCompareSelectionLevel(compareSiteCodes) === 'province' ? 'province' : 'facility';
+    }
+    return inferSiteLevelFromCode(siteCode, sites);
+  }, [scopeMode, siteCode, sites, compareSiteCodes]);
 
   const handleScopeModeChange = useCallback(
     (mode) => {
@@ -325,6 +333,7 @@ export default function VisualizePage() {
       onScopeModeChange={handleScopeModeChange}
       compareSiteCodes={compareSiteCodes}
       onCompareSiteCodesChange={setCompareSiteCodes}
+      maxCompareFacilities={vizLimits.maxCompareFacilities || VIZ_COMPARE_MAX}
       indicatorCount={indicatorIds.length}
       periodKeys={periodKeys}
       onPeriodKeysChange={setPeriodKeys}
@@ -352,7 +361,7 @@ export default function VisualizePage() {
       {toolbar}
       <Patient360Layout lockViewport>
         <AppPageShell wide className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col !p-0">
-          <Card className={cn(p360CardClass, 'flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col bg-background')}>
+          <Card className={cn(p360CardClass, 'flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col bg-card')}>
             <CardContent className="relative flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col p-0">
               {loading && !results.length ? (
                 <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/35 backdrop-blur-[3px]">
@@ -377,6 +386,7 @@ export default function VisualizePage() {
                   siteCode={scopeMode === 'compare' ? compareSiteCodes[0] : siteCode}
                   siteLevel={siteLevel}
                   compareSiteCodes={compareSiteCodes}
+                  sites={sites}
                   periods={periods}
                   onNavigateToPatient360={handleNavigateToPatient360}
                   onBeforeNavigateToPatient360={() => persistVisualizeSession(true)}

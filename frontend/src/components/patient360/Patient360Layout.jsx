@@ -59,7 +59,7 @@ export default function Patient360Layout({ toolbar, children, className, lockVie
     return (
       <div
         className={cn(
-          'fixed bottom-0 left-0 right-0 z-30 flex w-full max-w-full min-h-0 flex-col overflow-x-hidden overflow-y-hidden bg-background',
+          'fixed bottom-0 left-0 right-0 z-30 flex w-full max-w-full min-h-0 flex-col overflow-x-hidden overflow-y-hidden bg-card',
           className
         )}
         style={{

@@ -88,6 +88,12 @@ export default function Patient360SubNav({
             {summary.dateOfBirth ? (
               <SubNavFact label={P360_KH.summary.dob} value={formatShortDate(summary.dateOfBirth)} />
             ) : null}
+            {summary.registrationDate ? (
+              <SubNavFact label={P360_KH.vcct.registered} value={formatShortDate(summary.registrationDate)} />
+            ) : null}
+            {summary.hivResult ? (
+              <SubNavFact label={P360_KH.vcct.hivResult} value={summary.hivResult} />
+            ) : null}
             {summary.artNumber ? (
               <SubNavFact label={P360_KH.summary.art} value={summary.artNumber} mono />
             ) : null}

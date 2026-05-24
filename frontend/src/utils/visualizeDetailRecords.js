@@ -4,6 +4,10 @@ import {
   normalizeDetailRecord,
   paginateDetailRowsClient
 } from './indicatorDetailRecords';
+import { resolveDetailSiteParams } from './siteSelection';
+
+export const VISUALIZE_COMPARE_PAGE_SIZE = 500;
+export const VISUALIZE_COMPARE_MAX_ROWS = 25000;
 
 export function periodDatesFromList(periods = [], periodKey) {
   const hit = periods.find((p) => p.key === periodKey);
@@ -28,19 +32,22 @@ export function buildVisualizeDetailRequest(raw, pageContext = {}, periods = [])
       : periodDatesFromList(periods, raw.periodKey);
   if (!dates) return null;
 
-  const { siteCode: pageSite, siteLevel: pageLevel, scopeMode } = pageContext;
+  const { siteCode: pageSite, siteLevel: pageLevel, scopeMode, sites = [] } = pageContext;
   let siteCode = pageSite;
-  let siteLevel = pageLevel;
   if (raw.facilityCode) {
     siteCode = raw.facilityCode;
-    siteLevel = 'facility';
   } else if (scopeMode === 'compare' && pageContext.compareSiteCodes?.length === 1) {
     siteCode = pageContext.compareSiteCodes[0];
-    siteLevel = 'facility';
   }
 
-  return {
+  const { siteCode: resolvedCode, siteLevel } = resolveDetailSiteParams(
     siteCode,
+    raw.facilityCode ? undefined : pageLevel,
+    sites
+  );
+
+  return {
+    siteCode: resolvedCode,
     siteLevel,
     ...dates
   };
@@ -110,4 +117,91 @@ export async function fetchVisualizePatientRecords({
     hasPrev: false
   };
   return { rows, pagination, serverPaged: true };
+}
+
+export const VISUALIZE_PATIENT_STATUS_SCRIPT = 'viz_compare_patient_status';
+
+/** Latest exit status per ART patient at period EndDate (tbl*patientstatus). */
+export async function fetchAllPatientStatusSnapshot({
+  raw,
+  pageContext = {},
+  periods = [],
+  onProgress
+}) {
+  const base = buildVisualizeDetailRequest(raw, pageContext, periods);
+  if (!base?.siteCode) return [];
+
+  const limit = VISUALIZE_COMPARE_PAGE_SIZE;
+  const params = { ...base, page: 1, limit };
+  const response = await reportingApi.getIndicatorDetails(VISUALIZE_PATIENT_STATUS_SCRIPT, params);
+  const list = Array.isArray(response?.data) ? response.data : [];
+  let all = list.map(normalizeDetailRecord);
+  const totalPages = Math.min(
+    Number(response?.pagination?.totalPages ?? 1),
+    Math.ceil(VISUALIZE_COMPARE_MAX_ROWS / limit)
+  );
+  const totalCount = Number(response?.pagination?.totalCount ?? all.length);
+  onProgress?.({ loaded: all.length, total: totalCount });
+
+  for (let page = 2; page <= totalPages && all.length < VISUALIZE_COMPARE_MAX_ROWS; page += 1) {
+    const next = await reportingApi.getIndicatorDetails(VISUALIZE_PATIENT_STATUS_SCRIPT, {
+      ...base,
+      page,
+      limit
+    });
+    const chunk = Array.isArray(next?.data) ? next.data : [];
+    all = all.concat(chunk.map(normalizeDetailRecord));
+    onProgress?.({ loaded: all.length, total: totalCount });
+  }
+
+  return all;
+}
+
+/** Load full patient list for period compare (paginates server-side detail API). */
+export async function fetchAllVisualizePatientRecords({
+  raw,
+  catalog = [],
+  pageContext = {},
+  periods = [],
+  onProgress
+}) {
+  const limit = VISUALIZE_COMPARE_PAGE_SIZE;
+  const first = await fetchVisualizePatientRecords({
+    raw,
+    catalog,
+    pageContext,
+    periods,
+    page: 1,
+    limit,
+    search: ''
+  });
+
+  if (!first.serverPaged) {
+    onProgress?.({ loaded: first.rows.length, total: first.rows.length });
+    return first.rows;
+  }
+
+  const all = [...first.rows];
+  const totalPages = Math.min(
+    Number(first.pagination?.totalPages ?? 1),
+    Math.ceil(VISUALIZE_COMPARE_MAX_ROWS / limit)
+  );
+  const totalCount = Number(first.pagination?.totalCount ?? all.length);
+  onProgress?.({ loaded: all.length, total: totalCount });
+
+  for (let page = 2; page <= totalPages && all.length < VISUALIZE_COMPARE_MAX_ROWS; page += 1) {
+    const next = await fetchVisualizePatientRecords({
+      raw,
+      catalog,
+      pageContext,
+      periods,
+      page,
+      limit,
+      search: ''
+    });
+    all.push(...next.rows);
+    onProgress?.({ loaded: all.length, total: totalCount });
+  }
+
+  return all;
 }

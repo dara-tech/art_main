@@ -9,6 +9,7 @@ const {
   getFieldLabel
 } = require('./patient360Decode');
 const { decodeNationalityLabel } = require('./patient360Nationality');
+const vcctReadService = require('./vcctReadService');
 
 const reasonMapCache = new Map();
 
@@ -47,8 +48,8 @@ const TIMELINE_DRUG_LIMIT = Number(process.env.P360_TIMELINE_DRUG_LIMIT || 25);
 
 /** Which DB slices each UI tab needs */
 const TAB_PARTS = {
-  summary: ['registration', 'art', 'visits', 'labTests', 'patientStatus', 'pntt'],
-  overview: ['registration', 'art', 'visits', 'labTests', 'patientStatus', 'pntt'],
+  summary: ['registration', 'art', 'visits', 'labTests', 'patientStatus', 'pntt', 'vcctSnapshot'],
+  overview: ['registration', 'art', 'visits', 'labTests', 'patientStatus', 'pntt', 'vcctSnapshot'],
   visits: ['visits'],
   labs: ['labTests', 'eidTests'],
   drugs: ['arvDrugs', 'tptDrugs', 'tbDrugs', 'oiDrugs'],
@@ -56,7 +57,7 @@ const TAB_PARTS = {
   care: ['demographics', 'programLinks', 'appointments'],
   carePntt: ['pnttPartners', 'pnttChildren'],
   status: ['patientStatus'],
-  timeline: ['registration', 'art', 'visits', 'patientStatus', 'labTests', 'arvDrugs', 'tptDrugs', 'tbDrugs', 'pntt']
+  timeline: ['registration', 'art', 'visits', 'patientStatus', 'labTests', 'arvDrugs', 'tptDrugs', 'tbDrugs', 'pntt', 'vcctSnapshot']
 };
 
 function parseParts(parts) {
@@ -67,6 +68,25 @@ function parseParts(parts) {
 
 function wantsPart(partSet, name) {
   return !partSet || partSet.has(name);
+}
+
+async function attachVcctSnapshot(block, siteCode, clinicId, partSet, program, opts = {}) {
+  if (!wantsPart(partSet, 'vcctSnapshot')) return;
+  // VCCT linkage exists on adult/child ART registration only — not infant/EID.
+  if (program === 'infant') return;
+  try {
+    const retestLimit = opts.timelineTab ? 100 : 15;
+    block.vcctSnapshot = await vcctReadService.getSnapshotForPatient(siteCode, clinicId, program, {
+      retestLimit
+    });
+  } catch (e) {
+    console.warn('[patient-360] VCCT read failed:', e.message);
+    block.vcctSnapshot = {
+      readOnly: true,
+      linked: false,
+      message: e.message || 'VCCT lookup failed'
+    };
+  }
 }
 
 /** TAB_PARTS slice name → keys on in-memory program blocks */
@@ -87,6 +107,7 @@ const PART_BLOCK_KEYS = {
   family: ['family'],
   demographics: ['demographics'],
   programLinks: ['programLinks'],
+  vcctSnapshot: ['vcctSnapshot'],
   appointments: ['appointments'],
   pntt: ['pntt'],
   pnttPartners: ['pnttPartners'],
@@ -162,14 +183,18 @@ function toDateKey(value) {
   return d.toISOString().slice(0, 10);
 }
 
-function pushTimeline(events, { date, type, program, label, detail }) {
+function pushTimeline(events, { date, type, program, label, detail, where }) {
   const key = toDateKey(date);
   if (!key) return;
-  events.push({ date: key, type, program, label, detail: detail || null });
+  events.push({ date: key, type, program, label, detail: detail || null, where: where || null });
 }
 
-function buildTimeline(sections) {
+async function buildTimeline(sections, { artSiteCode = null } = {}) {
   const events = [];
+  const artWhere =
+    artSiteCode && String(artSiteCode).trim()
+      ? `@${String(artSiteCode).trim()}`
+      : null;
 
   const addProgram = (program, block) => {
     if (!block) return;
@@ -182,7 +207,8 @@ function buildTimeline(sections) {
         type: 'registration',
         program,
         label: `${getFieldLabel('DafirstVisit')} (ចុះឈ្មោះ)`,
-        detail: reg
+        detail: reg,
+        where: artWhere
       });
       if (reg.DaART || reg.DaArt) {
         pushTimeline(events, {
@@ -190,7 +216,8 @@ function buildTimeline(sections) {
           type: 'art_intent',
           program,
           label: `${getFieldLabel('DaART')} ក្នុងចុះឈ្មោះ`,
-          detail: { artnum: reg.Artnum || reg.ARTnum }
+          detail: { artnum: reg.Artnum || reg.ARTnum },
+          where: artWhere
         });
       }
     }
@@ -200,7 +227,8 @@ function buildTimeline(sections) {
         type: 'art_start',
         program,
         label: `${getFieldLabel('DaArt')} (${row.ART || row.art || ''})`,
-        detail: row
+        detail: row,
+        where: artWhere
       });
     });
     (block.visits || []).forEach((row) => {
@@ -209,7 +237,8 @@ function buildTimeline(sections) {
         type: 'visit',
         program,
         label: `${getFieldLabel('TypeVisit')} (${row.TypeVisit_label || row.TypeVisit || '-'})`,
-        detail: row
+        detail: row,
+        where: artWhere
       });
     });
     (block.patientStatus || []).forEach((row) => {
@@ -218,7 +247,8 @@ function buildTimeline(sections) {
         type: 'status',
         program,
         label: `${getFieldLabel('Status')} (${row.Status_label || row.Status})`,
-        detail: row
+        detail: row,
+        where: artWhere
       });
     });
     (block.labTests || []).forEach((row) => {
@@ -227,7 +257,8 @@ function buildTimeline(sections) {
         type: 'lab',
         program,
         label: `ពិសោធន៍ — ${getFieldLabel('HIVLoad')}: ${row.HIVLoad || '-'}, ${getFieldLabel('CD4')}: ${row.CD4 || '-'}`,
-        detail: row
+        detail: row,
+        where: artWhere
       });
     });
     (block.arvDrugs || []).forEach((row) => {
@@ -237,7 +268,8 @@ function buildTimeline(sections) {
         type: 'drug_arv',
         program,
         label: `ARV — ${row.DrugName} (${statusText || row.Status})`,
-        detail: row
+        detail: row,
+        where: artWhere
       });
     });
     (block.tptDrugs || []).forEach((row) => {
@@ -247,7 +279,8 @@ function buildTimeline(sections) {
         type: 'drug_tpt',
         program,
         label: `TPT — ${row.DrugName} (${statusText || row.Status})`,
-        detail: row
+        detail: row,
+        where: artWhere
       });
     });
     (block.pntt || []).forEach((row) => {
@@ -256,7 +289,8 @@ function buildTimeline(sections) {
         type: 'pntt',
         program,
         label: 'ពិនិត្យ PNTT',
-        detail: row
+        detail: row,
+        where: artWhere
       });
     });
     (block.tbDrugs || []).forEach((row) => {
@@ -265,7 +299,8 @@ function buildTimeline(sections) {
         type: 'drug_tb',
         program,
         label: `ថ្នាំរបេង — ${row.DrugName}`,
-        detail: row
+        detail: row,
+        where: artWhere
       });
     });
     (block.eidTests || []).forEach((row) => {
@@ -274,14 +309,77 @@ function buildTimeline(sections) {
         type: 'eid',
         program,
         label: `តេស្ត EID — ${getFieldLabel('Result')}: ${row.Result_label || row.Result || '-'}`,
-        detail: row
+        detail: row,
+        where: artWhere
       });
     });
   };
 
-  Object.entries(sections).forEach(([program, block]) => addProgram(program, block));
+  for (const [program, block] of Object.entries(sections)) {
+    addProgram(program, block);
+    if (block?.vcctSnapshot) {
+      const vcctEvents = await vcctReadService.buildVcctTimelineEvents(
+        block.vcctSnapshot,
+        program,
+        { artSiteCode }
+      );
+      events.push(...vcctEvents);
+    }
+  }
 
-  return events.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  const sorted = events.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  return finalizeTimeline(sorted);
+}
+
+async function loadSiteNameMaps() {
+  const sites = await siteDatabaseManager.getAllSitesForManagement();
+  const byArt = new Map();
+  const byVcct = new Map();
+  for (const row of sites || []) {
+    const name = row.name ? String(row.name).trim() : '';
+    if (!name) continue;
+    const art = row.code ? String(row.code).trim() : '';
+    const vcct = row.vcct_site_code ? String(row.vcct_site_code).trim() : '';
+    if (art) byArt.set(art, name);
+    if (vcct) byVcct.set(vcct, name);
+  }
+  return { byArt, byVcct };
+}
+
+function parseTimelineWhereCode(where) {
+  if (!where) return { code: null, isArt: false };
+  const raw = String(where).trim();
+  const isArt = /\(ART\)\s*$/i.test(raw);
+  const code = raw.replace(/^\@/, '').replace(/\s*\(ART\)\s*$/i, '').trim();
+  return { code: code || null, isArt };
+}
+
+function resolveSiteName(code, maps) {
+  if (!code || !maps) return null;
+  return maps.byArt.get(code) || maps.byVcct.get(code) || null;
+}
+
+function enrichTimelineEvents(events, maps) {
+  return events.map((ev) => {
+    const { code, isArt } = parseTimelineWhereCode(ev.where);
+    const name = resolveSiteName(code, maps);
+    const codeTag = code ? `@${code}` : null;
+    const artTag = isArt ? ' (ART)' : '';
+    let where = ev.where;
+    if (name && codeTag) where = `${name} (${codeTag})${artTag}`;
+    else if (codeTag) where = `${codeTag}${artTag}`;
+    return {
+      ...ev,
+      whereCode: code,
+      whereName: name,
+      where
+    };
+  });
+}
+
+async function finalizeTimeline(events) {
+  const maps = await loadSiteNameMaps();
+  return enrichTimelineEvents(events, maps);
 }
 
 function sectionCounts(block) {
@@ -641,6 +739,7 @@ async function loadAdult(siteCode, clinicId, parts = null, opts = {}) {
   }
 
   await Promise.all(jobs);
+  await attachVcctSnapshot(block, siteCode, clinicId, partSet, 'adult', opts);
   return partSet ? sliceBlockForParts(block, parts) : block;
 }
 
@@ -854,6 +953,7 @@ async function loadChildPartial(siteCode, clinicId, partSet, opts = {}) {
     );
   }
   await Promise.all(jobs);
+  await attachVcctSnapshot(block, siteCode, clinicId, partSet, 'child', opts);
   return sliceBlockForParts(block, [...partSet]);
 }
 
@@ -1170,13 +1270,14 @@ const LIST_SORT_COLUMNS = {
   dob: 'dateOfBirth',
   art: 'artNumber',
   daArt: 'daArt',
-  firstVisit: 'firstVisit'
+  firstVisit: 'firstVisit',
+  vcct: 'vcctId'
 };
 
 function buildListOrderBy(sortBy, sortDir) {
   const col = LIST_SORT_COLUMNS[String(sortBy || '').trim()];
   const dir = String(sortDir || '').toLowerCase() === 'desc' ? 'DESC' : 'ASC';
-  if (!col) return 'program ASC, clinicId ASC';
+  if (!col) return 'firstVisit IS NULL, firstVisit DESC, program ASC, clinicId ASC';
   return `${col} IS NULL, ${col} ${dir}, program ASC, clinicId ASC`;
 }
 
@@ -1259,7 +1360,7 @@ function buildListUnionSql(programFilter, searchQ, { lite = false, filters = {} 
     branches.push(
       `SELECT 'adult' AS program, CAST(m.ClinicID AS CHAR) AS clinicId, m.DafirstVisit AS firstVisit,
               m.DaBirth AS dateOfBirth, m.Sex, m.Artnum AS artNumber, m.DaART AS daArt,
-              m.Nationality, ${provinceCol}, ${statusCols}
+              m.Nationality, m.VcctID AS vcctId, m.Vcctcode AS vcctCode, ${provinceCol}, ${statusCols}
        FROM tblaimain m WHERE ${w.adult}`
     );
   }
@@ -1273,7 +1374,7 @@ function buildListUnionSql(programFilter, searchQ, { lite = false, filters = {} 
     branches.push(
       `SELECT 'child' AS program, CAST(c.ClinicID AS CHAR) AS clinicId, c.DaFirstVisit AS firstVisit,
               c.DaBirth AS dateOfBirth, c.Sex, c.Artnum AS artNumber, c.DaART AS daArt,
-              c.Nationality, ${provinceCol}, ${statusCols}
+              c.Nationality, c.VcctID AS vcctId, c.Vcctcode AS vcctCode, ${provinceCol}, ${statusCols}
        FROM tblcimain c WHERE ${w.child}`
     );
   }
@@ -1282,7 +1383,7 @@ function buildListUnionSql(programFilter, searchQ, { lite = false, filters = {} 
     branches.push(
       `SELECT 'infant' AS program, i.ClinicID AS clinicId, i.DafirstVisit AS firstVisit,
               i.DaBirth AS dateOfBirth, i.Sex, i.MArt AS artNumber, NULL AS daArt,
-              NULL AS Nationality, i.Province, ${statusCols}
+              NULL AS Nationality, NULL AS vcctId, NULL AS vcctCode, i.Province, ${statusCols}
        FROM tbleimain i WHERE ${w.infant}`
     );
   }
@@ -1380,6 +1481,13 @@ async function enrichListProvinces(siteCode, rows) {
   });
 }
 
+function formatListVcctId(value) {
+  if (value == null || value === '') return null;
+  const s = String(value).trim();
+  if (!s || s === '-1') return null;
+  return s;
+}
+
 function formatListPatient(row) {
   const natRaw = row.Nationality;
   const nationalityLabel =
@@ -1403,6 +1511,13 @@ function formatListPatient(row) {
     sexLabel: formatSex(row.Sex),
     artNumber: row.artNumber,
     daArt: row.daArt,
+    vcctId: formatListVcctId(row.vcctId),
+    vcctCode: row.vcctCode ? String(row.vcctCode).trim() || null : null,
+    vcctSiteCode: row.vcctSiteCode ? String(row.vcctSiteCode).trim() || null : null,
+    defaultVcctSite: row.defaultVcctSite ? String(row.defaultVcctSite).trim() || null : null,
+    actualVcctSites: Array.isArray(row.actualVcctSites) ? row.actualVcctSites : [],
+    vcctMappingStatus: row.vcctMappingStatus || (formatListVcctId(row.vcctId) ? 'unknown' : 'none'),
+    vcctMappingInsight: row.vcctMappingInsight || null,
     province: row.Province ? String(row.Province).trim() || null : null,
     nationality: natRaw,
     nationalityLabel,
@@ -1456,7 +1571,7 @@ async function listPatients(siteCode, options = {}) {
 
   const fetchLimit = wantTotal ? limit : limit + 1;
   const orderBy = buildListOrderBy(options.sortBy, options.sortDir);
-  const dataSql = `SELECT program, clinicId, firstVisit, dateOfBirth, Sex, artNumber, daArt, Province, Nationality,
+  const dataSql = `SELECT program, clinicId, firstVisit, dateOfBirth, Sex, artNumber, daArt, vcctId, vcctCode, Province, Nationality,
             patientStatus, patientStatusDa
      FROM (${unionLite}) AS patient_union
      ORDER BY ${orderBy}
@@ -1483,10 +1598,11 @@ async function listPatients(siteCode, options = {}) {
   }
 
   const withProvince = await enrichListProvinces(site, rows);
+  const withVcct = await vcctReadService.enrichListVcctInsights(site, withProvince);
 
   return {
     siteCode: site,
-    patients: withProvince.map(formatListPatient),
+    patients: withVcct.map(formatListPatient),
     pagination: {
       page,
       limit,
@@ -1652,7 +1768,7 @@ async function attachPntt(site, clinic, sections, programs, parts, peek) {
   return sections;
 }
 
-function buildProfilePayload({
+async function buildProfilePayload({
   site,
   clinic,
   programs,
@@ -1669,7 +1785,7 @@ function buildProfilePayload({
 
   const timeline =
     tab === 'timeline' || tab === 'full'
-      ? buildTimeline(enrichedSections)
+      ? await buildTimeline(enrichedSections, { artSiteCode: site })
       : [];
 
   const clinical = buildClinicalSummary(enrichedSections);
@@ -1790,7 +1906,7 @@ async function getPatient360(siteCode, clinicId, options = {}) {
     programs.filter((p) => p !== 'pntt')
   );
 
-  return buildProfilePayload({
+  return await buildProfilePayload({
     site,
     clinic,
     programs,

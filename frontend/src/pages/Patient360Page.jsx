@@ -77,7 +77,7 @@ export default function Patient360Page() {
   );
   const [columnOrder, setColumnOrder] = useState(() => loadListColumnOrder(''));
   const [columnConfigOpen, setColumnConfigOpen] = useState(false);
-  const [listSort, setListSort] = useState({ key: null, dir: 'asc' });
+  const [listSort, setListSort] = useState({ key: 'firstVisit', dir: 'desc' });
 
   useEffect(() => {
     getPatient360Dictionary().catch(() => {});
@@ -86,11 +86,23 @@ export default function Patient360Page() {
   useEffect(() => {
     const parsed = parsePatient360SearchParams(searchParams);
     if (!parsed?.clinicId) return;
-    if (parsed.site) setSiteCode(parsed.site);
-    setSelected({
-      clinicId: parsed.clinicId,
-      program: parsed.program,
-      section: parsed.tab
+    if (parsed.site) {
+      setSiteCode((prev) => (parsed.site === prev ? prev : parsed.site));
+    }
+    setSelected((prev) => {
+      const next = {
+        clinicId: parsed.clinicId,
+        program: parsed.program,
+        section: parsed.tab
+      };
+      if (
+        prev?.clinicId === next.clinicId &&
+        prev?.program === next.program &&
+        prev?.section === next.section
+      ) {
+        return prev;
+      }
+      return next;
     });
   }, [searchParams]);
 
@@ -160,6 +172,7 @@ export default function Patient360Page() {
   if (selected) {
     return (
       <Patient360Detail
+        key={`${siteCode}-${selected.clinicId}-${selected.section || 'overview'}`}
         siteCode={siteCode}
         clinicId={selected.clinicId}
         initialProgram={selected.program}
@@ -225,7 +238,7 @@ export default function Patient360Page() {
       {toolbar}
       <Patient360Layout lockViewport>
       <AppPageShell wide className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col !p-0">
-        <Card className={cn(p360CardClass, 'flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col bg-background')}>
+          <Card className={cn(p360CardClass, 'flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col bg-card')}>
           <CardContent className="relative flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col border-0 border-t-0 p-0 pt-0">
             {listPending && !patients.length ? (
               <div className="relative flex min-h-0 flex-1 flex-col">

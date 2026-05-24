@@ -14,7 +14,7 @@ import {
   buildFacilityCompareTrendData,
   buildMultiTrendData,
   hasDemographicChartData,
-  isCompareResults,
+  isMultiFacilityCompare,
   listIndicatorsFromResults
 } from '../../utils/visualizeChartData';
 import { DEFAULT_CHART_SETTINGS } from '../../utils/visualizeChartSettings';
@@ -55,14 +55,14 @@ export default function VisualizeChartNav({
 }) {
   const indicators = listIndicatorsFromResults(results, catalog);
   const showDemo = indicators.some((i) => hasDemographicChartData(results, i.id));
-  const compareMode = scopeMode === 'compare' || isCompareResults(results);
+  const facilityCompare = isMultiFacilityCompare(results);
   const chartSeries = useMemo(() => {
     if (!chartIndicatorIds.length || panel !== 'trend') return [];
-    const built = compareMode
+    const built = facilityCompare
       ? buildFacilityCompareTrendData(results, chartIndicatorIds, catalog)
       : buildMultiTrendData(results, chartIndicatorIds, catalog);
     return built.series || [];
-  }, [compareMode, results, chartIndicatorIds, catalog, panel]);
+  }, [facilityCompare, results, chartIndicatorIds, catalog, panel]);
 
   if (!indicators.length) return null;
 
@@ -109,6 +109,7 @@ export default function VisualizeChartNav({
           settings={chartSettings}
           onChange={onChartSettingsChange}
           series={chartSeries}
+          colorByFacility={facilityCompare}
           chartVariant={variant}
           onChartVariantChange={onVariantChange}
           panel={panel}

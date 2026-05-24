@@ -2,7 +2,12 @@ const express = require('express');
 const { authenticateToken } = require('../middleware/auth');
 const { assertResolvedSiteAccess } = require('../services/userRoleService');
 const { siteDatabaseManager } = require('../config/siteDatabase');
-const { inferSiteLevel, isFacilitySite, resolveFacilityCodesByHierarchy } = require('../utils/reportAggregation');
+const {
+  inferSiteLevel,
+  isFacilitySite,
+  resolveFacilityCodesByHierarchy,
+  provinceIdFromCode
+} = require('../utils/reportAggregation');
 const visualizeService = require('../services/visualizeService');
 
 const router = express.Router();
@@ -17,30 +22,61 @@ async function resolveSiteContext(req) {
 
   if (scopeMode === 'compare') {
     if (!compareSiteCodes.length) {
-      return { error: 'Select at least one facility to compare', status: 400 };
+      return { error: 'Select at least one site to compare', status: 400 };
     }
     if (compareSiteCodes.length > visualizeService.VISUALIZE_MAX_COMPARE_FACILITIES) {
       return {
-        error: `Maximum ${visualizeService.VISUALIZE_MAX_COMPARE_FACILITIES} facilities per compare run`,
+        error: `Maximum ${visualizeService.VISUALIZE_MAX_COMPARE_FACILITIES} items per compare run`,
         status: 400
       };
     }
-    for (const code of compareSiteCodes) {
+
+    const isProvinceCode = (code) => String(code).startsWith('province:');
+    const allProvince = compareSiteCodes.every(isProvinceCode);
+    const allFacility = compareSiteCodes.every((code) => {
       const selected = sites.find((s) => String(s.code) === code);
-      if (!isFacilitySite(selected)) {
-        return { error: `Not a facility site: ${code}`, status: 400 };
+      return isFacilitySite(selected);
+    });
+    if (!allProvince && !allFacility) {
+      return { error: 'Compare must use all facilities or all provinces (not mixed)', status: 400 };
+    }
+
+    const compareLevel = allProvince ? 'province' : 'facility';
+    const resolvedForAccess = [];
+
+    if (compareLevel === 'province') {
+      for (const code of compareSiteCodes) {
+        const provinceId = provinceIdFromCode(code);
+        if (!provinceId) {
+          return { error: `Invalid province code: ${code}`, status: 400 };
+        }
+        const facilityCodes = resolveFacilityCodesByHierarchy(sites, code, 'province');
+        if (!facilityCodes.length) {
+          return { error: `No facilities found for province: ${code}`, status: 400 };
+        }
+        resolvedForAccess.push(...facilityCodes);
+      }
+    } else {
+      for (const code of compareSiteCodes) {
+        const selected = sites.find((s) => String(s.code) === code);
+        if (!isFacilitySite(selected)) {
+          return { error: `Not a facility site: ${code}`, status: 400 };
+        }
+        resolvedForAccess.push(code);
       }
     }
+
     const access = assertResolvedSiteAccess(req.user, compareSiteCodes[0], {
-      resolvedSiteCodes: compareSiteCodes
+      resolvedSiteCodes: [...new Set(resolvedForAccess)]
     });
     if (!access.ok) {
       return { error: access.message || 'Access denied for this site', status: 403 };
     }
     return {
       scopeMode: 'compare',
+      compareLevel,
       siteCode: compareSiteCodes[0],
-      siteLevel: 'facility',
+      siteLevel: compareLevel === 'province' ? 'province' : 'facility',
       compareSiteCodes,
       sites
     };

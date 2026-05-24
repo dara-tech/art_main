@@ -5,6 +5,8 @@ import { APP_NAV_ICON, APP_NAV_TEXT, P360_TABLE_TEXT, appNavItemClass, p360Contr
 import { VIZ_KH } from '../../pages/visualizeKh';
 import {
   applySeriesColors,
+  CHART_FONT_SIZE_OPTIONS,
+  CHART_FONT_WEIGHT_OPTIONS,
   CHART_PALETTE_IDS,
   colorToPickerHex,
   DEFAULT_CHART_SETTINGS,
@@ -27,7 +29,8 @@ export default function VisualizeChartSettings({
   series = [],
   chartVariant = 'bar',
   onChartVariantChange,
-  panel = 'trend'
+  panel = 'trend',
+  colorByFacility = false
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
@@ -150,6 +153,9 @@ export default function VisualizeChartSettings({
               ) : null}
 
               <SectionTitle>{VIZ_KH.chartColorsSection}</SectionTitle>
+              <p className={cn('mb-2 text-muted-foreground', P360_TABLE_TEXT)}>
+                {colorByFacility ? VIZ_KH.chartColorByFacility : VIZ_KH.chartColorByIndicator}
+              </p>
 
               <label className={cn('mb-2 block', P360_TABLE_TEXT)}>
                 <span className="mb-1 block text-muted-foreground">{VIZ_KH.chartColorPalette}</span>
@@ -221,6 +227,38 @@ export default function VisualizeChartSettings({
           ) : null}
 
           <SectionTitle>{VIZ_KH.chartDisplaySection}</SectionTitle>
+
+          <SectionTitle>{VIZ_KH.chartTextSection}</SectionTitle>
+
+          <label className={cn('mb-2 block', P360_TABLE_TEXT)}>
+            <span className="mb-1 block text-muted-foreground">{VIZ_KH.chartFontSize}</span>
+            <select
+              value={String(s.chartFontSize ?? 11)}
+              onChange={(e) => patch({ chartFontSize: Number(e.target.value) })}
+              className={cn(p360ControlClass, 'w-full')}
+            >
+              {CHART_FONT_SIZE_OPTIONS.map((n) => (
+                <option key={n} value={n}>
+                  {n}px
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={cn('mb-3 block border-b border-border/60 pb-3', P360_TABLE_TEXT)}>
+            <span className="mb-1 block text-muted-foreground">{VIZ_KH.chartFontWeight}</span>
+            <select
+              value={s.chartFontWeight || 'medium'}
+              onChange={(e) => patch({ chartFontWeight: e.target.value })}
+              className={cn(p360ControlClass, 'w-full')}
+            >
+              {CHART_FONT_WEIGHT_OPTIONS.map((id) => (
+                <option key={id} value={id}>
+                  {VIZ_KH[`chartFont${id[0].toUpperCase()}${id.slice(1)}`] || id}
+                </option>
+              ))}
+            </select>
+          </label>
 
           <fieldset className="mb-3 space-y-1.5 border-b border-border/60 pb-3">
             <legend className={cn('mb-1 text-muted-foreground', P360_TABLE_TEXT)}>{VIZ_KH.chartTooltipHover}</legend>

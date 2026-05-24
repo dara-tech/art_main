@@ -1,34 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { RiRefreshLine, RiSearchLine, RiUserSettingsLine } from '@remixicon/react';
+import { RiSearchLine } from '@remixicon/react';
 import AppPageShell from '../components/layout/AppPageShell';
+import Patient360Layout from '../components/patient360/Patient360Layout';
+import Patient360DataTable from '../components/patient360/Patient360DataTable';
+import { Patient360LoadingPanel } from '../components/patient360/Patient360LoadingPanel';
 import AdminCreateUser from '../components/admin/AdminCreateUser';
 import AdminUserEditor from '../components/admin/AdminUserEditor';
+import AdminToolbar, { adminControlClass } from '../components/admin/AdminToolbar';
 import adminApi from '../services/adminApi';
 import { getProvinceName } from '../utils/provinces';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from '@/components/ui/table';
+  P360_TABLE_BODY_ROW_INNER,
+  P360_TABLE_TEXT,
+  p360CardClass,
+  p360ControlClass,
+  vizKpiCardClass
+} from '../components/layout/appNavStyles';
 
-function StatCard({ label, value, hint }) {
-  return (
-    <div className="border border-border/80 bg-card px-4 py-3 shadow-sm">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
-      {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
-    </div>
-  );
-}
-
-export default function AdminPage({ onLogout }) {
+export default function AdminPage() {
   const [tab, setTab] = useState('users');
   const [stats, setStats] = useState(null);
   const [roles, setRoles] = useState([]);
@@ -43,8 +34,7 @@ export default function AdminPage({ onLogout }) {
   const [loading, setLoading] = useState(true);
   const [usersLoading, setUsersLoading] = useState(false);
   const [error, setError] = useState('');
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
+  const [userEditor, setUserEditor] = useState(null);
   const [showCreateUser, setShowCreateUser] = useState(false);
 
   const limit = 25;
@@ -100,283 +90,315 @@ export default function AdminPage({ onLogout }) {
     if (tab === 'users') loadUsers();
   }, [tab, loadUsers]);
 
-  const openUserDetail = async (userId) => {
-    setDetailLoading(true);
+  const closeUserEditor = useCallback(() => setUserEditor(null), []);
+
+  const openUserEditor = useCallback(async (row) => {
+    const userId = row?.id ?? row;
+    const preview =
+      row && typeof row === 'object'
+        ? row
+        : users.find((u) => u.id === userId) || { id: userId, fullName: 'User', username: '' };
+
+    setUserEditor({ userId, preview, user: null, loading: true, error: '' });
+
     try {
       const res = await adminApi.getUser(userId);
-      setSelectedUser(res.user);
+      setUserEditor((prev) => {
+        if (!prev || prev.userId !== userId) return prev;
+        return { ...prev, user: res.user, loading: false, error: '' };
+      });
     } catch (e) {
-      setError(e.response?.data?.message || e.message || 'Failed to load user');
-    } finally {
-      setDetailLoading(false);
+      const message = e.response?.data?.message || e.message || 'Failed to load user';
+      setUserEditor((prev) => {
+        if (!prev || prev.userId !== userId) return prev;
+        return { ...prev, loading: false, error: message };
+      });
     }
-  };
+  }, [users]);
 
   const roleRows = useMemo(() => stats?.roleBreakdown || [], [stats]);
 
-  return (
-    <AppPageShell>
-      <Card className="rounded-none border-border/80 py-0 shadow-xl shadow-black/6 gap-0 overflow-hidden">
-        <div className="h-1.5 w-full bg-violet-600" />
-        <CardHeader className="border-b border-border/80 bg-muted/65 px-4 pb-3 pt-4">
-          <CardTitle className="inline-flex items-center gap-2">
-            <RiUserSettingsLine className="size-5 text-violet-700" />
-            Admin panel
-          </CardTitle>
-          <CardDescription className="mt-1">
-            Create users, reset passwords, and manage roles and site scope.
-          </CardDescription>
-        </CardHeader>
+  const roleTableColumns = useMemo(
+    () => [
+      { id: 'id', label: 'ID', width: 56, mono: true, getValue: (r) => r.id },
+      { id: 'name', label: 'Role', width: 160, getValue: (r) => r.name },
+      {
+        id: 'slug',
+        label: 'Slug',
+        width: 140,
+        mono: true,
+        getValue: (r) => r.slug
+      },
+      {
+        id: 'count',
+        label: 'Users',
+        width: 72,
+        mono: true,
+        getValue: (r) => {
+          const count = roleRows.find((x) => x.id === r.id)?.userCount ?? 0;
+          return count.toLocaleString('km-KH');
+        }
+      }
+    ],
+    [roleRows]
+  );
 
-        <CardContent className="space-y-4 p-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
+  const userTableColumns = useMemo(
+    () => [
+      { id: 'id', label: 'ID', width: 56, mono: true, getValue: (r) => r.id },
+      {
+        id: 'user',
+        label: 'User',
+        width: 180,
+        getValue: (r) => r.fullName,
+        renderCell: (row, text) => (
+          <div className={P360_TABLE_BODY_ROW_INNER}>
+            <button
               type="button"
-              size="sm"
-              variant={tab === 'users' ? 'default' : 'outline'}
-              className="rounded-none"
-              onClick={() => setTab('users')}
-            >
-              Users
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={tab === 'roles' ? 'default' : 'outline'}
-              className="rounded-none"
-              onClick={() => setTab('roles')}
-            >
-              Roles
-            </Button>
-            {tab === 'users' ? (
-              <Button
-                type="button"
-                size="sm"
-                className="ml-auto rounded-none"
-                onClick={() => setShowCreateUser(true)}
-              >
-                Create user
-              </Button>
-            ) : null}
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className={`rounded-none ${tab !== 'users' ? 'ml-auto' : ''}`}
-              onClick={() => {
-                loadMeta();
-                if (tab === 'users') loadUsers();
+              className="truncate text-left font-medium text-primary underline-offset-2 hover:underline"
+              onClick={(e) => {
+                e.stopPropagation();
+                openUserEditor(row);
               }}
             >
-              <RiRefreshLine className="size-4" />
-              Refresh
-            </Button>
+              {text}
+            </button>
+            <div className="truncate text-muted-foreground">{row.username}</div>
           </div>
+        )
+      },
+      {
+        id: 'roles',
+        label: 'Roles',
+        width: 160,
+        getValue: (r) => (r.roleNames?.length ? r.roleNames.join(', ') : 'Guest'),
+        renderCell: (row) => (
+          <span className={cn(P360_TABLE_BODY_ROW_INNER, 'truncate')}>
+            {row.roleNames?.length ? row.roleNames.join(', ') : (
+              <span className="text-muted-foreground">Guest</span>
+            )}
+          </span>
+        )
+      },
+      {
+        id: 'site',
+        label: 'Site access',
+        width: 120,
+        getValue: (r) =>
+          r.siteAccess === 'scoped' ? `Scoped (${r.orgUnitCount})` : 'All sites'
+      },
+      {
+        id: 'status',
+        label: 'Status',
+        width: 88,
+        getValue: (r) => (r.active ? 'Active' : 'Disabled'),
+        renderCell: (row, text) => (
+          <span
+            className={cn(
+              P360_TABLE_BODY_ROW_INNER,
+              row.active ? 'text-emerald-800 dark:text-emerald-400' : 'text-destructive'
+            )}
+          >
+            {text}
+          </span>
+        )
+      }
+    ],
+    [openUserEditor]
+  );
 
-          {loading && !stats ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : null}
+  const userTableRows = useMemo(
+    () => users.map((u) => ({ ...u, _key: String(u.id) })),
+    [users]
+  );
 
-          {stats ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard label="Total users" value={stats.totalUsers} />
-              <StatCard label="Active users" value={stats.activeUsers} hint={`${stats.usersWithRoles} with roles`} />
-              <StatCard label="Site scoped" value={stats.usersWithScope} hint={`${stats.orgUnitRows} org unit rows`} />
-              <StatCard label="Role types" value={stats.totalRoles} hint={`${stats.roleAssignments} assignments`} />
-            </div>
-          ) : null}
+  const roleTableRows = useMemo(
+    () => roles.map((r) => ({ ...r, _key: String(r.id) })),
+    [roles]
+  );
 
-          {error ? (
-            <div className="border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              {error}
-            </div>
-          ) : null}
+  const handleRefresh = () => {
+    loadMeta();
+    if (tab === 'users') loadUsers();
+  };
 
-          {tab === 'roles' ? (
-            <div className="overflow-auto border border-border/80">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/40 hover:bg-muted/40">
-                    <TableHead className="w-14">ID</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Slug</TableHead>
-                    <TableHead className="text-right">Users</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {roles.map((role) => {
-                    const count = roleRows.find((r) => r.id === role.id)?.userCount ?? 0;
-                    return (
-                      <TableRow key={role.id}>
-                        <TableCell className="tabular-nums">{role.id}</TableCell>
-                        <TableCell className="font-medium">{role.name}</TableCell>
-                        <TableCell>
-                          <code className="text-xs">{role.slug}</code>
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">{count}</TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          ) : null}
+  return (
+    <>
+      <AdminToolbar
+        tab={tab}
+        onTabChange={setTab}
+        onRefresh={handleRefresh}
+        onCreateUser={() => setShowCreateUser(true)}
+        loading={loading || usersLoading}
+      />
 
-          {tab === 'users' ? (
-            <div className="space-y-3">
-              <form
-                className="flex flex-wrap items-center gap-2"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  setPage(1);
-                  setSearch(searchInput.trim());
-                }}
-              >
-                <div className="relative min-w-[220px] flex-1">
-                  <RiSearchLine className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
-                    placeholder="Search username, name, email…"
-                    className="rounded-none pl-9"
-                  />
+      <Patient360Layout lockViewport>
+        <AppPageShell wide className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col !p-0">
+          <Card className={cn(p360CardClass, 'flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col bg-card')}>
+            <CardContent className="relative flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col p-0">
+              {loading && !stats ? (
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/35 backdrop-blur-[3px]">
+                  <Patient360LoadingPanel label="Loading…" className="border-0 bg-transparent" minHeight="min-h-0" />
                 </div>
-                <Button type="submit" className="h-8 rounded-none px-3">
-                  Search
-                </Button>
-                {search ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-8 rounded-none px-3"
-                    onClick={() => {
-                      setSearchInput('');
-                      setSearch('');
-                      setPage(1);
-                    }}
-                  >
-                    Clear
-                  </Button>
+              ) : null}
+
+              <div className="flex min-h-0 flex-1 flex-col">
+                {stats ? (
+                  <div className="grid shrink-0 grid-cols-2 gap-2 border-b border-border/80 bg-muted/10 px-5 py-2 sm:grid-cols-4">
+                    <div className={vizKpiCardClass}>
+                      <p className={cn('text-muted-foreground', P360_TABLE_TEXT)}>Total users</p>
+                      <p className="text-base font-semibold tabular-nums leading-tight text-foreground">
+                        {Number(stats.totalUsers).toLocaleString('km-KH')}
+                      </p>
+                    </div>
+                    <div className={vizKpiCardClass}>
+                      <p className={cn('text-muted-foreground', P360_TABLE_TEXT)}>Active users</p>
+                      <p className="text-base font-semibold tabular-nums leading-tight text-foreground">
+                        {Number(stats.activeUsers).toLocaleString('km-KH')}
+                      </p>
+                      <p className={cn('text-muted-foreground', P360_TABLE_TEXT)}>
+                        {stats.usersWithRoles} with roles
+                      </p>
+                    </div>
+                    <div className={vizKpiCardClass}>
+                      <p className={cn('text-muted-foreground', P360_TABLE_TEXT)}>Site scoped</p>
+                      <p className="text-base font-semibold tabular-nums leading-tight text-foreground">
+                        {Number(stats.usersWithScope).toLocaleString('km-KH')}
+                      </p>
+                      <p className={cn('text-muted-foreground', P360_TABLE_TEXT)}>
+                        {stats.orgUnitRows} org unit rows
+                      </p>
+                    </div>
+                    <div className={vizKpiCardClass}>
+                      <p className={cn('text-muted-foreground', P360_TABLE_TEXT)}>Role types</p>
+                      <p className="text-base font-semibold tabular-nums leading-tight text-foreground">
+                        {Number(stats.totalRoles).toLocaleString('km-KH')}
+                      </p>
+                      <p className={cn('text-muted-foreground', P360_TABLE_TEXT)}>
+                        {stats.roleAssignments} assignments
+                      </p>
+                    </div>
+                  </div>
                 ) : null}
-              </form>
 
-              <div className="overflow-auto border border-border/80">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/40 hover:bg-muted/40">
-                      <TableHead className="w-14">ID</TableHead>
-                      <TableHead>User</TableHead>
-                      <TableHead>Roles</TableHead>
-                      <TableHead>Site access</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="w-28" />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {usersLoading ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
-                          Loading users…
-                        </TableCell>
-                      </TableRow>
-                    ) : users.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
-                          No users found.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      users.map((u) => (
-                        <TableRow key={u.id}>
-                          <TableCell className="tabular-nums">{u.id}</TableCell>
-                          <TableCell>
-                            <div className="font-medium">{u.fullName}</div>
-                            <div className="text-xs text-muted-foreground">{u.username}</div>
-                          </TableCell>
-                          <TableCell>
-                            {u.roleNames?.length ? (
-                              <div className="flex flex-wrap gap-1">
-                                {u.roleNames.map((name) => (
-                                  <Badge key={name} variant="secondary" className="rounded-none">
-                                    {name}
-                                  </Badge>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">Guest (none assigned)</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {u.siteAccess === 'scoped' ? (
-                              <Badge variant="outline" className="rounded-none">
-                                Scoped ({u.orgUnitCount})
-                              </Badge>
-                            ) : (
-                              <Badge variant="secondary" className="rounded-none">
-                                All sites
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={u.active ? 'default' : 'destructive'} className="rounded-none">
-                              {u.active ? 'Active' : 'Disabled'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className="rounded-none"
-                              onClick={() => openUserDetail(u.id)}
-                            >
-                              Manage
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
+                {error ? (
+                  <p className={cn('shrink-0 border-b border-destructive/30 bg-destructive/10 px-5 py-2 text-destructive', P360_TABLE_TEXT)}>
+                    {error}
+                  </p>
+                ) : null}
+
+                {tab === 'users' ? (
+                  <>
+                    <form
+                      className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border/80 bg-muted/10 px-5 py-2"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        setPage(1);
+                        setSearch(searchInput.trim());
+                      }}
+                    >
+                      <div className="relative min-h-8 min-w-[12rem] flex-1">
+                        <RiSearchLine
+                          className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+                          aria-hidden
+                        />
+                        <input
+                          value={searchInput}
+                          onChange={(e) => setSearchInput(e.target.value)}
+                          placeholder="Search username, name, email…"
+                          className={cn(adminControlClass, 'h-8 w-full pl-8')}
+                        />
+                      </div>
+                      <button type="submit" className={cn(p360ControlClass, 'h-8 shrink-0 px-3')}>
+                        Search
+                      </button>
+                      {search ? (
+                        <button
+                          type="button"
+                          className={cn(p360ControlClass, 'h-8 shrink-0 px-3')}
+                          onClick={() => {
+                            setSearchInput('');
+                            setSearch('');
+                            setPage(1);
+                          }}
+                        >
+                          Clear
+                        </button>
+                      ) : null}
+                    </form>
+
+                    <div className="relative min-h-0 flex-1 overflow-hidden px-5 pb-2 pt-2">
+                      {usersLoading ? (
+                        <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/40">
+                          <Patient360LoadingPanel label="Loading users…" className="border-0 bg-transparent" minHeight="min-h-0" />
+                        </div>
+                      ) : null}
+                      <Patient360DataTable
+                        columns={userTableColumns}
+                        rows={userTableRows}
+                        getRowKey={(r) => r._key}
+                        scrollBody
+                        fillHeight
+                        stickyHeader
+                        compactBodyRows
+                        className="h-full min-h-0 flex-1 border border-border/80 shadow-sm"
+                        emptyMessage="No users found."
+                        onRowClick={(row) => openUserEditor(row)}
+                      />
+                    </div>
+
+                    <div
+                      className={cn(
+                        'flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border/80 bg-muted/10 px-5 py-2 text-muted-foreground',
+                        P360_TABLE_TEXT
+                      )}
+                    >
+                      <span className="tabular-nums">
+                        Page {page} of {totalPages} · {total.toLocaleString('km-KH')} users
+                      </span>
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          className={cn(p360ControlClass, 'h-7 px-2.5')}
+                          disabled={page <= 1 || usersLoading}
+                          onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        >
+                          Previous
+                        </button>
+                        <button
+                          type="button"
+                          className={cn(p360ControlClass, 'h-7 px-2.5')}
+                          disabled={page >= totalPages || usersLoading}
+                          onClick={() => setPage((p) => p + 1)}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                ) : null}
+
+                {tab === 'roles' ? (
+                  <div className="min-h-0 flex-1 overflow-hidden px-5 py-2">
+                    <Patient360DataTable
+                      columns={roleTableColumns}
+                      rows={roleTableRows}
+                      getRowKey={(r) => r._key}
+                      scrollBody
+                      fillHeight
+                      stickyHeader
+                      compactBodyRows
+                      className="h-full min-h-[12rem] flex-1 border border-border/80 shadow-sm"
+                      emptyMessage="No roles."
+                    />
+                  </div>
+                ) : null}
               </div>
+            </CardContent>
+          </Card>
+        </AppPageShell>
+      </Patient360Layout>
 
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                <span>
-                  Page {page} of {totalPages} · {total} users
-                </span>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="rounded-none"
-                    disabled={page <= 1 || usersLoading}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="rounded-none"
-                    disabled={page >= totalPages || usersLoading}
-                    onClick={() => setPage((p) => p + 1)}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
-
-      {detailLoading && !selectedUser ? (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/30 text-sm text-white">
-          Loading user…
-        </div>
-      ) : null}
       {showCreateUser ? (
         <AdminCreateUser
           roles={roles}
@@ -387,25 +409,31 @@ export default function AdminPage({ onLogout }) {
           onCreated={(user) => {
             loadUsers();
             loadMeta();
-            openUserDetail(user.id);
+            openUserEditor(user);
           }}
         />
       ) : null}
-      {selectedUser ? (
+
+      {userEditor ? (
         <AdminUserEditor
-          user={selectedUser}
+          preview={userEditor.preview}
+          user={userEditor.user}
+          loading={userEditor.loading}
+          error={userEditor.error}
           roles={roles}
           sites={sites}
           provinces={provinces}
           ods={ods}
-          onClose={() => setSelectedUser(null)}
+          onClose={closeUserEditor}
           onUpdated={(updated) => {
-            setSelectedUser(updated);
+            setUserEditor((prev) =>
+              prev ? { ...prev, user: updated, preview: { ...prev.preview, ...updated } } : prev
+            );
             loadUsers();
             loadMeta();
           }}
         />
       ) : null}
-    </AppPageShell>
+    </>
   );
 }

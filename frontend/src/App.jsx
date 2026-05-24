@@ -9,6 +9,7 @@ import { Patient360LoadingPanel } from './components/patient360/Patient360Loadin
 import LoginPage from './pages/LoginPage.jsx';
 import Patient360Page from './pages/Patient360Page.jsx';
 import VisualizePage from './pages/VisualizePage.jsx';
+import VcctPage from './pages/VcctPage.jsx';
 import ReportHomePage from './pages/ReportHomePage.jsx';
 
 const DocumentPage = lazy(() => import('./pages/DocumentPage.jsx'));
@@ -76,6 +77,7 @@ function App() {
             </Route>
             <Route path="/dqa" element={<DqaPage onLogout={logout} />} />
             <Route path="/patient-360" element={<Patient360Page onLogout={logout} />} />
+            <Route path="/vcct" element={<VcctPage onLogout={logout} />} />
             <Route path="/visualize" element={<VisualizePage onLogout={logout} />} />
             <Route path="/event-report" element={<Navigate to="/visualize" replace />} />
             <Route

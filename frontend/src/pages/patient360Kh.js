@@ -59,6 +59,22 @@ export const P360_KH = {
     country: 'សញ្ជាតិ',
     dob: 'ថ្ងៃកំណើត',
     art: 'លេខ ART',
+    vcct: 'VCCT',
+    vcctInsight: {
+      badgeNotFound: 'រកមិនឃើញ',
+      badgeUnmapped: 'គ្មានកូដ',
+      badgeOtherSite: 'ផ្សេង',
+      notFoundDetail: 'មិនមានក្នុង vccts ទាំងមូលដ្ឋាន',
+      unmappedDetail: 'ពិនិត្យ tblsites.vcct_site_code ឬ Vcctcode លើ ART',
+      otherSiteDetail: 'កំណត់ត្រា VCCT នៅ {site} · ART default {default}',
+      noArtCodeHint: 'Vcctcode លើ ART ទទេ',
+      multiSiteNote: 'លេខ VCCT ដូចគ្នាមាននៅ {sites} · ប្រើ {site}',
+      tooltipId: 'លេខ VCCT',
+      tooltipArtCode: 'Vcctcode (ART)',
+      tooltipDefault: 'VCCT default (ART)',
+      tooltipFound: 'រកឃើញក្នុង vccts',
+      tooltipUsing: 'បើកនៅ'
+    },
     daArt: 'ថ្ងៃ ART',
     firstVisit: 'មកដំបូង',
     status: 'ស្ថានភាព',
@@ -151,7 +167,7 @@ export const P360_KH = {
     VLDetectable: 'VL',
     DaApp: 'ណាត់',
     DaVisit: 'ថ្ងៃ PNTT',
-    SexHIV: 'ផ្ទុះ HIV',
+    SexHIV: 'ផញទុកHIV',
     Drug: 'ថ្នាំ',
     Agree: 'យល់ព្រម'
   },
@@ -173,6 +189,7 @@ export const P360_KH = {
     family: 'គ្រួសារ',
     demo: 'ទីលំនៅ',
     links: 'តភ្ជាប់',
+    vcct: 'VCCT / HTS',
     appt: 'ណាត់',
     partners: 'ដៃគូ',
     children: 'កូន',
@@ -196,6 +213,7 @@ export const P360_KH = {
     family: 'សមាជិកគ្រួសារ (កុមារ)',
     demographics: 'ធ្វើបច្ចុប្បន្នភាពព័ត៌មាន',
     programLinks: 'តភ្ជាប់កម្មវិធី (VCCT / កូដផ្សេង)',
+    vcctSnapshot: 'VCCT / HTS (អានបានតែប៉ុណ្ណោះ)',
     appointments: 'ណាត់ជួប (ពីកំណត់ត្រាមកពិនិត្យ)',
     pnttPartners: 'ដៃគូ PNTT',
     pnttChildren: 'កូន PNTT',
@@ -214,7 +232,33 @@ export const P360_KH = {
   },
 
   timeline: {
-    empty: 'មិនមានព្រឹត្តិការសម្រាប់កម្មវិធីនេះ។'
+    empty: 'មិនមានព្រឹត្តិការសម្រាប់កម្មវិធីនេះ។',
+    when: 'ពេលវេលា',
+    what: 'ព្រឹត្តិការ',
+    where: 'កន្លែង',
+    vcctHint: 'ជួរពណ៌ខៀវ = VCCT / HTS'
+  },
+
+  vcct: {
+    title: 'VCCT / HTS (អានបានតែប៉ុណ្ណោះ)',
+    readOnly: 'អានបានតែប៉ុណ្ណោះ',
+    registered: 'ចុះឈ្មោះ',
+    hivResult: 'លទ្ធផល HIV',
+    openFullForm: 'មើលទម្រង់ VCCT ពេញ',
+    careHint: 'ទម្រង់ VCCT ពេញ · ចុច «មើលទម្រង់ VCCT ពេញ»',
+    notLinked: 'មិនមានលេខ VCCT ភ្ជាប់នឹងកំណត់ត្រា ART នេះទេ។',
+    infantNa: 'VCCT មិនប្រើសម្រាប់ទារក / EID ទេ (មានតែមនុស្សពេញវ័យ និងកុមារ)។',
+    noDetail: 'មិនមានព័ត៌មាន VCCT បន្ថែម។',
+    allFieldsHint:
+      'ផ្នែកខាងលើ = VCCT ក្នុង ART (tblaimain/tblcimain, tblalink) · ខាងក្រោម = មូលដ្ឋាន VCCT (vccts*) — អានបានតែប៉ុណ្ណោះ។',
+    artId: 'លេខ VCCT (ART)',
+    site: 'កូដកន្លែង VCCT',
+    defaultSite: 'VCCT default (ART)',
+    mappingInsight: 'ការភ្ជាប់ VCCT',
+    mappingOtherSite: 'VCCT នៅមូលដ្ឋានផ្សេង (មិនមែន ART default)',
+    mappingNotFound: 'មិនរកឃើញក្នុង vccts',
+    mappingMultiSite: 'VCCT ច្រើនមូលដ្ឋាន',
+    source: 'ប្រភព'
   },
 
   footer:

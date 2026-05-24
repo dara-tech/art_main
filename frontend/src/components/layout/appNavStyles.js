@@ -20,7 +20,7 @@ export const appNavItemClass = (active, disabled = false) =>
 export const appNavPillActiveClass = 'border-primary/40 bg-primary/10 text-foreground shadow-none';
 
 export const appSubnavShellClass =
-  'w-full shrink-0 border-0 bg-background backdrop-blur-sm';
+  'w-full shrink-0 border-0 bg-card/95 backdrop-blur-sm';
 
 /** Fixed flush under main app top bar (overlap header border-b by 1px) */
 export const p360FixedShellClass = cn(appSubnavShellClass, 'fixed inset-x-0 z-40 -mt-px border-t-0');
@@ -60,6 +60,15 @@ export const P360_TABLE_ROW_INNER = cn(
   'min-w-0 max-w-full whitespace-nowrap text-ellipsis overflow-x-hidden'
 );
 
+/** Tighter body cells (e.g. visualize chart detail patient list). */
+export const P360_TABLE_BODY_ROW_INNER = cn(
+  'flex min-h-7 items-center',
+  P360_TABLE_PAD,
+  'py-1',
+  P360_TABLE_TEXT,
+  'min-w-0 max-w-full whitespace-nowrap text-ellipsis overflow-x-hidden'
+);
+
 export const p360ToolbarRowClass = (extra) =>
   cn(
     'flex min-h-10 items-center gap-2 py-2',
@@ -90,7 +99,7 @@ export const vizSectionHeaderClass = cn(
 
 export const vizChartBodyClass = cn(P360_TABLE_PAD, 'flex min-h-0 flex-1 flex-col pt-2 pb-1');
 
-export const vizChartPlotClass = 'min-h-48 w-full min-h-0 flex-1 basis-0';
+export const vizChartPlotClass = 'min-h-48 w-full min-h-0 flex-1 basis-0 pb-2';
 
 export const vizEmptyStateClass = cn(
   'flex min-h-48 items-center justify-center text-muted-foreground',

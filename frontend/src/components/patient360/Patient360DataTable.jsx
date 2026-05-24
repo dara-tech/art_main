@@ -2,7 +2,12 @@ import { useLayoutEffect, useMemo, useRef } from 'react';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { P360_KH } from '../../pages/patient360Kh';
-import { P360_TABLE_PAD, P360_TABLE_ROW_INNER, P360_TABLE_TEXT } from '../layout/appNavStyles';
+import {
+  P360_TABLE_BODY_ROW_INNER,
+  P360_TABLE_PAD,
+  P360_TABLE_ROW_INNER,
+  P360_TABLE_TEXT
+} from '../layout/appNavStyles';
 
 function resolveWidth(col) {
   const w = col.width ?? col.minWidth ?? 80;
@@ -25,8 +30,11 @@ function TableContent({
   scrollBody,
   sortKey,
   sortDirection,
-  onSortColumn
+  onSortColumn,
+  compactBodyRows = false
 }) {
+  const bodyRowInner = compactBodyRows ? P360_TABLE_BODY_ROW_INNER : P360_TABLE_ROW_INNER;
+  const bodyRowH = compactBodyRows ? 'h-7 min-h-7' : 'h-8 min-h-8';
   const tableMinWidth = sizedColumns.reduce((sum, col) => sum + col._w, 0);
 
   return (
@@ -121,7 +129,8 @@ function TableContent({
             <tr
               key={key}
               className={cn(
-                'h-8 min-h-8 border-0 border-b border-border/40 bg-card',
+                bodyRowH,
+                'border-0 border-b border-border/40',
                 clickable && 'cursor-pointer hover:bg-muted/40'
               )}
               onClick={
@@ -141,7 +150,7 @@ function TableContent({
                 ) : (
                   <span
                     className={cn(
-                      P360_TABLE_ROW_INNER,
+                      bodyRowInner,
                       col.mono && 'font-mono tabular-nums',
                       col.align === 'right' && 'justify-end'
                     )}
@@ -153,7 +162,7 @@ function TableContent({
                   <td
                     key={col.id}
                     title={typeof text === 'string' ? text : undefined}
-                    className={cn('h-8 min-h-8 p-0 align-middle border-0', col.cellClassName)}
+                    className={cn(bodyRowH, 'p-0 align-middle border-0', col.cellClassName)}
                   >
                     {content}
                   </td>
@@ -185,7 +194,8 @@ export default function Patient360DataTable({
   maxHeight,
   sortKey,
   sortDirection,
-  onSortColumn
+  onSortColumn,
+  compactBodyRows = false
 }) {
   const sizedColumns = useMemo(
     () =>
@@ -208,7 +218,7 @@ export default function Patient360DataTable({
     return (
       <div
         className={cn(
-          'flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden border-0 border-b border-border/80 bg-card',
+          'flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden border-0 border-b border-border/80',
           className
         )}
       >
@@ -233,6 +243,7 @@ export default function Patient360DataTable({
             sortKey={sortKey}
             sortDirection={sortDirection}
             onSortColumn={onSortColumn}
+            compactBodyRows={compactBodyRows}
           />
         </div>
       </div>
@@ -242,7 +253,7 @@ export default function Patient360DataTable({
   return (
     <div
       className={cn(
-        'min-w-0 w-full max-w-full overflow-x-auto border-0 border-b border-border/80 bg-card',
+        'min-w-0 w-full max-w-full overflow-x-auto border-0 border-b border-border/80',
         className
       )}
     >
@@ -257,6 +268,7 @@ export default function Patient360DataTable({
         sortKey={sortKey}
         sortDirection={sortDirection}
         onSortColumn={onSortColumn}
+        compactBodyRows={compactBodyRows}
       />
     </div>
   );

@@ -586,10 +586,36 @@ All scripts run against **one facility database** (single site). The app loads e
 
 ---
 
+## Check 30 — VCCT mapping (programmatic)
+
+**Implementation:** `backend/src/services/dqaVcctMappingService.js` (registered in `dqaService.js`, not a `.sql` file)
+
+**Khmer title:** VCCT ភ្ជាប់លើ ART ប៉ុន្តែភ្ជាប់មូលដ្ឋាន VCCT មិនត្រឹមត្រូវ / រកមិនឃើញ
+
+**Purpose:** Find ART registrations with `VcctID` where VCCT site mapping fails or points to the wrong facility. Uses the same logic as Patient 360 (`vcctReadService.classifyVcctMapping`).
+
+**Data sources:**
+
+- Facility DB: `tblaimain`, `tblcimain` (`VcctID`, `Vcctcode`)
+- Aggregate DB: `vccts`, `tblsites.vcct_site_code`
+
+**Issue types:**
+
+| `issue_type` | Meaning |
+|--------------|---------|
+| `VCCT record not found` | ID on ART, no row in `vccts` |
+| `VCCT site unmapped` | Cannot resolve VCCT site code |
+| `VCCT at other site` | Record exists at a different site than ART default |
+| `VCCT ID at multiple sites` | Same `vcct_id` in more than one `site_code` |
+
+**Key columns:** `clinicid`, `patient_type`, `vcct_id`, `vcct_code`, `art_default_vcct_site`, `resolved_vcct_site`, `found_vcct_sites`, `mapping_status`
+
+---
+
 ## Adding a new check
 
-1. Create `NN.description.sql` in this folder.
-2. First line: `-- DQA NN: Title`
+1. Create `NN.description.sql` in this folder **or** register a programmatic runner in `dqaService.registerProgrammaticChecks()`.
+2. First line: `-- DQA NN: Title` (SQL) or equivalent title in JS registration.
 3. Return rows with `issue_type`; use `ClinicID AS clinicid` where needed.
 4. Add Khmer strings in `frontend/src/pages/dqaKh.js` (`checkTitles`, `issueTypes`, `columnLabels`).
 5. Restart backend to reload scripts.
@@ -600,7 +626,8 @@ All scripts run against **one facility database** (single site). The app loads e
 
 | Path | Role |
 |------|------|
-| `backend/src/services/dqaService.js` | Loads and runs SQL |
+| `backend/src/services/dqaService.js` | Loads and runs SQL + programmatic checks |
+| `backend/src/services/dqaVcctMappingService.js` | Check 30 — VCCT mapping |
 | `frontend/src/pages/DqaPage.jsx` | DQA UI |
 | `frontend/src/pages/dqaKh.js` | Khmer labels |
 | `.cursor/rules/tpt-data-source.mdc` | TPT table convention |

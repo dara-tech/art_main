@@ -263,6 +263,7 @@ module.exports = {
   setCache,
   inferSiteLevel,
   isFacilitySite,
+  provinceIdFromCode,
   resolveFacilityCodesByHierarchy,
   mergeIndicatorRows,
   mergeSectionRows,

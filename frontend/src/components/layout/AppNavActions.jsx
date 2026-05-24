@@ -5,6 +5,7 @@ import {
   RiCodeSSlashLine,
   RiFileTextLine,
   RiShieldCheckLine,
+  RiTestTubeLine,
   RiUserSearchLine,
   RiUserSettingsLine
 } from '@remixicon/react';
@@ -71,6 +72,10 @@ export default function AppNavActions({ onLogout }) {
         <NavItem to="/patient-360" title="ព័ត៌មានអ្នកជំងឺ ៣៦០°">
           <RiUserSearchLine className={APP_NAV_ICON} />
           <span className="hidden md:inline">៣៦០°</span>
+        </NavItem>
+        <NavItem to="/vcct" title="VCCT / HTS">
+          <RiTestTubeLine className={APP_NAV_ICON} />
+          <span className="hidden md:inline">VCCT</span>
         </NavItem>
         <NavItem to="/visualize" title="វិភាគទិន្នន័យ">
           <RiBarChartGroupedLine className={APP_NAV_ICON} />

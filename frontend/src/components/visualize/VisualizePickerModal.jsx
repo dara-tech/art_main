@@ -1,12 +1,122 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { RiCloseLine, RiListCheck2, RiSearchLine } from '@remixicon/react';
+import {
+  RiArrowDownSLine,
+  RiArrowRightSLine,
+  RiCheckboxBlankLine,
+  RiCheckboxLine,
+  RiCloseLine,
+  RiListCheck2,
+  RiSearchLine
+} from '@remixicon/react';
 import { cn } from '@/lib/utils';
-import { appNavItemClass } from '../layout/appNavStyles';
+import { appNavItemClass, p360ControlClass, P360_TABLE_TEXT } from '../layout/appNavStyles';
 import { VIZ_KH } from '../../pages/visualizeKh';
 import { labelForIndicatorId, VISUALIZE_PRESETS } from '../../constants/indicatorLabels';
 import { buildIndicatorPickerGroups, indicatorSortKey } from '../../utils/visualizeChartData';
 import { buildEventPickerGroups, eventIdsForProgram } from '../../utils/visualizeEventPicker';
+
+const PRESET_LABEL_KH = {
+  vl: VIZ_KH.presetVl,
+  retention: VIZ_KH.presetRetention,
+  quality: VIZ_KH.presetQuality
+};
+
+function PickerCheckboxItem({ active, label, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex w-full items-start gap-2.5 border px-3 py-2 text-left transition-colors',
+        P360_TABLE_TEXT,
+        active
+          ? 'border-primary/55 bg-primary/12 text-foreground ring-1 ring-primary/20'
+          : 'border-border/70 bg-card hover:border-border hover:bg-muted/20'
+      )}
+    >
+      {active ? (
+        <RiCheckboxLine className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+      ) : (
+        <RiCheckboxBlankLine className="mt-0.5 size-4 shrink-0 text-muted-foreground/80" aria-hidden />
+      )}
+      <span className="min-w-0 flex-1 leading-snug">{label}</span>
+    </button>
+  );
+}
+
+function PickerGroupSection({
+  title,
+  items,
+  draftIds,
+  onToggleId,
+  onToggleGroup,
+  forceOpen = false,
+  defaultOpen = true
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const isOpen = forceOpen || open;
+  const selectedCount = items.filter((i) => draftIds.includes(i.id)).length;
+  const allSelected = items.length > 0 && selectedCount === items.length;
+
+  useEffect(() => {
+    if (forceOpen) setOpen(true);
+  }, [forceOpen]);
+
+  if (!items.length) return null;
+
+  return (
+    <section className="border-b border-border/80 last:border-b-0">
+      <div className="flex items-center gap-1 bg-muted/25 px-2 py-1.5">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className={cn(
+            'flex min-w-0 flex-1 items-center gap-1 text-left font-semibold text-foreground',
+            P360_TABLE_TEXT
+          )}
+          aria-expanded={isOpen}
+        >
+          {isOpen ? (
+            <RiArrowDownSLine className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          ) : (
+            <RiArrowRightSLine className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          )}
+          <span className="truncate">{title}</span>
+          <span className="shrink-0 tabular-nums font-normal text-muted-foreground">
+            (
+              {VIZ_KH.pickerGroupSelected
+                .replace('{n}', String(selectedCount))
+                .replace('{total}', String(items.length))}
+              )
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onToggleGroup(items.map((i) => i.id), !allSelected)}
+          className={cn(
+            'shrink-0 px-2 py-0.5 text-[10px] font-medium text-primary hover:underline',
+            P360_TABLE_TEXT
+          )}
+        >
+          {allSelected ? VIZ_KH.pickerClearGroup : VIZ_KH.pickerSelectGroup}
+        </button>
+      </div>
+      {isOpen ? (
+        <div className="space-y-1 px-2 py-2">
+          {items.map((item) => (
+            <PickerCheckboxItem
+              key={item.id}
+              active={draftIds.includes(item.id)}
+              label={item.label}
+              onClick={() => onToggleId(item.id)}
+            />
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
 
 export default function VisualizePickerModal({
   open,
@@ -89,36 +199,60 @@ export default function VisualizePickerModal({
     [catalog, programFilter, pickerView]
   );
 
-  if (!open) return null;
-
-  const toggleId = (id) => {
+  const toggleId = useCallback((id) => {
     setDraftIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  };
+  }, []);
 
-  const applyPreset = (preset) => {
-    const valid = preset.ids.filter((id) => catalog.some((c) => c.id === id));
-    setDraftIds(valid);
-  };
+  const toggleGroupIds = useCallback((ids, select) => {
+    setDraftIds((prev) => {
+      if (select) {
+        const set = new Set(prev);
+        ids.forEach((id) => set.add(id));
+        return [...set];
+      }
+      const remove = new Set(ids);
+      return prev.filter((id) => !remove.has(id));
+    });
+  }, []);
+
+  const applyPreset = useCallback(
+    (preset) => {
+      const valid = preset.ids.filter((id) => catalog.some((c) => c.id === id));
+      setDraftIds(valid);
+    },
+    [catalog]
+  );
 
   const apply = () => {
     onApply({ indicatorIds: draftIds });
     onClose();
   };
 
-  const chipClass = (active) =>
-    cn(
-      'w-full border px-2 py-1 text-left text-[11px] leading-snug transition-colors',
-      active
-        ? 'border-primary/50 bg-primary/10 text-foreground'
-        : 'border-border/70 bg-muted/5 text-foreground hover:bg-muted/25'
-    );
+  if (!open) return null;
 
   const isEventsView = eventsOnly || pickerView === 'events';
+  const hasSearch = Boolean(search.trim());
   const listEmpty = isEventsView ? !eventGroups.length : !items.length;
+
+  const indicatorSections = indicatorGroups
+    .map((group) => {
+      if (!group.children.length && group.parent) {
+        return { key: group.key, title: group.parent.label, items: [group.parent] };
+      }
+      const sectionItems = [
+        ...(group.parent ? [group.parent] : []),
+        ...group.children
+      ];
+      const title =
+        group.parent?.label ||
+        (group.key && group.children.length ? `${group.key}.` : VIZ_KH.indicator);
+      return { key: group.key, title, items: sectionItems };
+    })
+    .filter((s) => s.items.length);
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[150] flex items-center justify-center bg-black/50 p-2 backdrop-blur-[2px] sm:p-3"
+      className="fixed inset-0 z-[150] flex items-center justify-center bg-black/50 p-3 backdrop-blur-[2px] sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="viz-picker-title"
@@ -127,73 +261,69 @@ export default function VisualizePickerModal({
       }}
     >
       <div
-        className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden bg-card shadow-2xl shadow-black/15"
+        className="flex max-h-[min(92vh,44rem)] w-full max-w-4xl flex-col overflow-hidden bg-card shadow-2xl shadow-black/15"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/80 bg-muted/35 px-3 py-2">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <RiListCheck2 className="size-4 shrink-0 text-primary" aria-hidden />
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border/80 bg-muted/30 px-4 py-3">
+          <div className="flex min-w-0 items-start gap-2">
+            <RiListCheck2 className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
             <div className="min-w-0">
-              <h2 id="viz-picker-title" className="truncate text-sm font-semibold text-foreground">
+              <h2 id="viz-picker-title" className="text-base font-semibold text-foreground">
                 {isEventsView ? VIZ_KH.modalEventsTitle : VIZ_KH.modalIndicatorsTitle}
               </h2>
-              <p className="text-[10px] text-muted-foreground">
-                {isEventsView ? VIZ_KH.modalEventsHint : null}
-                {isEventsView ? ' · ' : ''}
-                {draftIds.length} {VIZ_KH.selectedIndicators}
+              <p className={cn('mt-0.5 text-muted-foreground', P360_TABLE_TEXT)}>
+                {isEventsView ? VIZ_KH.modalEventsHint : VIZ_KH.programFilterHint}
+                {' · '}
+                <strong className="font-semibold text-foreground">{draftIds.length}</strong>{' '}
+                {VIZ_KH.selectedIndicators}
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex size-7 shrink-0 items-center justify-center border border-border/80 bg-background hover:bg-muted/50"
+            className="inline-flex size-8 shrink-0 items-center justify-center border border-border/80 bg-card hover:bg-muted/50"
             aria-label={VIZ_KH.modalCancel}
           >
-            <RiCloseLine className="size-3.5" />
+            <RiCloseLine className="size-4" />
           </button>
         </div>
 
-        <div className="shrink-0 space-y-1.5 border-b border-border/60 px-3 py-2">
-          {!eventsOnly ? (
-            <div className="flex flex-wrap gap-0.5">
-              <button
-                type="button"
-                onClick={() => setPickerView('events')}
-                className={appNavItemClass(isEventsView)}
-              >
-                {VIZ_KH.pickerModeEvents}
-              </button>
-              <button
-                type="button"
-                onClick={() => setPickerView('all')}
-                className={appNavItemClass(!isEventsView)}
-              >
-                {VIZ_KH.pickerModeAll}
-              </button>
-            </div>
-          ) : null}
-          <div className="flex flex-wrap gap-0.5">
-            {Object.values(VISUALIZE_PRESETS).map((p) => (
-              <button key={p.label} type="button" onClick={() => applyPreset(p)} className={appNavItemClass(false)}>
-                {p.label}
-              </button>
-            ))}
-            {!isEventsView ? (
-              <button
-                type="button"
-                onClick={() => setDraftIds(idsForProgram)}
-                className={appNavItemClass(false)}
-                disabled={!idsForProgram.length}
-              >
-                {VIZ_KH.modalSelectAll}
-              </button>
-            ) : null}
-            <button type="button" onClick={() => setDraftIds([])} className={appNavItemClass(false)}>
-              {VIZ_KH.modalClear}
-            </button>
+        <div className="shrink-0 space-y-2 border-b border-border/80 px-4 py-3">
+          <div className="relative">
+            <RiSearchLine
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={isEventsView ? VIZ_KH.searchEvents : VIZ_KH.searchIndicators}
+              autoFocus
+              className={cn(p360ControlClass, 'h-9 w-full pl-9 text-[12px]')}
+            />
           </div>
-          <div className="flex flex-wrap gap-0.5">
+
+          <div className="flex flex-wrap items-center gap-1">
+            {!eventsOnly ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setPickerView('events')}
+                  className={appNavItemClass(isEventsView)}
+                >
+                  {VIZ_KH.pickerModeEvents}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPickerView('all')}
+                  className={appNavItemClass(!isEventsView)}
+                >
+                  {VIZ_KH.pickerModeAll}
+                </button>
+                <span className="mx-0.5 h-5 w-px bg-border/80" aria-hidden />
+              </>
+            ) : null}
             {programTabs.map((tab) => (
               <button
                 key={tab.id}
@@ -205,126 +335,97 @@ export default function VisualizePickerModal({
               </button>
             ))}
           </div>
-          <div className="relative">
-            <RiSearchLine
-              className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground"
-              aria-hidden
-            />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={isEventsView ? VIZ_KH.searchEvents : VIZ_KH.searchIndicators}
-              className="h-7 w-full border border-border/80 bg-background pl-7 pr-2 text-[11px] shadow-none focus-visible:border-primary/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/25"
-            />
+
+          <div className="flex flex-wrap items-center gap-1">
+            <span className={cn('mr-1 shrink-0 text-muted-foreground', P360_TABLE_TEXT)}>
+              {VIZ_KH.pickerQuickPresets}:
+            </span>
+            {Object.entries(VISUALIZE_PRESETS).map(([key, p]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => applyPreset(p)}
+                className={appNavItemClass(false)}
+              >
+                {PRESET_LABEL_KH[key] || p.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           {catalogLoading ? (
-            <p className="py-6 text-center text-[11px] text-muted-foreground">{VIZ_KH.loadingCatalog}</p>
+            <p className={cn('py-12 text-center text-muted-foreground', P360_TABLE_TEXT)}>
+              {VIZ_KH.loadingCatalog}
+            </p>
           ) : !catalog.length ? (
-            <p className="py-6 text-center text-[11px] text-muted-foreground">{VIZ_KH.catalogEmpty}</p>
+            <p className={cn('py-12 text-center text-muted-foreground', P360_TABLE_TEXT)}>
+              {VIZ_KH.catalogEmpty}
+            </p>
           ) : listEmpty ? (
-            <p className="py-6 text-center text-[11px] text-muted-foreground">{VIZ_KH.catalogEmpty}</p>
+            <p className={cn('py-12 text-center text-muted-foreground', P360_TABLE_TEXT)}>
+              {VIZ_KH.pickerNoMatch}
+            </p>
           ) : isEventsView ? (
-            <div className="space-y-2.5">
-              {eventGroups.map((group) => (
-                <section key={group.key} className="min-w-0">
-                  <div className="mb-1 px-0.5 text-[10px] font-semibold text-muted-foreground">{group.title}</div>
-                  <div
-                    className={cn(
-                      'grid gap-1 border-l-2 border-primary/20 pl-2',
-                      group.events.length > 1 ? 'sm:grid-cols-2' : 'grid-cols-1'
-                    )}
-                  >
-                    {group.events.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => toggleId(item.id)}
-                        className={chipClass(draftIds.includes(item.id))}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
+            eventGroups.map((group) => (
+              <PickerGroupSection
+                key={group.key}
+                title={group.title}
+                items={group.events}
+                draftIds={draftIds}
+                onToggleId={toggleId}
+                onToggleGroup={toggleGroupIds}
+                forceOpen={hasSearch}
+              />
+            ))
           ) : (
-            <div className="space-y-2">
-              {indicatorGroups.map((group) => {
-                const showChildren = group.children.length > 0;
-                const solo = !showChildren && group.parent;
-                return (
-                  <section key={group.key} className="min-w-0">
-                    {solo ? (
-                      <button
-                        type="button"
-                        onClick={() => toggleId(group.parent.id)}
-                        className={chipClass(draftIds.includes(group.parent.id))}
-                      >
-                        {group.parent.label}
-                      </button>
-                    ) : (
-                      <>
-                        {group.parent ? (
-                          <button
-                            type="button"
-                            onClick={() => toggleId(group.parent.id)}
-                            className={cn(chipClass(draftIds.includes(group.parent.id)), 'mb-1 font-medium')}
-                          >
-                            {group.parent.label}
-                          </button>
-                        ) : showChildren ? (
-                          <div className="mb-1 px-1 text-[10px] font-semibold tabular-nums text-muted-foreground">
-                            {group.key}.
-                          </div>
-                        ) : null}
-                        {showChildren ? (
-                          <div
-                            className={cn(
-                              'grid gap-1 border-l-2 border-primary/20 pl-2',
-                              group.children.length > 1 ? 'sm:grid-cols-2' : 'grid-cols-1'
-                            )}
-                          >
-                            {group.children.map((item) => (
-                              <button
-                                key={item.id}
-                                type="button"
-                                onClick={() => toggleId(item.id)}
-                                className={chipClass(draftIds.includes(item.id))}
-                              >
-                                {item.label}
-                              </button>
-                            ))}
-                          </div>
-                        ) : null}
-                      </>
-                    )}
-                  </section>
-                );
-              })}
-            </div>
+            indicatorSections.map((section) => (
+              <PickerGroupSection
+                key={section.key}
+                title={section.title}
+                items={section.items}
+                draftIds={draftIds}
+                onToggleId={toggleId}
+                onToggleGroup={toggleGroupIds}
+                forceOpen={hasSearch}
+              />
+            ))
           )}
         </div>
 
-        <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border/80 bg-muted/20 px-3 py-2">
-          <span className="text-[10px] text-muted-foreground">
-            {draftIds.length} {isEventsView ? VIZ_KH.pickEvents : VIZ_KH.pickIndicators}
-          </span>
-          <div className="flex gap-1.5">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border/80 bg-muted/20 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={cn('font-medium tabular-nums text-foreground', P360_TABLE_TEXT)}>
+              {draftIds.length} {isEventsView ? VIZ_KH.pickEvents : VIZ_KH.pickIndicators}
+            </span>
+            <span className="h-4 w-px bg-border/80" aria-hidden />
+            <button
+              type="button"
+              onClick={() => setDraftIds(idsForProgram)}
+              disabled={!idsForProgram.length}
+              className={cn(appNavItemClass(false), 'disabled:opacity-40')}
+            >
+              {VIZ_KH.modalSelectAll}
+            </button>
+            <button type="button" onClick={() => setDraftIds([])} className={appNavItemClass(false)}>
+              {VIZ_KH.modalClear}
+            </button>
+          </div>
+          <div className="flex gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-7 items-center border border-border/80 bg-background px-2.5 text-[10px] hover:bg-muted/50"
+              className={cn(appNavItemClass(false), 'min-w-[4.5rem]')}
             >
               {VIZ_KH.modalCancel}
             </button>
             <button
               type="button"
               onClick={apply}
-              className="inline-flex h-7 items-center border border-primary/40 bg-primary/10 px-2.5 text-[10px] font-medium hover:bg-primary/15"
+              className={cn(
+                appNavItemClass(true),
+                'min-w-[4.5rem] border-primary/50 bg-primary/15 font-semibold'
+              )}
             >
               {VIZ_KH.modalApply}
             </button>

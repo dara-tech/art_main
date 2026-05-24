@@ -163,7 +163,8 @@ router.get('/sites-registry', authenticateToken, async (req, res, next) => {
       province: site.province,
       od_code: site.od_code,
       type: site.type,
-      database_name: site.database_name
+      database_name: site.database_name,
+      vcctSiteCode: site.vcct_site_code ? String(site.vcct_site_code).trim() : null
     }));
     res.json(filterRegistrySites(formatted, req.user));
   } catch (error) {

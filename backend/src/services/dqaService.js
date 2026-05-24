@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { siteDatabaseManager } = require('../config/siteDatabase');
+const dqaVcctMappingService = require('./dqaVcctMappingService');
 
 const BASE_DIR = path.resolve(__dirname, '../../queries/DQA');
 
@@ -51,6 +52,19 @@ class DqaService {
         sql
       });
     });
+    this.registerProgrammaticChecks();
+  }
+
+  registerProgrammaticChecks() {
+    const id = '30.vcct mapping issues';
+    this.scripts.set(id, {
+      id,
+      checkNumber: '30',
+      title: 'VCCT linked on ART but mapping issue (site / not found)',
+      path: 'backend/src/services/dqaVcctMappingService.js',
+      sql: dqaVcctMappingService.DOCUMENTATION_SQL,
+      run: dqaVcctMappingService.runForSite
+    });
   }
 
   listScripts() {
@@ -78,6 +92,17 @@ class DqaService {
   async executeOne(siteCode, id) {
     const startedAt = Date.now();
     const script = this.getScript(id);
+    if (typeof script.run === 'function') {
+      const rows = await script.run(siteCode);
+      return {
+        scriptId: script.id,
+        title: script.title,
+        path: script.path,
+        rowCount: rows.length,
+        rows,
+        queryMs: Date.now() - startedAt
+      };
+    }
     const conn = await siteDatabaseManager.getSiteConnection(siteCode);
     const raw = await conn.query(script.sql, { type: conn.QueryTypes.SELECT });
     const rows = normalizeRows(raw);

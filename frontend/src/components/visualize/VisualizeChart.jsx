@@ -18,7 +18,6 @@ import {
   YAxis
 } from 'recharts';
 import { cn } from '@/lib/utils';
-import { P360_TABLE_TEXT } from '../layout/appNavStyles';
 import { VIZ_KH } from '../../pages/visualizeKh';
 import {
   buildDemographicsForIndicator,
@@ -27,12 +26,13 @@ import {
   buildSnapshotData,
   buildTrendKpis,
   chartFullLabel,
-  isCompareResults,
+  isMultiFacilityCompare,
   VIZ_CHART_COLORS
 } from '../../utils/visualizeChartData';
 import {
   applySeriesColors,
   DEFAULT_CHART_SETTINGS,
+  resolveChartTypography,
   resolveSeriesColor,
   resolveXAxisLayout,
   resolveYAxisDomain,
@@ -52,14 +52,64 @@ import {
   VizEmpty,
   VizKpiGrid,
   VizLegend,
+  VizPeriodAxis,
   VizSectionHeader,
   VizTooltipBox
 } from './visualizeUi';
 
-const TICK = { fontSize: 11, fill: 'var(--muted-foreground)' };
 const GRID = 'var(--border)';
 const DEMO_MALE = 'var(--report-male)';
 const DEMO_FEMALE = 'var(--report-female)';
+
+function CategoryAxisTick({ x, y, payload, angle = 0, textAnchor = 'middle', typography }) {
+  const label = payload?.value != null && payload.value !== '' ? String(payload.value) : '';
+  if (!label) return null;
+  const t = typography || resolveChartTypography();
+  return (
+    <text
+      x={x}
+      y={y}
+      dy={angle ? 4 : 14}
+      fill={t.fill}
+      fontSize={t.fontSize}
+      fontWeight={t.fontWeight}
+      textAnchor={textAnchor}
+      transform={angle ? `rotate(${angle}, ${x}, ${y})` : undefined}
+    >
+      {label}
+    </text>
+  );
+}
+
+function categoryXAxisProps({ xDataKey, xLayout, showPeriodAxisTitle = false, typography }) {
+  const t = typography || resolveChartTypography();
+  const axisTitle = showPeriodAxisTitle
+    ? {
+        value: VIZ_KH.period,
+        position: 'bottom',
+        offset: 4,
+        style: t.axisTitle
+      }
+    : undefined;
+  return {
+    dataKey: xDataKey,
+    interval: 0,
+    minTickGap: 4,
+    tickMargin: 10,
+    tickLine: false,
+    axisLine: { stroke: GRID },
+    height: xLayout.height,
+    label: axisTitle,
+    tick: (props) => (
+      <CategoryAxisTick
+        {...props}
+        angle={xLayout.angle}
+        textAnchor={xLayout.textAnchor}
+        typography={t}
+      />
+    )
+  };
+}
 
 function fmtNum(n) {
   return Number(n).toLocaleString('km-KH');
@@ -71,7 +121,7 @@ function pickClickedPayload(activePayload) {
   );
 }
 
-function MultiTrendTooltip({ active, payload, label, shared = true }) {
+function MultiTrendTooltip({ active, payload, label, shared = true, typography }) {
   if (!active || !payload?.length) return null;
   let rows = payload.filter((e) => !String(e.dataKey || '').startsWith('__trend_'));
   if (!shared && rows.length > 1) {
@@ -79,36 +129,41 @@ function MultiTrendTooltip({ active, payload, label, shared = true }) {
     if (!rows.length) rows = [payload.find((e) => !String(e.dataKey || '').startsWith('__trend_'))].filter(Boolean);
   }
   if (!rows.length) return null;
-  const title = rows[0]?.payload?.xLabel || payload[0]?.payload?.xLabel || label;
+  const title =
+    rows[0]?.payload?.period ||
+    rows[0]?.payload?.xLabel ||
+    payload[0]?.payload?.period ||
+    payload[0]?.payload?.xLabel ||
+    label;
   return (
-    <VizTooltipBox title={title}>
+    <VizTooltipBox title={title} typography={typography}>
       {rows.map((entry) => (
         <p key={entry.dataKey} className="tabular-nums" style={{ color: entry.color }}>
           {entry.name}: {fmtNum(entry.value)}
         </p>
       ))}
-      <p className={cn('mt-1 border-t border-border/50 pt-1 text-muted-foreground', P360_TABLE_TEXT)}>
+      <p className="mt-1 border-t border-border/50 pt-1 text-muted-foreground">
         {VIZ_KH.chartClickDetailHint}
       </p>
     </VizTooltipBox>
   );
 }
 
-function SnapshotTooltip({ active, payload }) {
+function SnapshotTooltip({ active, payload, typography }) {
   if (!active || !payload?.length) return null;
   const p = payload[0]?.payload;
   return (
-    <VizTooltipBox title={p?.fullName}>
+    <VizTooltipBox title={p?.fullName} typography={typography}>
       <p className="tabular-nums text-primary">{fmtNum(p?.total)}</p>
     </VizTooltipBox>
   );
 }
 
-function DemoTooltip({ active, payload, label, shared = true }) {
+function DemoTooltip({ active, payload, label, shared = true, typography }) {
   if (!active || !payload?.length) return null;
   const rows = shared ? payload : payload.filter((e) => e?.active !== false).slice(0, 1);
   return (
-    <VizTooltipBox title={label}>
+    <VizTooltipBox title={label} typography={typography}>
       {rows.map((e) => (
         <p key={e.dataKey} style={{ color: e.color }} className="tabular-nums">
           {e.name}: {fmtNum(e.value)}
@@ -127,9 +182,10 @@ function ChartResponsive({ children }) {
 }
 
 function yAxisProps(domain, settings) {
+  const t = resolveChartTypography(settings);
   return {
     domain,
-    tick: TICK,
+    tick: t.tick,
     allowDecimals: false,
     width: 52,
     axisLine: false,
@@ -138,11 +194,11 @@ function yAxisProps(domain, settings) {
   };
 }
 
-function PieTrendTooltip({ active, payload }) {
+function PieTrendTooltip({ active, payload, typography }) {
   if (!active || !payload?.length) return null;
   const p = payload[0]?.payload;
   return (
-    <VizTooltipBox title={p?.name}>
+    <VizTooltipBox title={p?.name} typography={typography}>
       <p className="tabular-nums text-primary">{fmtNum(p?.value)}</p>
     </VizTooltipBox>
   );
@@ -156,7 +212,8 @@ function renderTrendSeries({
   barMaxSize,
   barRadius,
   showLabels,
-  stackId
+  stackId,
+  typography
 }) {
   if (chartType === 'line') {
     return series.map((s) => (
@@ -203,7 +260,7 @@ function renderTrendSeries({
         <LabelList
           dataKey={s.dataKey}
           position={labelPos}
-          className={cn(P360_TABLE_TEXT, 'fill-foreground')}
+          style={typography?.labelList}
           formatter={fmtNum}
         />
       ) : null}
@@ -228,6 +285,7 @@ function MultiTrendChart({
   }
 
   const chartType = normalizeChartType(variant);
+  const typography = resolveChartTypography(chartSettings);
   const showTrendLine = Boolean(chartSettings.showTrendLine) && supportsTrendLine(chartType);
   const chartData = withTrendLineOverlay(data, series, showTrendLine);
   const legendItems = [
@@ -244,7 +302,7 @@ function MultiTrendChart({
   const yDomain = resolveYAxisDomain(chartData, series, chartSettings);
   const showLabels = chartSettings.showBarLabels || series.length === 1;
   const denseX = xDataKey === 'xLabel';
-  const xLayout = resolveXAxisLayout(denseX, chartSettings);
+  const xLayout = resolveXAxisLayout(denseX, chartSettings, chartData.length);
   const barMaxSize = Number(chartSettings.barMaxSize) || 40;
   const barRadius = Number(chartSettings.barRadius) || 0;
   const lineCurve = chartSettings.lineCurve || 'monotone';
@@ -277,13 +335,16 @@ function MultiTrendChart({
     };
     return (
       <>
-        <p className={cn('mb-2 shrink-0 text-center text-muted-foreground', P360_TABLE_TEXT)}>
+        <p
+          className="mb-2 shrink-0 text-center text-muted-foreground"
+          style={{ fontSize: typography.fontSize, fontWeight: typography.fontWeight }}
+        >
           {VIZ_KH.chartPiePeriodHint.replace('{period}', periodLabel)}
         </p>
         <VizChartPlot className={onPointClick ? 'cursor-pointer' : undefined}>
           <ChartResponsive>
             <PieChart>
-              <Tooltip content={<PieTrendTooltip />} />
+              <Tooltip content={(props) => <PieTrendTooltip {...props} typography={typography} />} />
               <Pie
                 data={slices}
                 dataKey="value"
@@ -291,9 +352,19 @@ function MultiTrendChart({
                 cx="50%"
                 cy="50%"
                 outerRadius="78%"
-                label={({ name, percent }) =>
-                  `${name} ${(percent * 100).toFixed(0)}%`
-                }
+                label={({ name, percent, x, y }) => (
+                  <text
+                    x={x}
+                    y={y}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fill={typography.fill}
+                    fontSize={typography.fontSize}
+                    fontWeight={typography.fontWeight}
+                  >
+                    {`${name} ${(percent * 100).toFixed(0)}%`}
+                  </text>
+                )}
                 labelLine={false}
                 onClick={(_, index) => handlePieClick(slices[index])}
               >
@@ -304,7 +375,7 @@ function MultiTrendChart({
             </PieChart>
           </ChartResponsive>
         </VizChartPlot>
-        {chartSettings.showLegend ? <VizLegend items={pieLegend} /> : null}
+        {chartSettings.showLegend ? <VizLegend items={pieLegend} typography={typography} /> : null}
       </>
     );
   }
@@ -324,6 +395,9 @@ function MultiTrendChart({
   };
 
   const isHorizontal = chartType === 'horizontal';
+  const showPeriodStrip = !isHorizontal && chartData.length > 0;
+  const chartBottomMargin = showPeriodStrip ? 12 : xLayout.bottom + 16;
+  const yAxisWidth = 52;
   const useComposed = showTrendLine || chartType === 'area';
   const ChartRoot = useComposed
     ? ComposedChart
@@ -340,7 +414,7 @@ function MultiTrendChart({
       margin={
         isHorizontal
           ? { top: 12, right: 48, left: 4, bottom: 8 }
-          : { top: 16, right: 12, left: 4, bottom: xLayout.bottom }
+          : { top: 16, right: 12, left: 4, bottom: chartBottomMargin }
       }
       onClick={onPointClick ? handleChartClick : undefined}
     >
@@ -355,28 +429,33 @@ function MultiTrendChart({
       ) : null}
       {isHorizontal ? (
         <>
-          <XAxis type="number" tick={TICK} allowDecimals={false} axisLine={false} tickLine={false} />
+          <XAxis type="number" tick={typography.tick} allowDecimals={false} axisLine={false} tickLine={false} />
           <YAxis
             type="category"
             dataKey={xDataKey}
             width={denseX ? 200 : 88}
-            tick={{ ...TICK, fontSize: 10 }}
+            tick={{ ...typography.tick, fontSize: typography.periodDenseSize }}
             axisLine={false}
             tickLine={false}
             interval={0}
           />
         </>
-      ) : (
+      ) : showPeriodStrip ? (
         <>
           <XAxis
             dataKey={xDataKey}
-            tick={TICK}
+            interval={0}
+            height={8}
+            tick={false}
             axisLine={{ stroke: GRID }}
             tickLine={false}
-            interval={denseX ? 'preserveStartEnd' : undefined}
-            angle={xLayout.angle}
-            textAnchor={xLayout.textAnchor}
-            height={xLayout.height}
+          />
+          <YAxis {...yAxisProps(yDomain, chartSettings)} />
+        </>
+      ) : (
+        <>
+          <XAxis
+            {...categoryXAxisProps({ xDataKey, xLayout, showPeriodAxisTitle: false, typography })}
           />
           <YAxis {...yAxisProps(yDomain, chartSettings)} />
         </>
@@ -384,7 +463,9 @@ function MultiTrendChart({
       <Tooltip
         shared={tooltipShared}
         cursor={tooltipCursor}
-        content={(props) => <MultiTrendTooltip {...props} shared={tooltipShared} />}
+        content={(props) => (
+          <MultiTrendTooltip {...props} shared={tooltipShared} typography={typography} />
+        )}
       />
       {renderTrendSeries({
         chartType,
@@ -394,7 +475,8 @@ function MultiTrendChart({
         barMaxSize,
         barRadius,
         showLabels,
-        stackId
+        stackId,
+        typography
       })}
       {showTrendLine
         ? series.map((s) => (
@@ -419,10 +501,21 @@ function MultiTrendChart({
 
   return (
     <>
-      <VizChartPlot className={onPointClick ? 'cursor-pointer' : undefined}>
-        <ChartResponsive>{cartesian}</ChartResponsive>
-      </VizChartPlot>
-      {chartSettings.showLegend ? <VizLegend items={legendItems} /> : null}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <VizChartPlot className={cn('min-h-0 flex-1', onPointClick && 'cursor-pointer')}>
+          <ChartResponsive>{cartesian}</ChartResponsive>
+        </VizChartPlot>
+        {showPeriodStrip ? (
+          <VizPeriodAxis
+            rows={chartData}
+            xDataKey={xDataKey}
+            yAxisWidth={yAxisWidth}
+            dense={denseX}
+            typography={typography}
+          />
+        ) : null}
+      </div>
+      {chartSettings.showLegend ? <VizLegend items={legendItems} typography={typography} /> : null}
     </>
   );
 }
@@ -444,6 +537,8 @@ function SnapshotCompareGrouped({
     );
   }
 
+  const typography = resolveChartTypography(chartSettings);
+  const textStyle = { fontSize: typography.fontSize, fontWeight: typography.fontWeight };
   const facilityOrder = grouped.map((g) => g.facilityCode);
   const legendItems = grouped.map((g, i) => ({
     key: g.facilityCode,
@@ -454,14 +549,14 @@ function SnapshotCompareGrouped({
   return (
     <VizChartShell
       title={VIZ_KH.chartSnapshotCompareGrouped.replace('{period}', periodLabel)}
-      legend={<VizLegend items={legendItems} />}
+      legend={<VizLegend items={legendItems} typography={typography} />}
     >
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-1 py-2">
         {grouped.map((group, gi) => {
           const color = resolveSeriesColor(group.facilityCode, gi, chartSettings);
           return (
             <section key={group.facilityCode} className="border border-border/70 bg-muted/5 px-2 py-2">
-              <h4 className={cn('mb-2 truncate text-xs font-semibold text-foreground', P360_TABLE_TEXT)}>
+              <h4 className="mb-2 truncate text-foreground" style={textStyle}>
                 {group.facilityLabel}
               </h4>
               <ul className="space-y-1.5">
@@ -487,16 +582,11 @@ function SnapshotCompareGrouped({
                         }
                         disabled={!onRowClick}
                       >
-                      <div className="mb-0.5 flex items-baseline justify-between gap-2">
-                        <span
-                          className={cn('min-w-0 flex-1 truncate text-[11px] text-foreground', P360_TABLE_TEXT)}
-                          title={row.fullName}
-                        >
+                      <div className="mb-0.5 flex items-baseline justify-between gap-2" style={textStyle}>
+                        <span className="min-w-0 flex-1 truncate text-foreground" title={row.fullName}>
                           {row.name}
                         </span>
-                        <span className={cn('shrink-0 tabular-nums text-[11px] font-medium', P360_TABLE_TEXT)}>
-                          {fmtNum(row.total)}
-                        </span>
+                        <span className="shrink-0 tabular-nums text-foreground">{fmtNum(row.total)}</span>
                       </div>
                       <div className="h-2 w-full bg-muted/40">
                         <div
@@ -533,6 +623,7 @@ function SnapshotChart({
     );
   }
 
+  const typography = resolveChartTypography(chartSettings);
   const chartData = [...data].reverse();
   const rowH = 28;
   const chartH = Math.max(120, chartData.length * rowH + 24);
@@ -573,7 +664,7 @@ function SnapshotChart({
   return (
     <VizChartShell
       title={VIZ_KH.chartSnapshotHint.replace('{period}', periodLabel)}
-      legend={chartSettings.showLegend ? <VizLegend items={legendItems} /> : null}
+      legend={chartSettings.showLegend ? <VizLegend items={legendItems} typography={typography} /> : null}
     >
       <VizChartPlot className={cn('overflow-y-auto', onBarClick && 'cursor-pointer')}>
         <div style={{ height: chartH, minHeight: '100%' }}>
@@ -593,17 +684,20 @@ function SnapshotChart({
               }
             >
               <CartesianGrid stroke={GRID} strokeDasharray="3 3" strokeOpacity={0.45} horizontal={false} />
-              <XAxis type="number" tick={TICK} allowDecimals={false} axisLine={false} tickLine={false} />
+              <XAxis type="number" tick={typography.tick} allowDecimals={false} axisLine={false} tickLine={false} />
               <YAxis
                 type="category"
                 dataKey="name"
                 width={labelW}
-                tick={{ ...TICK, fontSize: 10 }}
+                tick={{ ...typography.tick, fontSize: typography.periodDenseSize }}
                 axisLine={false}
                 tickLine={false}
                 interval={0}
               />
-              <Tooltip content={<SnapshotTooltip />} cursor={{ fill: 'oklch(0.5 0.13 46 / 0.06)' }} />
+              <Tooltip
+                content={(props) => <SnapshotTooltip {...props} typography={typography} />}
+                cursor={{ fill: 'oklch(0.5 0.13 46 / 0.06)' }}
+              />
               <Bar dataKey="total" radius={0} maxBarSize={22}>
                 {chartData.map((entry, i) => (
                   <Cell key={i} fill={colorForEntry(entry, i)} />
@@ -611,7 +705,7 @@ function SnapshotChart({
                 <LabelList
                   dataKey="total"
                   position="right"
-                  className={cn(P360_TABLE_TEXT, 'fill-foreground')}
+                  style={typography.labelList}
                   formatter={fmtNum}
                 />
               </Bar>
@@ -639,21 +733,34 @@ function DemographicsChart({ data, title, chartSettings = DEFAULT_CHART_SETTINGS
     );
   }
 
+  const typography = resolveChartTypography(chartSettings);
   const yDomain = resolveYAxisDomain(data, [], chartSettings);
 
   return (
     <VizChartShell
       title={title}
-      legend={chartSettings.showLegend ? <VizLegend items={DEMO_LEGEND} /> : null}
+      legend={chartSettings.showLegend ? <VizLegend items={DEMO_LEGEND} typography={typography} /> : null}
     >
-      <p className={cn('mb-1 shrink-0 text-muted-foreground', P360_TABLE_TEXT)}>{VIZ_KH.chartDemographicsHint}</p>
+      <p
+        className="mb-1 shrink-0 text-muted-foreground"
+        style={{ fontSize: typography.fontSize, fontWeight: typography.fontWeight }}
+      >
+        {VIZ_KH.chartDemographicsHint}
+      </p>
       <VizChartPlot>
         <ChartResponsive>
-          <BarChart data={data} margin={{ top: 12, right: 12, left: 4, bottom: 8 }}>
+          <BarChart data={data} margin={{ top: 12, right: 12, left: 4, bottom: 28 }}>
             {chartSettings.showGrid !== false ? (
               <CartesianGrid stroke={GRID} strokeDasharray="3 3" strokeOpacity={0.45} vertical={false} />
             ) : null}
-            <XAxis dataKey="period" tick={TICK} axisLine={{ stroke: GRID }} tickLine={false} />
+            <XAxis
+              {...categoryXAxisProps({
+                xDataKey: 'period',
+                xLayout: resolveXAxisLayout(false, chartSettings, data.length),
+                showPeriodAxisTitle: true,
+                typography
+              })}
+            />
             <YAxis {...yAxisProps(yDomain, chartSettings)} />
             <Tooltip
               shared={chartSettings.tooltipShared !== false}
@@ -663,7 +770,11 @@ function DemographicsChart({ data, title, chartSettings = DEFAULT_CHART_SETTINGS
                   : { fill: 'oklch(0.5 0.13 46 / 0.12)' }
               }
               content={(props) => (
-                <DemoTooltip {...props} shared={chartSettings.tooltipShared !== false} />
+                <DemoTooltip
+                  {...props}
+                  shared={chartSettings.tooltipShared !== false}
+                  typography={typography}
+                />
               )}
             />
             <Bar dataKey="male014" name={VIZ_KH.male014} fill={DEMO_MALE} stackId="a" radius={0} />
@@ -688,40 +799,41 @@ export default function VisualizeChart({
   siteCode = '',
   siteLevel = 'facility',
   compareSiteCodes = [],
+  sites = [],
   periods = [],
   onNavigateToPatient360,
   onBeforeNavigateToPatient360
 }) {
   const [chartDetail, setChartDetail] = useState(null);
   const primaryId = chartIndicatorIds[0] || null;
-  const compareMode = scopeMode === 'compare' || isCompareResults(results);
+  const facilityCompare = isMultiFacilityCompare(results);
 
   const openPointDetail = useCallback(
     ({ row, seriesId, seriesLabel, value }) => {
-      const result = findResultForChartPoint(results, { compareMode, row, seriesId });
+      const result = findResultForChartPoint(results, { compareMode: facilityCompare, row, seriesId });
       setChartDetail(
         buildChartPointDetail(result, catalog, {
-          compareMode,
+          compareMode: facilityCompare,
           seriesLabel,
           xLabel: row?.xLabel || row?.period,
           value
         })
       );
     },
-    [results, catalog, compareMode]
+    [results, catalog, facilityCompare]
   );
 
   const openSnapshotDetail = useCallback(
     ({ periodKey, indicatorId, facilityCode, seriesLabel, xLabel, value }) => {
-      const seriesId = compareMode && facilityCode ? facilityCode : indicatorId;
+      const seriesId = facilityCompare && facilityCode ? facilityCode : indicatorId;
       const row = { periodKey, indicatorId, xLabel };
       openPointDetail({ row, seriesId, seriesLabel, value });
     },
-    [openPointDetail, compareMode]
+    [openPointDetail, facilityCompare]
   );
   const multi = useMemo(() => {
     let built;
-    if (compareMode && chartIndicatorIds.length) {
+    if (facilityCompare && chartIndicatorIds.length) {
       built = buildFacilityCompareTrendData(results, chartIndicatorIds, catalog);
     } else {
       built = buildMultiTrendData(results, chartIndicatorIds, catalog);
@@ -730,17 +842,17 @@ export default function VisualizeChart({
       ...built,
       series: applySeriesColors(built.series, chartSettings)
     };
-  }, [compareMode, results, chartIndicatorIds, catalog, chartSettings]);
+  }, [facilityCompare, results, chartIndicatorIds, catalog, chartSettings]);
   const snapshot = useMemo(
-    () => buildSnapshotData(results, chartIndicatorIds, catalog, { compareMode }),
-    [results, chartIndicatorIds, catalog, compareMode]
+    () => buildSnapshotData(results, chartIndicatorIds, catalog, { compareMode: facilityCompare }),
+    [results, chartIndicatorIds, catalog, facilityCompare]
   );
   const demoData = useMemo(
     () => buildDemographicsForIndicator(results, primaryId),
     [results, primaryId]
   );
   const singleKpis = useMemo(() => {
-    if (compareMode || chartIndicatorIds.length !== 1 || !primaryId) return [];
+    if (facilityCompare || chartIndicatorIds.length !== 1 || !primaryId) return [];
     const rows = multi.data.map((row) => {
       const key = multi.series[0]?.dataKey;
       return { periodKey: row.periodKey, period: row.period, total: key ? row[key] : 0 };
@@ -759,10 +871,11 @@ export default function VisualizeChart({
     <VisualizeChartDetailModal
       open={Boolean(chartDetail)}
       detail={chartDetail}
+      results={results}
       onClose={() => setChartDetail(null)}
       catalog={catalog}
       periods={periods}
-      pageContext={{ siteCode, siteLevel, scopeMode, compareSiteCodes }}
+      pageContext={{ siteCode, siteLevel, scopeMode, compareSiteCodes, sites }}
       onNavigateToPatient360={onNavigateToPatient360}
       onBeforeNavigateToPatient360={onBeforeNavigateToPatient360}
     />
@@ -814,9 +927,9 @@ export default function VisualizeChart({
   }
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
       {singleKpis.length ? <VizKpiGrid kpis={singleKpis} /> : null}
-      {compareMode ? (
+      {facilityCompare ? (
         <VizSectionHeader>
           {chartIndicatorIds.length > 1
             ? VIZ_KH.chartCompareSitesIndicators

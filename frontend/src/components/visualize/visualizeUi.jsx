@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import {
+  APP_NAV_TEXT,
   P360_TABLE_PAD,
   P360_TABLE_TEXT,
   vizChartBodyClass,
@@ -18,10 +19,18 @@ export function VizEmpty({ children }) {
   return <p className={vizEmptyStateClass}>{children}</p>;
 }
 
-export function VizTooltipBox({ title, children }) {
+export function VizTooltipBox({ title, children, typography }) {
+  const titleStyle = typography
+    ? { fontSize: typography.fontSize, fontWeight: typography.fontWeight }
+    : undefined;
+  const bodyStyle = typography ? { fontSize: typography.fontSize } : undefined;
   return (
-    <div className={vizTooltipClass}>
-      {title ? <p className="mb-1 font-medium text-foreground">{title}</p> : null}
+    <div className={vizTooltipClass} style={bodyStyle}>
+      {title ? (
+        <p className="mb-1 text-foreground" style={titleStyle}>
+          {title}
+        </p>
+      ) : null}
       {children}
     </div>
   );
@@ -48,15 +57,76 @@ export function VizChartPlot({ children, className }) {
   return <div className={cn(vizChartPlotClass, className)}>{children}</div>;
 }
 
+/** All period labels aligned under bar groups (reliable vs SVG axis ticks). */
+export function VizPeriodAxis({
+  rows = [],
+  xDataKey = 'period',
+  yAxisWidth = 52,
+  title,
+  dense = false,
+  typography
+}) {
+  if (!rows.length) return null;
+  const fontSize = dense && typography ? typography.periodDenseSize : typography?.fontSize;
+  const labelStyle = typography
+    ? {
+        fontSize: fontSize ?? typography.fontSize,
+        fontWeight: typography.fontWeight,
+        color: typography.fill
+      }
+    : undefined;
+  const titleStyle = typography
+    ? { fontSize: typography.fontSize, fontWeight: typography.fontWeight }
+    : undefined;
+  return (
+    <div
+      className="shrink-0 border-t border-border/70 bg-card pr-3 pt-2 pb-2"
+      style={{ paddingLeft: yAxisWidth }}
+    >
+      <div
+        className="grid w-full gap-1"
+        style={{ gridTemplateColumns: `repeat(${rows.length}, minmax(0, 1fr))` }}
+      >
+        {rows.map((row, i) => {
+          const text = String(row[xDataKey] ?? row.period ?? row.xLabel ?? '').trim();
+          if (!text) return <div key={`empty-${i}`} />;
+          return (
+            <div
+              key={row.periodKey || `${text}-${i}`}
+              className={cn('px-0.5 text-center leading-snug', !typography && P360_TABLE_TEXT, dense && !typography && 'text-[10px]', !dense && !typography && 'text-[11px] font-medium text-[#73695c]')}
+              style={labelStyle}
+              title={text}
+            >
+              <span className={dense ? 'line-clamp-2 break-words' : 'block truncate'}>{text}</span>
+            </div>
+          );
+        })}
+      </div>
+      {title ? (
+        <p
+          className={cn('mt-1.5 text-center text-muted-foreground', !typography && APP_NAV_TEXT, typography && 'font-semibold')}
+          style={titleStyle}
+        >
+          {title}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 /** Flat legend row — no border-top (P360 style). */
-export function VizLegend({ items = [] }) {
+export function VizLegend({ items = [], typography }) {
   if (!items.length) return null;
+  const textStyle = typography
+    ? { fontSize: typography.fontSize, fontWeight: typography.fontWeight }
+    : undefined;
   return (
     <ul
       className={cn(
         'mx-auto flex w-full shrink-0 list-none flex-wrap items-center justify-center gap-x-4 gap-y-1.5 border-0 px-2 pb-2 pt-3',
-        P360_TABLE_TEXT
+        !typography && P360_TABLE_TEXT
       )}
+      style={textStyle}
       aria-label="legend"
     >
       {items.map((item) => (

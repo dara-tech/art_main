@@ -22,6 +22,19 @@ export function periodSortKey(periodKey) {
   return 0;
 }
 
+/** Human-readable period for chart X axis when periodLabel is missing. */
+export function formatPeriodAxisLabel(periodKey, periodLabel) {
+  if (periodLabel) return String(periodLabel);
+  const k = String(periodKey || '');
+  const quarter = k.match(/^(\d{4})-Q(\d)$/i);
+  if (quarter) return `Q${quarter[2]} ${quarter[1]}`;
+  const month = k.match(/^(\d{4})-M(\d{2})$/i);
+  if (month) return `${month[2]}/${month[1]}`;
+  const year = k.match(/^(\d{4})-Y$/i);
+  if (year) return year[1];
+  return k;
+}
+
 function catalogLabelFor(catalog, indicatorId) {
   if (!Array.isArray(catalog) || !indicatorId) return null;
   const hit = catalog.find((c) => c.id === indicatorId);
@@ -154,8 +167,23 @@ function seriesDataKey(indicatorId) {
   return `s_${String(indicatorId).replace(/[^a-zA-Z0-9]/g, '_')}`;
 }
 
+/** Results include per-facility rows (table column, detail context). */
 export function isCompareResults(results = []) {
   return results.some((r) => r.facilityCode && !r.error);
+}
+
+/** Distinct facility codes in result rows. */
+export function countDistinctFacilities(results = []) {
+  const codes = new Set();
+  for (const r of results) {
+    if (!r.error && r.facilityCode) codes.add(String(r.facilityCode).trim());
+  }
+  return codes.size;
+}
+
+/** Chart series should be facilities (colors per site), not indicators. */
+export function isMultiFacilityCompare(results = []) {
+  return countDistinctFacilities(results) > 1;
 }
 
 /** Compare mode: series = facilities; X = period (one indicator) or period × indicator (many). */
@@ -188,7 +216,7 @@ export function buildFacilityCompareTrendData(results = [], indicatorIds = [], c
 
   for (const r of results) {
     if (r.error || !r.facilityCode || !ids.includes(r.indicatorId)) continue;
-    const period = r.periodLabel || r.periodKey;
+    const period = formatPeriodAxisLabel(r.periodKey, r.periodLabel);
     const rowKey = multiIndicator ? `${r.periodKey}\0${r.indicatorId}` : r.periodKey;
     if (!rowMap.has(rowKey)) {
       rowMap.set(rowKey, {
@@ -250,12 +278,13 @@ export function buildMultiTrendData(results = [], indicatorIds = [], catalog = [
 
   for (const r of results) {
     if (r.error || !ids.includes(r.indicatorId)) continue;
-    periodLabels.set(r.periodKey, r.periodLabel || r.periodKey);
+    periodLabels.set(r.periodKey, formatPeriodAxisLabel(r.periodKey, r.periodLabel));
   }
 
   const keys = sortPeriodKeys([...periodLabels.keys()]);
   const data = keys.map((pk) => {
-    const row = { periodKey: pk, period: periodLabels.get(pk) };
+    const periodLabel = periodLabels.get(pk) || formatPeriodAxisLabel(pk);
+    const row = { periodKey: pk, period: periodLabel, xLabel: periodLabel };
     for (const s of seriesMeta) {
       const hit = results.find((x) => x.periodKey === pk && x.indicatorId === s.id && !x.error);
       row[s.dataKey] = hit ? Number(hit.total) || 0 : 0;
@@ -274,7 +303,7 @@ export function buildTrendData(results = [], indicatorId) {
 
   for (const r of results) {
     if (r.error || r.indicatorId !== indicatorId) continue;
-    periodLabels.set(r.periodKey, r.periodLabel || r.periodKey);
+    periodLabels.set(r.periodKey, formatPeriodAxisLabel(r.periodKey, r.periodLabel));
     values.set(r.periodKey, Number(r.total) || 0);
   }
 
@@ -315,7 +344,7 @@ export function buildSnapshotData(results = [], indicatorIds = null, catalog = [
       ? indicatorIds.filter((id) => allIds.includes(id))
       : allIds;
 
-  const compare = compareMode || isCompareResults(results);
+  const compare = isMultiFacilityCompare(results);
   if (compare) {
     const chartIds = ids.length ? ids : allIds;
     const periodLabel =
@@ -421,7 +450,7 @@ export function buildDemographicsForIndicator(results = [], indicatorId) {
     if (r.error || r.indicatorId !== indicatorId || !r.hasBreakdown) continue;
     if (!map.has(r.periodKey)) {
       map.set(r.periodKey, {
-        period: r.periodLabel || r.periodKey,
+        period: formatPeriodAxisLabel(r.periodKey, r.periodLabel),
         male014: 0,
         female014: 0,
         maleOver14: 0,

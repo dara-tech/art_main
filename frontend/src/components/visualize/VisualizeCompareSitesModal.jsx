@@ -9,11 +9,17 @@ import {
   RiSearchLine
 } from '@remixicon/react';
 import { cn } from '@/lib/utils';
-import { buildSiteSelectionModel, isFacilitySite } from '@/utils/siteSelection';
+import {
+  buildSiteSelectionModel,
+  facilityCodesFromSites,
+  inferCompareSelectionLevel,
+  isFacilitySite,
+  isProvinceCompareCode
+} from '@/utils/siteSelection';
 import { appNavItemClass, p360ControlClass } from '../layout/appNavStyles';
 import { VIZ_KH } from '../../pages/visualizeKh';
 
-export const VIZ_COMPARE_MAX = 8;
+export const VIZ_COMPARE_MAX = 80;
 
 function facilityCodesFromGroup(group) {
   return (group.sites || []).filter(isFacilitySite).map((s) => String(s.code));
@@ -31,16 +37,36 @@ export default function VisualizeCompareSitesModal({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [draft, setDraft] = useState(() => [...(value || [])]);
+  const [selectionLevel, setSelectionLevel] = useState(() => inferCompareSelectionLevel(value));
+  const [expandedCambodia, setExpandedCambodia] = useState(true);
   const [expandedProvinces, setExpandedProvinces] = useState({});
 
-  const { provinceGroups, siteLabelByCode } = useMemo(() => buildSiteSelectionModel(sites), [sites]);
+  const { provinceGroups, siteLabelByCode, cambodiaSite, selectableSites, provinceCodeByKey, provinceOptions } =
+    useMemo(() => buildSiteSelectionModel(sites), [sites]);
+
+  const allFacilityCodes = useMemo(() => facilityCodesFromSites(selectableSites), [selectableSites]);
+  const allProvinceCodes = useMemo(
+    () => provinceOptions.map((group) => String(group.code)).filter(Boolean),
+    [provinceOptions]
+  );
+  const isProvinceMode = selectionLevel === 'province';
 
   const summary = useMemo(() => {
     const codes = value || [];
     if (!codes.length) return mt.selectPlaceholder;
+    if (isProvinceCompareCode(codes[0]) || codes.every(isProvinceCompareCode)) {
+      if (codes.length === 1) return siteLabelByCode.get(String(codes[0])) || codes[0];
+      if (codes.length === allProvinceCodes.length && allProvinceCodes.length > 0) {
+        return `${mt.cambodia} (${codes.length})`;
+      }
+      return `${codes.length} ${mt.provincesSelected}`;
+    }
     if (codes.length === 1) return siteLabelByCode.get(String(codes[0])) || codes[0];
+    if (codes.length === allFacilityCodes.length && allFacilityCodes.length > 0) {
+      return `${mt.cambodia} (${codes.length})`;
+    }
     return `${codes.length} ${mt.sitesSelected}`;
-  }, [value, siteLabelByCode, mt]);
+  }, [value, siteLabelByCode, mt, allFacilityCodes.length, allProvinceCodes.length]);
 
   const searchLower = search.trim().toLowerCase();
   const visibleProvinceEntries = useMemo(() => {
@@ -57,13 +83,17 @@ export default function VisualizeCompareSitesModal({
         return group.sites.some(
           (s) =>
             String(s.name || '').toLowerCase().includes(searchLower) ||
-            String(s.code || '').toLowerCase().includes(searchLower)
+            String(s.code || '').toLowerCase().includes(searchLower) ||
+            String(s.od_code || s.odCode || '').toLowerCase().includes(searchLower)
         );
       });
   }, [provinceGroups, searchLower]);
 
   useEffect(() => {
-    if (!open) setDraft([...(value || [])]);
+    if (!open) {
+      setDraft([...(value || [])]);
+      setSelectionLevel(inferCompareSelectionLevel(value));
+    }
   }, [value, open]);
 
   useEffect(() => {
@@ -77,14 +107,31 @@ export default function VisualizeCompareSitesModal({
 
   const openModal = () => {
     if (disabled) return;
+    const nextLevel = inferCompareSelectionLevel(value);
     setDraft([...(value || [])]);
+    setSelectionLevel(nextLevel);
     setSearch('');
     setOpen(true);
-    const firstKey = visibleProvinceEntries[0]?.key;
-    if (firstKey) setExpandedProvinces((prev) => ({ ...prev, [firstKey]: true }));
+    setExpandedCambodia(true);
+    if (nextLevel === 'facility') {
+      const firstKey = visibleProvinceEntries[0]?.key;
+      if (firstKey) setExpandedProvinces((prev) => ({ ...prev, [firstKey]: true }));
+    }
   };
 
-  const toggleProvince = (provinceKey) =>
+  const switchSelectionLevel = (level) => {
+    if (level === selectionLevel) return;
+    setSelectionLevel(level);
+    setDraft([]);
+    setExpandedProvinces({});
+  };
+
+  const provinceCodeFromGroup = (group) => provinceCodeByKey.get(group.key) || '';
+
+  const provinceCodesFromGroups = (groups) =>
+    groups.map(provinceCodeFromGroup).filter(Boolean).map(String);
+
+  const toggleProvinceExpand = (provinceKey) =>
     setExpandedProvinces((prev) => ({ ...prev, [provinceKey]: !prev[provinceKey] }));
 
   const toggleCode = (code) => {
@@ -109,18 +156,29 @@ export default function VisualizeCompareSitesModal({
     });
   };
 
-  const toggleProvinceFacilities = (group) => {
-    const codes = facilityCodesFromGroup(group);
-    const allSelected = codes.length > 0 && codes.every((c) => draft.includes(c));
+  const toggleCodes = (codes) => {
+    const list = codes.map(String);
+    const allSelected = list.length > 0 && list.every((c) => draft.includes(c));
     if (allSelected) {
-      setDraft((prev) => prev.filter((c) => !codes.includes(c)));
+      setDraft((prev) => prev.filter((c) => !list.includes(c)));
       return;
     }
-    addCodes(codes.filter((c) => !draft.includes(c)));
+    addCodes(list.filter((c) => !draft.includes(c)));
   };
 
+  const toggleProvinceFacilities = (group) => toggleCodes(facilityCodesFromGroup(group));
+
+  const toggleProvinceCode = (group) => {
+    const code = provinceCodeFromGroup(group);
+    if (code) toggleCode(code);
+  };
+
+  const selectAllCambodia = () => addCodes(isProvinceMode ? allProvinceCodes : allFacilityCodes);
+
   const selectAllVisible = () => {
-    const codes = visibleProvinceEntries.flatMap(facilityCodesFromGroup);
+    const codes = isProvinceMode
+      ? provinceCodesFromGroups(visibleProvinceEntries)
+      : visibleProvinceEntries.flatMap(facilityCodesFromGroup);
     addCodes(codes);
   };
 
@@ -129,6 +187,14 @@ export default function VisualizeCompareSitesModal({
     onChange?.(draft);
     setOpen(false);
   };
+
+  const cambodiaSelectedCount = isProvinceMode
+    ? allProvinceCodes.filter((c) => draft.includes(c)).length
+    : allFacilityCodes.filter((c) => draft.includes(c)).length;
+  const cambodiaTotalCount = isProvinceMode ? allProvinceCodes.length : allFacilityCodes.length;
+  const allCambodiaSelected = cambodiaTotalCount > 0 && cambodiaSelectedCount === cambodiaTotalCount;
+  const someCambodiaSelected = cambodiaSelectedCount > 0 && !allCambodiaSelected;
+  const selectionCountLabel = isProvinceMode ? mt.provincesSelected : mt.sitesSelected;
 
   const CheckIcon = ({ on }) =>
     on ? (
@@ -166,7 +232,9 @@ export default function VisualizeCompareSitesModal({
                   <div id="viz-compare-sites-title" className="text-lg font-semibold">
                     {mt.title}
                   </div>
-                  <div className="mt-0.5 text-xs text-muted-foreground">{mt.hint}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">
+                    {isProvinceMode ? mt.hintProvince : mt.hint}
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -190,99 +258,215 @@ export default function VisualizeCompareSitesModal({
                   />
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-1">
+                  <div className="flex shrink-0 gap-0.5" role="group" aria-label={mt.selectionLevelLabel}>
+                    <button
+                      type="button"
+                      className={cn(appNavItemClass(selectionLevel === 'facility'), selectionLevel === 'facility' && 'bg-primary/10')}
+                      onClick={() => switchSelectionLevel('facility')}
+                    >
+                      {mt.selectionLevelFacility}
+                    </button>
+                    <button
+                      type="button"
+                      className={cn(appNavItemClass(selectionLevel === 'province'), selectionLevel === 'province' && 'bg-primary/10')}
+                      onClick={() => switchSelectionLevel('province')}
+                    >
+                      {mt.selectionLevelProvince}
+                    </button>
+                  </div>
+                  <button type="button" className={appNavItemClass(false)} onClick={selectAllCambodia}>
+                    {mt.selectAllCambodia}
+                  </button>
                   <button type="button" className={appNavItemClass(false)} onClick={selectAllVisible}>
-                    {VIZ_KH.modalSelectAll}
+                    {mt.selectAllVisible}
                   </button>
                   <button type="button" className={appNavItemClass(false)} onClick={() => setDraft([])}>
                     {VIZ_KH.modalClear}
                   </button>
                   <span className="ml-auto text-xs tabular-nums text-muted-foreground">
-                    {draft.length} / {maxSites} {mt.sitesSelected}
+                    {draft.length} / {maxSites} {selectionCountLabel}
                   </span>
                 </div>
               </div>
 
               <div className="min-h-0 flex-1 overflow-auto px-6 py-4">
                 <div className="space-y-2 border border-border/80 bg-background/60 p-3 shadow-inner">
-                  {visibleProvinceEntries.length === 0 ? (
-                    <p className="py-8 text-center text-sm text-muted-foreground">{mt.filterPlaceholder}</p>
-                  ) : (
-                    visibleProvinceEntries.map((group) => {
-                      const province = group.province;
-                      const provinceSites = group.sites;
-                      const isExpanded = expandedProvinces[group.key] ?? false;
-                      const codes = facilityCodesFromGroup(group);
-                      const selectedInProvince = codes.filter((c) => draft.includes(c)).length;
-                      const allInProvince = codes.length > 0 && selectedInProvince === codes.length;
-                      const someInProvince = selectedInProvince > 0 && !allInProvince;
+                  <div className="px-1 py-1 hover:bg-muted/20">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedCambodia((v) => !v)}
+                        className="inline-flex h-7 w-7 shrink-0 items-center justify-center border border-border/80 bg-background"
+                        aria-expanded={expandedCambodia}
+                      >
+                        {expandedCambodia ? (
+                          <RiArrowDownSLine className="size-4" />
+                        ) : (
+                          <RiArrowRightSLine className="size-4" />
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleCodes(isProvinceMode ? allProvinceCodes : allFacilityCodes)}
+                        className={cn(
+                          'flex h-9 min-w-0 flex-1 items-center gap-2 px-1 text-left',
+                          allCambodiaSelected && 'bg-primary/10',
+                          someCambodiaSelected && 'bg-muted/50'
+                        )}
+                        title={isProvinceMode ? mt.selectAllProvincesHint : mt.selectCambodiaHint}
+                      >
+                        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center">
+                          <CheckIcon on={allCambodiaSelected} />
+                        </span>
+                        <span className="truncate text-sm font-semibold text-foreground">
+                          {cambodiaSite
+                            ? `${cambodiaSite.code} - ${cambodiaSite.name}`
+                            : mt.cambodia}
+                        </span>
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          ({cambodiaSelectedCount}/{cambodiaTotalCount})
+                        </span>
+                      </button>
+                    </div>
 
-                      return (
-                        <div key={group.key} className="px-1 py-1 hover:bg-muted/20">
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => toggleProvince(group.key)}
-                              className="inline-flex h-7 w-7 shrink-0 items-center justify-center border border-border/80 bg-background"
-                              aria-expanded={isExpanded}
-                            >
-                              {isExpanded ? (
-                                <RiArrowDownSLine className="size-4" />
-                              ) : (
-                                <RiArrowRightSLine className="size-4" />
-                              )}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => toggleProvinceFacilities(group)}
-                              className={cn(
-                                'flex h-9 min-w-0 flex-1 items-center gap-2 px-1 text-left',
-                                allInProvince && 'bg-primary/10',
-                                someInProvince && 'bg-muted/50'
-                              )}
-                              title={mt.selectProvinceHint}
-                            >
-                              <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center">
-                                <CheckIcon on={allInProvince} />
-                              </span>
-                              <span className="truncate text-sm font-semibold text-foreground">{province}</span>
-                              <span className="shrink-0 text-xs text-muted-foreground">
-                                ({selectedInProvince}/{provinceSites.length})
-                              </span>
-                            </button>
-                          </div>
-                          {isExpanded ? (
-                            <div className="ml-12 mt-1 space-y-0.5 border-l border-border/80 pl-4">
-                              {provinceSites.map((site) => {
-                                const code = String(site.code);
-                                const active = draft.includes(code);
-                                const atMax = !active && draft.length >= maxSites;
-                                return (
+                    {expandedCambodia ? (
+                      <div className="ml-12 mt-1 space-y-0.5 border-l border-border/80 pl-4">
+                        {visibleProvinceEntries.length === 0 ? (
+                          <p className="py-6 text-center text-sm text-muted-foreground">
+                            {mt.filterPlaceholder}
+                          </p>
+                        ) : (
+                          visibleProvinceEntries.map((group) => {
+                            const province = group.province;
+                            const provinceSites = group.sites;
+                            const provinceCode = provinceCodeFromGroup(group);
+                            const searchMatchesProvince =
+                              searchLower &&
+                              String(province || '').toLowerCase().includes(searchLower);
+                            const searchMatchesFacility =
+                              searchLower &&
+                              provinceSites.some(
+                                (s) =>
+                                  String(s.name || '').toLowerCase().includes(searchLower) ||
+                                  String(s.code || '').toLowerCase().includes(searchLower)
+                              );
+                            const isExpanded =
+                              expandedProvinces[group.key] ??
+                              Boolean(searchMatchesProvince || searchMatchesFacility);
+                            const codes = isProvinceMode
+                              ? provinceCode
+                                ? [provinceCode]
+                                : []
+                              : facilityCodesFromGroup(group);
+                            const selectedInProvince = codes.filter((c) => draft.includes(c)).length;
+                            const allInProvince = codes.length > 0 && selectedInProvince === codes.length;
+                            const someInProvince = selectedInProvince > 0 && !allInProvince;
+                            const countLabel = isProvinceMode
+                              ? allInProvince
+                                ? '(1/1)'
+                                : '(0/1)'
+                              : `(${selectedInProvince}/${provinceSites.length})`;
+
+                            if (isProvinceMode && !provinceCode) return null;
+
+                            return (
+                              <div key={group.key} className="px-1 py-1 hover:bg-muted/20">
+                                <div className="flex items-center gap-2">
                                   <button
-                                    key={code}
                                     type="button"
-                                    disabled={atMax}
-                                    onClick={() => toggleCode(code)}
-                                    className={cn(
-                                      'flex h-9 w-full items-center gap-3 px-3 text-left hover:bg-muted/40',
-                                      active && 'bg-primary/10',
-                                      atMax && 'cursor-not-allowed opacity-40'
-                                    )}
+                                    onClick={() => toggleProvinceExpand(group.key)}
+                                    className="inline-flex h-7 w-7 shrink-0 items-center justify-center border border-border/80 bg-background hover:bg-muted/40"
+                                    aria-expanded={isExpanded}
+                                    title={mt.expandProvinceHint}
                                   >
-                                    <span className="inline-flex h-5 w-5 shrink-0">
-                                      <CheckIcon on={active} />
-                                    </span>
-                                    <span className="truncate text-sm text-foreground">
-                                      {site.code} - {site.name}
-                                    </span>
+                                    {isExpanded ? (
+                                      <RiArrowDownSLine className="size-4" />
+                                    ) : (
+                                      <RiArrowRightSLine className="size-4" />
+                                    )}
                                   </button>
-                                );
-                              })}
-                            </div>
-                          ) : null}
-                        </div>
-                      );
-                    })
-                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleProvinceExpand(group.key)}
+                                    className={cn(
+                                      'flex h-9 min-w-0 flex-1 items-center gap-2 px-1 text-left hover:bg-muted/30',
+                                      isExpanded && 'bg-muted/40'
+                                    )}
+                                    title={mt.expandProvinceHint}
+                                  >
+                                    <span className="truncate text-sm font-semibold text-foreground">
+                                      {province}
+                                    </span>
+                                    <span className="shrink-0 text-xs text-muted-foreground">{countLabel}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      isProvinceMode ? toggleProvinceCode(group) : toggleProvinceFacilities(group)
+                                    }
+                                    className={cn(
+                                      'inline-flex h-9 w-9 shrink-0 items-center justify-center hover:bg-muted/40',
+                                      allInProvince && 'bg-primary/10',
+                                      someInProvince && 'bg-muted/50'
+                                    )}
+                                    title={mt.selectProvinceHint}
+                                  >
+                                    <CheckIcon on={allInProvince} />
+                                  </button>
+                                </div>
+
+                                {isExpanded ? (
+                                  <div className="ml-12 mt-1 space-y-0.5 border-l border-border/80 pl-4">
+                                    {provinceSites.map((site) => {
+                                      const code = String(site.code);
+                                      const active = draft.includes(code);
+                                      const atMax = !active && draft.length >= maxSites;
+                                      if (isProvinceMode) {
+                                        return (
+                                          <div
+                                            key={code}
+                                            className="flex h-8 items-center gap-3 px-2 text-xs text-muted-foreground"
+                                            title={mt.viewFacilitiesHint}
+                                          >
+                                            <span className="inline-flex h-4 w-4 shrink-0 opacity-50">
+                                              <CheckIcon on={active} />
+                                            </span>
+                                            <span className="truncate">
+                                              {site.code} - {site.name}
+                                            </span>
+                                          </div>
+                                        );
+                                      }
+                                      return (
+                                        <button
+                                          key={code}
+                                          type="button"
+                                          disabled={atMax}
+                                          onClick={() => toggleCode(code)}
+                                          className={cn(
+                                            'flex h-8 w-full items-center gap-3 px-2 text-left hover:bg-muted/40',
+                                            active && 'bg-primary/10',
+                                            atMax && 'cursor-not-allowed opacity-40'
+                                          )}
+                                        >
+                                          <span className="inline-flex h-4 w-4 shrink-0">
+                                            <CheckIcon on={active} />
+                                          </span>
+                                          <span className="truncate text-xs text-foreground">
+                                            {site.code} - {site.name}
+                                          </span>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                ) : null}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </div>
 

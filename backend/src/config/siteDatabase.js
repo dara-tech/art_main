@@ -54,6 +54,7 @@ class SiteDatabaseManager {
         s.site_name as display_name,
         s.site_name as search_terms,
         s.art_site_code as file_name,
+        TRIM(s.vcct_site_code) as vcct_site_code,
         ${parentCodeSelect}
         s.province_id as province_id,
         p.province_en as province,

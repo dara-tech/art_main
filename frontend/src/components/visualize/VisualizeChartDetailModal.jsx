@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { RiCloseLine, RiInformationLine, RiSearchLine } from '@remixicon/react';
 import { cn } from '@/lib/utils';
-import { P360_TABLE_TEXT, p360ControlClass } from '../layout/appNavStyles';
+import { P360_TABLE_BODY_ROW_INNER, P360_TABLE_TEXT, p360ControlClass } from '../layout/appNavStyles';
 import { VIZ_KH } from '../../pages/visualizeKh';
 import { P360_KH } from '../../pages/patient360Kh';
 import Patient360DataTable from '../patient360/Patient360DataTable';
@@ -19,6 +19,7 @@ import {
   indicatorToP360Section,
   P360_FROM_VISUALIZE_STATE
 } from '../../utils/patient360Navigation';
+import VisualizePeriodComparePanel from './VisualizePeriodComparePanel';
 
 const LABEL_KEYS = {
   male014: 'male014',
@@ -35,6 +36,7 @@ export default function VisualizeChartDetailModal({
   open,
   detail,
   onClose,
+  results = [],
   catalog = [],
   periods = [],
   pageContext = {},
@@ -42,6 +44,7 @@ export default function VisualizeChartDetailModal({
   onBeforeNavigateToPatient360
 }) {
   const navigate = useNavigate();
+  const [sectionMode, setSectionMode] = useState('list');
   const [patientRows, setPatientRows] = useState([]);
   const [patientLoading, setPatientLoading] = useState(false);
   const [patientError, setPatientError] = useState('');
@@ -107,15 +110,27 @@ export default function VisualizeChartDetailModal({
   }, [open, onClose]);
 
   useEffect(() => {
-    if (!open || !detail?.hasPatientList) {
+    if (!open) {
+      setSectionMode('list');
+      return;
+    }
+    if (!detail?.hasPatientList) {
       setPatientRows([]);
       setPatientError('');
       setPatientSearch('');
       setPatientPage(1);
       return;
     }
-    loadPatients(1, '');
-  }, [open, detail?.raw?.indicatorId, detail?.raw?.periodKey, detail?.raw?.facilityCode, detail?.hasPatientList, loadPatients]);
+    if (sectionMode === 'list') loadPatients(1, '');
+  }, [
+    open,
+    sectionMode,
+    detail?.raw?.indicatorId,
+    detail?.raw?.periodKey,
+    detail?.raw?.facilityCode,
+    detail?.hasPatientList,
+    loadPatients
+  ]);
 
   useEffect(() => {
     if (!open || !detail?.hasPatientList) return undefined;
@@ -188,7 +203,9 @@ export default function VisualizeChartDetailModal({
             const target = buildPatient360Target(row, { detail, pageContext, indicatorId });
             if (!target?.path || text === '—') {
               return (
-                <span className={cn(P360_TABLE_TEXT, col.mono && 'font-mono tabular-nums')}>{text}</span>
+                <span className={cn(P360_TABLE_BODY_ROW_INNER, col.mono && 'font-mono tabular-nums')}>
+                  {text}
+                </span>
               );
             }
             return (
@@ -196,7 +213,7 @@ export default function VisualizeChartDetailModal({
                 to={target.path}
                 state={P360_FROM_VISUALIZE_STATE}
                 className={cn(
-                  P360_TABLE_TEXT,
+                  P360_TABLE_BODY_ROW_INNER,
                   'font-medium text-primary underline-offset-2 hover:underline',
                   col.mono && 'font-mono tabular-nums'
                 )}
@@ -288,6 +305,55 @@ export default function VisualizeChartDetailModal({
             <p className={cn('px-5 py-10 text-muted-foreground', P360_TABLE_TEXT)}>{VIZ_KH.chartDetailNoDrilldown}</p>
           ) : (
             <>
+              <div
+                className="flex shrink-0 gap-0.5 border-b border-border/80 bg-muted/10 px-5 py-1.5"
+                role="tablist"
+                aria-label={VIZ_KH.chartDetailTitle}
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={sectionMode === 'list'}
+                  className={cn(
+                    p360ControlClass,
+                    'h-7 px-3',
+                    sectionMode === 'list' && 'border-primary/50 bg-primary/10 text-foreground'
+                  )}
+                  onClick={() => setSectionMode('list')}
+                >
+                  {VIZ_KH.chartDetailTabList}
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={sectionMode === 'compare'}
+                  className={cn(
+                    p360ControlClass,
+                    'h-7 px-3',
+                    sectionMode === 'compare' && 'border-primary/50 bg-primary/10 text-foreground'
+                  )}
+                  onClick={() => setSectionMode('compare')}
+                >
+                  {VIZ_KH.chartDetailTabCompare}
+                </button>
+              </div>
+
+              {sectionMode === 'compare' ? (
+                <VisualizePeriodComparePanel
+                  detail={detail}
+                  results={results}
+                  periods={periods}
+                  catalog={catalog}
+                  pageContext={pageContext}
+                  indicatorId={indicatorId}
+                  onNavigateToPatient360={onNavigateToPatient360}
+                  onBeforeNavigateToPatient360={onBeforeNavigateToPatient360}
+                  onClose={onClose}
+                />
+              ) : null}
+
+              {sectionMode === 'list' ? (
+              <>
               <form
                 onSubmit={handleSearchSubmit}
                 className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border/80 px-5 py-2"
@@ -355,6 +421,7 @@ export default function VisualizeChartDetailModal({
                     scrollBody
                     fillHeight
                     stickyHeader
+                    compactBodyRows
                     className="h-full min-h-0 flex-1 border border-border/80 shadow-sm"
                     emptyMessage={VIZ_KH.chartDetailNoPatients}
                   />
@@ -388,6 +455,8 @@ export default function VisualizeChartDetailModal({
                   </div>
                 ) : null}
               </div>
+              </>
+              ) : null}
             </>
           )}
         </section>

@@ -6,8 +6,8 @@ export default function AppPageShell({ children, wide = false, className }) {
     <div
       className={cn(
         wide
-          ? 'mx-auto w-full max-w-none bg-background px-3 py-3 sm:px-5 sm:py-4 xl:px-6'
-          : 'mx-auto bg-background px-3 py-3 sm:px-5 sm:py-4 lg:max-w-[300mm]',
+          ? 'mx-auto w-full max-w-none bg-card px-3 py-3 sm:px-5 sm:py-4 xl:px-6'
+          : 'mx-auto bg-card px-3 py-3 sm:px-5 sm:py-4 lg:max-w-[300mm]',
         className
       )}
     >
