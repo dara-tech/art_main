@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { VIZ_KH } from '../../pages/visualizeKh';
 import { VizEmpty } from './visualizeUi';
 import { buildVisualizeTableModel } from '../../utils/visualizeResultsTable';
+import { buildVisualizeResultsClipboardText } from '../../utils/visualizeClipboard';
 import Patient360DataTable from '../patient360/Patient360DataTable';
 import VisualizeChart from './VisualizeChart';
 
@@ -25,6 +26,24 @@ export default function VisualizeResults({
   const { columns: tableCols, rows: tableRows } = useMemo(
     () => buildVisualizeTableModel(results, catalog, scopeMode),
     [results, catalog, scopeMode]
+  );
+
+  const tableClipboardText = useMemo(
+    () => buildVisualizeResultsClipboardText(results, catalog, scopeMode, VIZ_KH),
+    [results, catalog, scopeMode]
+  );
+
+  /** Chart view: Ctrl+C / copy must paste the detail table (CSV), not SVG/chart image. */
+  const handleChartAreaCopy = useCallback(
+    (e) => {
+      if (view !== 'chart' || !tableClipboardText) return;
+      const el = e.target instanceof Element ? e.target : null;
+      if (el?.closest('input, textarea, [contenteditable="true"], [data-allow-native-copy]')) return;
+      e.preventDefault();
+      e.clipboardData?.clearData();
+      e.clipboardData?.setData('text/plain', tableClipboardText);
+    },
+    [view, tableClipboardText]
   );
 
   const columns = useMemo(
@@ -55,7 +74,10 @@ export default function VisualizeResults({
 
   if (view === 'chart') {
     return (
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div
+        className="flex min-h-0 min-w-0 flex-1 select-none flex-col"
+        onCopy={handleChartAreaCopy}
+      >
         <VisualizeChart
           results={results}
           panel={chartPanel}

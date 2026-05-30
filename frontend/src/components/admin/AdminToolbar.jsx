@@ -1,6 +1,7 @@
-import { RiRefreshLine, RiUserAddLine, RiUserSettingsLine } from '@remixicon/react';
+import { RiRefreshLine, RiShieldUserLine, RiUserAddLine, RiUserLine, RiUserSettingsLine } from '@remixicon/react';
 import { cn } from '@/lib/utils';
-import { APP_NAV_ICON, APP_NAV_MUTED, APP_NAV_TEXT, p360ControlClass } from '../layout/appNavStyles';
+import { APP_NAV_ICON, appNavItemClass, p360ControlClass } from '../layout/appNavStyles';
+import { TOOLBAR_ICON } from '../layout/toolbarIconColors';
 import { Patient360NavBar, Patient360NavRow } from '../patient360/Patient360NavBar';
 import { VizToolbarBtn } from '../visualize/visualizeToolbarUi';
 
@@ -14,21 +15,24 @@ export default function AdminToolbar({
   return (
     <Patient360NavBar ariaLabel="Admin" rowCount={2}>
       <Patient360NavRow>
-        <RiUserSettingsLine className={cn(APP_NAV_ICON, 'shrink-0 text-primary')} aria-hidden />
-        <span className={cn('shrink-0 font-semibold', APP_NAV_TEXT)}>Admin</span>
-        <span className={cn('hidden min-w-0 truncate text-muted-foreground lg:inline', APP_NAV_MUTED)}>
-          Users, roles, and site scope
-        </span>
+        <div className={cn(appNavItemClass(false), 'pointer-events-none border-transparent px-2')} title="Admin">
+          <RiUserSettingsLine className={cn(APP_NAV_ICON, 'shrink-0', TOOLBAR_ICON.brand)} aria-hidden />
+          <span className="sr-only font-semibold">Admin — Users, roles, and site scope</span>
+        </div>
       </Patient360NavRow>
 
       <Patient360NavRow tone="filters" className="gap-1">
         <VizToolbarBtn
+          icon={RiUserLine}
+          iconClassName={TOOLBAR_ICON.blue}
           label="Users"
           active={tab === 'users'}
           onClick={() => onTabChange('users')}
           aria-pressed={tab === 'users'}
         />
         <VizToolbarBtn
+          icon={RiShieldUserLine}
+          iconClassName={TOOLBAR_ICON.violet}
           label="Roles"
           active={tab === 'roles'}
           onClick={() => onTabChange('roles')}
@@ -37,6 +41,7 @@ export default function AdminToolbar({
         {tab === 'users' ? (
           <VizToolbarBtn
             icon={RiUserAddLine}
+            iconClassName={TOOLBAR_ICON.emerald}
             label="Create user"
             className="ml-auto"
             onClick={onCreateUser}
@@ -44,6 +49,7 @@ export default function AdminToolbar({
         ) : null}
         <VizToolbarBtn
           icon={RiRefreshLine}
+          iconClassName={TOOLBAR_ICON.cyan}
           label="Refresh"
           shortLabel="↻"
           className={tab !== 'users' ? 'ml-auto' : undefined}

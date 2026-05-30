@@ -119,7 +119,7 @@ function buildChildRows(programId, outcomeFilter, start, end) {
       return `SELECT 'Child' AS program_type, ${sexExpr('p.Sex')} AS sex_label,
         ${age('p.DaFirstVisit')} AS age_group, p.ClinicID AS clinic_id, p.DaFirstVisit AS event_date,
         CAST(IFNULL(p.Referred, -1) AS CHAR) AS dim_referred,
-        CAST(IFNULL(p.Education, -1) AS CHAR) AS dim_education,
+        '-1' AS dim_education,
         NULL AS dim_type_visit, NULL AS dim_has_vl, NULL AS dim_outcome_status
         FROM tblcimain p WHERE p.DaFirstVisit BETWEEN ${s} AND ${e}`;
     case 'art':

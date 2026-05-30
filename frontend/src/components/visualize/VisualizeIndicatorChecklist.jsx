@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { RiArrowDownSLine, RiDraggable, RiFilter3Line } from '@remixicon/react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { APP_NAV_ICON, APP_NAV_TEXT, P360_TABLE_TEXT, appNavItemClass } from '../layout/appNavStyles';
+import { APP_NAV_TEXT, P360_TABLE_TEXT, appNavItemClass } from '../layout/appNavStyles';
+import { TOOLBAR_ICON } from '../layout/toolbarIconColors';
+import { ToolbarAnchoredPanel, VizToolbarBtn } from './visualizeToolbarUi';
 import { VIZ_KH } from '../../pages/visualizeKh';
 import { listIndicatorsFromResults } from '../../utils/visualizeChartData';
 
@@ -19,7 +21,12 @@ function reorderSelectedIds(ids, fromId, toId) {
   return next;
 }
 
-function IndicatorRow({ ind, checked, single, onToggle, draggable = false, dragProps = {} }) {
+function IndicatorRow({ ind, checked, single, onToggle, draggable = false }) {
+  const subLabel =
+    ind.fullLabel && ind.fullLabel !== ind.label && !ind.fullLabel.startsWith(ind.label)
+      ? ind.fullLabel
+      : null;
+
   return (
     <label
       className={cn(
@@ -27,6 +34,7 @@ function IndicatorRow({ ind, checked, single, onToggle, draggable = false, dragP
         checked && 'bg-primary/5',
         draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
       )}
+      title={subLabel || ind.label}
     >
       {draggable ? (
         <RiDraggable className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -43,7 +51,7 @@ function IndicatorRow({ ind, checked, single, onToggle, draggable = false, dragP
       />
       <span className={cn('min-w-0 flex-1 leading-snug', P360_TABLE_TEXT)}>
         <span className="block font-medium text-foreground">{ind.label}</span>
-        <span className="block truncate text-muted-foreground">{ind.fullLabel}</span>
+        {subLabel ? <span className="block truncate text-muted-foreground">{subLabel}</span> : null}
       </span>
     </label>
   );
@@ -60,6 +68,8 @@ export default function VisualizeIndicatorChecklist({
   const [open, setOpen] = useState(false);
   const [dragId, setDragId] = useState('');
   const rootRef = useRef(null);
+  const anchorRef = useRef(null);
+  const panelRef = useRef(null);
   const indicators = useMemo(() => listIndicatorsFromResults(results, catalog), [results, catalog]);
   const indicatorById = useMemo(() => new Map(indicators.map((i) => [i.id, i])), [indicators]);
 
@@ -79,7 +89,13 @@ export default function VisualizeIndicatorChecklist({
   useEffect(() => {
     if (!open) return undefined;
     const onDoc = (e) => {
-      if (rootRef.current?.contains(e.target)) return;
+      if (
+        rootRef.current?.contains(e.target) ||
+        panelRef.current?.contains(e.target) ||
+        anchorRef.current?.contains(e.target)
+      ) {
+        return;
+      }
       setOpen(false);
     };
     document.addEventListener('mousedown', onDoc);
@@ -127,30 +143,34 @@ export default function VisualizeIndicatorChecklist({
   const listToPick = showDragOrder ? unselectedIndicators : indicators;
 
   return (
-    <div ref={rootRef} className="relative min-w-0 shrink-0">
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => setOpen((v) => !v)}
-        className={cn(
-          appNavItemClass(open),
-          'max-w-[11rem] sm:max-w-[14rem]',
-          open && 'border-primary/40 bg-primary/10'
-        )}
-        aria-expanded={open}
-        aria-haspopup="listbox"
-        title={VIZ_KH.chartPickIndicators}
-      >
-        <RiFilter3Line className={APP_NAV_ICON} aria-hidden />
-        <span className="min-w-0 truncate">{label}</span>
-        <RiArrowDownSLine className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-      </button>
-      {open ? (
-        <div
-          className="absolute right-0 top-full z-50 mt-1 max-h-[min(20rem,70vh)] w-[min(22rem,calc(100vw-2rem))] overflow-hidden border border-border/80 bg-popover shadow-md"
-          role="listbox"
-          aria-multiselectable={!single}
+    <div ref={rootRef} className="relative shrink-0">
+      <div ref={anchorRef}>
+        <VizToolbarBtn
+          icon={RiFilter3Line}
+          iconClassName={TOOLBAR_ICON.amber}
+          label={label}
+          active={open}
+          disabled={disabled}
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          className="gap-0.5"
         >
+          {selectedIds.length ? (
+            <span className="min-w-[1ch] tabular-nums text-[10px] font-semibold leading-none">
+              {selectedIds.length}
+            </span>
+          ) : null}
+          <RiArrowDownSLine className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+        </VizToolbarBtn>
+      </div>
+      <ToolbarAnchoredPanel
+        open={open}
+        anchorRef={anchorRef}
+        panelRef={panelRef}
+        width={352}
+        className="max-h-[min(20rem,70vh)] overflow-hidden border border-border/80 bg-popover shadow-lg"
+      >
+        <div role="listbox" aria-multiselectable={!single} aria-label={label}>
           {!single ? (
             <div className="flex gap-1 border-b border-border/80 bg-muted/20 px-2 py-1.5">
               <button type="button" className={appNavItemClass(false)} onClick={selectAll}>
@@ -222,11 +242,16 @@ export default function VisualizeIndicatorChecklist({
             ) : null}
           </div>
 
-          <p className={cn('border-t border-border/80 bg-muted/15 px-2.5 py-1.5 text-muted-foreground', APP_NAV_TEXT)}>
+          <p
+            className={cn(
+              'border-t border-border/80 bg-muted/15 px-2.5 py-1.5 leading-snug text-muted-foreground',
+              P360_TABLE_TEXT
+            )}
+          >
             {single ? VIZ_KH.chartPickOneHint : VIZ_KH.chartPickManyHint.replace('{n}', String(VIZ_CHART_SERIES_MAX))}
           </p>
         </div>
-      ) : null}
+      </ToolbarAnchoredPanel>
     </div>
   );
 }

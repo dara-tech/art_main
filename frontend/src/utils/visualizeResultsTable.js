@@ -1,4 +1,5 @@
 import { chartFullLabel } from './visualizeChartData';
+import { VIZ_KH } from '../pages/visualizeKh';
 
 function fmtDemo(r, value) {
   if (r.error) return '—';
@@ -25,6 +26,55 @@ export function buildVisualizeTableModel(results = [], catalog = [], scopeMode =
     age014: String(fmtDemo(r, r.age014)),
     age15plus: String(fmtDemo(r, r.age15plus))
   }));
+
+  if (results.length > 0) {
+    let sumTotal = 0;
+    let sumMale014 = 0;
+    let sumFemale014 = 0;
+    let sumMaleOver14 = 0;
+    let sumFemaleOver14 = 0;
+    let sumAge014 = 0;
+    let sumAge15plus = 0;
+
+    let anyHasBreakdown = false;
+    let anyHasTotal = false;
+
+    for (const r of results) {
+      if (!r.error) {
+        anyHasTotal = true;
+        if (r.total !== undefined && r.total !== null) {
+          sumTotal += r.total;
+        }
+        if (r.hasBreakdown) {
+          anyHasBreakdown = true;
+          sumMale014 += r.male014 ?? 0;
+          sumFemale014 += r.female014 ?? 0;
+          sumMaleOver14 += r.maleOver14 ?? 0;
+          sumFemaleOver14 += r.femaleOver14 ?? 0;
+          sumAge014 += r.age014 ?? 0;
+          sumAge15plus += r.age15plus ?? 0;
+        }
+      }
+    }
+
+    if (anyHasTotal) {
+      rows.push({
+        _key: 'grand-total',
+        isTotal: true,
+        periodLabel: VIZ_KH.grandTotal || 'សរុបរួម',
+        facilityLabel: '—',
+        scopeLabel: '—',
+        indicatorLabel: '—',
+        total: String(sumTotal),
+        male014: anyHasBreakdown ? String(sumMale014) : '—',
+        female014: anyHasBreakdown ? String(sumFemale014) : '—',
+        maleOver14: anyHasBreakdown ? String(sumMaleOver14) : '—',
+        femaleOver14: anyHasBreakdown ? String(sumFemaleOver14) : '—',
+        age014: anyHasBreakdown ? String(sumAge014) : '—',
+        age15plus: anyHasBreakdown ? String(sumAge15plus) : '—'
+      });
+    }
+  }
 
   const columns = [
     { id: 'periodLabel', labelKey: 'period' },

@@ -87,6 +87,7 @@ const INDICATOR_LABEL_MAP = {
   '10.2. MMD': '10.2. ចំនួនអ្នកជំងឺកំពុងទទួលថ្នាំរយៈពេលវែង (Number of patients received MMD)',
   '10.3. TLD': '10.3. ចំនួនអ្នកជំងឺកំពុងទទួលការព្យាបាលដោយ TLD (Number of patients received TLD)',
   '10.4. TPT Start': '10.4. ចំនួនអ្នកជំងឺដែលបានចាប់ផ្តើមការបង្ការជំងឺរបេង (Number of patients started TPT)',
+  '10.4.1. TPT Start (new start)': '10.4.1. ចំនួនអ្នកជំងឺចាប់ផ្តើម TPT ថ្មីក្នុងត្រីមាស (Number of patients with new TPT start in this quarter)',
   '10.5. TPT Complete': '10.5. ចំនួនអ្នកជំងឺដែលបានបញ្ចប់ការបង្ការជំងឺរបេង (Number of patients completed TPT)',
   '10.6. Eligible for VL test': '10.6. ចំនួនអ្នកជំងឺដែលសមស្របធ្វើតេស្ត Viral Load (Eligible for Viral Load test)',
   '10.7. VL tested in 12M': '10.7. ចំនួនអ្នកជំងឺធ្វើតេស្ត Viral Load ក្នុងរយៈពេល ១២ ខែចុងក្រោយ (Receive VL test in last 12 months)',
@@ -273,6 +274,10 @@ export default function ReportHomePage({ onLogout }) {
   const [detailSortKey, setDetailSortKey] = useState('');
   const [detailSortDirection, setDetailSortDirection] = useState('asc');
   const [detailExporting, setDetailExporting] = useState(false);
+  const [detailMinAge, setDetailMinAge] = useState('');
+  const [detailMaxAge, setDetailMaxAge] = useState('');
+  const detailMinAgeRef = useRef('');
+  const detailMaxAgeRef = useRef('');
 
   useEffect(() => {
     const scoped = filterSitesByUserScope(registrySites || [], user);
@@ -289,7 +294,7 @@ export default function ReportHomePage({ onLogout }) {
     if (provinceIdFromSelection(siteCode)) return 'province';
     const digits = String(siteCode || '').replace(/\D/g, '');
     const name = String(selectedSite?.name || '').toLowerCase();
-    if (name.includes('cambodia')) return 'country';
+    if (name.includes('cambodia') && digits.length < 4) return 'country';
     if (digits.length <= 2) return 'province';
     if (digits.length >= 4 && digits.endsWith('00')) return 'province';
     return 'facility';
@@ -343,7 +348,7 @@ export default function ReportHomePage({ onLogout }) {
     const matchedSite = sites.find((s) => String(s.code) === value);
     if (matchedSite && isFacilitySite(matchedSite)) return [value];
 
-    if (matchedSite && String(matchedSite.name || '').toLowerCase().includes('cambodia')) {
+    if (matchedSite && String(matchedSite.name || '').toLowerCase().includes('cambodia') && digits.length < 4) {
       return facilitySites.map((s) => String(s.code));
     }
 
@@ -496,6 +501,7 @@ export default function ReportHomePage({ onLogout }) {
     '10.2. MMD': '10.2_mmd',
     '10.3. TLD': '10.3_tld',
     '10.4. TPT Start': '10.4_tpt_start',
+    '10.4.1. TPT Start (new start)': '10.4.1_tpt_new_start',
     '10.5. TPT Complete': '10.5_tpt_complete',
     '10.6. Eligible for VL test': '10.6_eligible_vl_test',
     '10.7. VL tested in 12M': '10.7_vl_tested_12m',
@@ -557,7 +563,7 @@ export default function ReportHomePage({ onLogout }) {
     age: getAge(record)
   });
 
-  const buildDetailRequestParams = (filter, page, limit, searchText) => {
+  const buildDetailRequestParams = (filter, page, limit, searchText, minAgeVal = detailMinAge, maxAgeVal = detailMaxAge) => {
     const params = {
       siteCode: effectiveSiteCode,
       siteLevel: selectedSiteLevel,
@@ -570,16 +576,22 @@ export default function ReportHomePage({ onLogout }) {
     if (filter?.gender === 'male' || filter?.gender === 'female') params.gender = filter.gender;
     if (filter?.ageGroup === 'younger') params.ageGroup = '0-14';
     if (filter?.ageGroup === 'older') params.ageGroup = '>14';
+
+    const minA = String(minAgeVal || '').trim();
+    const maxA = String(maxAgeVal || '').trim();
+    if (minA) params.minAge = minA;
+    if (maxA) params.maxAge = maxA;
+
     return params;
   };
 
-  const fetchAllDetailRecords = async (filter, searchText = '') => {
+  const fetchAllDetailRecords = async (filter, searchText = '', minAgeVal = detailMinAge, maxAgeVal = detailMaxAge) => {
     const indicatorKey = resolveIndicatorScriptId(filter.rawIndicator);
     const all = [];
     let page = 1;
     let totalPages = 1;
     do {
-      const params = buildDetailRequestParams(filter, page, DETAIL_EXPORT_PAGE_SIZE, searchText);
+      const params = buildDetailRequestParams(filter, page, DETAIL_EXPORT_PAGE_SIZE, searchText, minAgeVal, maxAgeVal);
       const response = await reportingApi.getIndicatorDetails(indicatorKey, params);
       const list = Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : [];
       all.push(...list.map(normalizeDetailRecord));
@@ -643,14 +655,14 @@ export default function ReportHomePage({ onLogout }) {
     }
   };
 
-  const fetchDetailPage = async (filter, page = 1, searchText = detailRowSearch) => {
+  const fetchDetailPage = async (filter, page = 1, searchText = detailRowSearch, minAgeVal = detailMinAge, maxAgeVal = detailMaxAge) => {
     if (!effectiveSiteCode || !filter?.rawIndicator) return;
     const indicatorKey = resolveIndicatorScriptId(filter.rawIndicator);
     setDetailLoading(true);
     setDetailError('');
     setDetailCountFootnote('');
     try {
-      const params = buildDetailRequestParams(filter, page, detailLimit, searchText);
+      const params = buildDetailRequestParams(filter, page, detailLimit, searchText, minAgeVal, maxAgeVal);
       const response = await reportingApi.getIndicatorDetails(indicatorKey, params);
       const list = Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : [];
       const normalized = list.map(normalizeDetailRecord);
@@ -673,6 +685,10 @@ export default function ReportHomePage({ onLogout }) {
     setDetailFilter(filter);
     setDetailRowSearch('');
     detailRowSearchRef.current = '';
+    setDetailMinAge('');
+    detailMinAgeRef.current = '';
+    setDetailMaxAge('');
+    detailMaxAgeRef.current = '';
     setDetailCountFootnote('');
     setDetailTitle(`${item.indicator} - ${ageGroup}/${gender}`);
     setDetailOpen(true);
@@ -680,7 +696,7 @@ export default function ReportHomePage({ onLogout }) {
     setDetailTotal(0);
     setDetailTotalPages(1);
     setDetailPage(1);
-    await fetchDetailPage(filter, 1);
+    await fetchDetailPage(filter, 1, '', '', '');
   };
   const handleInfantCellClick = async (section, row, rowIdx, column) => {
     const scriptId = getDetailScriptId(section, rowIdx);
@@ -862,13 +878,21 @@ export default function ReportHomePage({ onLogout }) {
 
   useEffect(() => {
     if (!detailOpen || !detailFilter) return;
-    if (detailRowSearch === detailRowSearchRef.current) return;
+    if (
+      detailRowSearch === detailRowSearchRef.current &&
+      detailMinAge === detailMinAgeRef.current &&
+      detailMaxAge === detailMaxAgeRef.current
+    ) return;
+
     detailRowSearchRef.current = detailRowSearch;
+    detailMinAgeRef.current = detailMinAge;
+    detailMaxAgeRef.current = detailMaxAge;
+
     const timer = setTimeout(() => {
-      fetchDetailPage(detailFilter, 1, detailRowSearch);
-    }, 350);
+      fetchDetailPage(detailFilter, 1, detailRowSearch, detailMinAge, detailMaxAge);
+    }, 400);
     return () => clearTimeout(timer);
-  }, [detailRowSearch, detailOpen, detailFilter]);
+  }, [detailRowSearch, detailMinAge, detailMaxAge, detailOpen, detailFilter]);
 
   const sortedDetailRows = useMemo(() => {
     if (!detailSortKey) return filteredDetailRows;
@@ -1281,6 +1305,10 @@ export default function ReportHomePage({ onLogout }) {
                 setDetailFilter(null);
                 setDetailRowSearch('');
                 detailRowSearchRef.current = '';
+                setDetailMinAge('');
+                detailMinAgeRef.current = '';
+                setDetailMaxAge('');
+                detailMaxAgeRef.current = '';
                 setDetailCountFootnote('');
               }}
             >
@@ -1319,6 +1347,10 @@ export default function ReportHomePage({ onLogout }) {
                     setDetailFilter(null);
                     setDetailRowSearch('');
                     detailRowSearchRef.current = '';
+                    setDetailMinAge('');
+                    detailMinAgeRef.current = '';
+                    setDetailMaxAge('');
+                    detailMaxAgeRef.current = '';
                     setDetailCountFootnote('');
                   }}
                 >
@@ -1326,20 +1358,71 @@ export default function ReportHomePage({ onLogout }) {
                 </button>
               </div>
               <div className="border-b border-border/80 px-4 py-2.5">
-                <div className="relative">
-                  <RiSearchLine className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    value={detailRowSearch}
-                    onChange={(e) => setDetailRowSearch(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && detailFilter) {
-                        detailRowSearchRef.current = detailRowSearch;
-                        fetchDetailPage(detailFilter, 1, detailRowSearch);
-                      }
-                    }}
-                    placeholder="Search records (clinic ID, ART, TPT drug, status, source...)"
-                    className="h-8 w-full border border-border/80 bg-background pl-8 pr-2 text-xs shadow-sm"
-                  />
+                <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                  <div className="relative flex-1">
+                    <RiSearchLine className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      value={detailRowSearch}
+                      onChange={(e) => setDetailRowSearch(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && detailFilter) {
+                          detailRowSearchRef.current = detailRowSearch;
+                          fetchDetailPage(detailFilter, 1, detailRowSearch, detailMinAge, detailMaxAge);
+                        }
+                      }}
+                      placeholder="Search records (clinic ID, ART, TPT drug, status, source...)"
+                      className="h-8 w-full border border-border/80 bg-background pl-8 pr-2 text-xs shadow-sm"
+                    />
+                  </div>
+                  {detailFilter && (
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-muted-foreground whitespace-nowrap">Age range:</label>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="Min"
+                        value={detailMinAge}
+                        onChange={(e) => setDetailMinAge(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            detailMinAgeRef.current = e.target.value;
+                            fetchDetailPage(detailFilter, 1, detailRowSearch, e.target.value, detailMaxAge);
+                          }
+                        }}
+                        className="h-8 w-16 border border-border/80 bg-background px-2 text-xs shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                      <span className="text-xs text-muted-foreground">-</span>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="Max"
+                        value={detailMaxAge}
+                        onChange={(e) => setDetailMaxAge(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            detailMaxAgeRef.current = e.target.value;
+                            fetchDetailPage(detailFilter, 1, detailRowSearch, detailMinAge, e.target.value);
+                          }
+                        }}
+                        className="h-8 w-16 border border-border/80 bg-background px-2 text-xs shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                      {(detailMinAge || detailMaxAge) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDetailMinAge('');
+                            detailMinAgeRef.current = '';
+                            setDetailMaxAge('');
+                            detailMaxAgeRef.current = '';
+                            fetchDetailPage(detailFilter, 1, detailRowSearch, '', '');
+                          }}
+                          className="h-8 border border-border/80 bg-background px-2 text-[10px] text-muted-foreground shadow-sm hover:bg-muted"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
                 {detailListFootnote ? (
                   <div className="mt-1 text-[11px] text-muted-foreground">{detailListFootnote}</div>

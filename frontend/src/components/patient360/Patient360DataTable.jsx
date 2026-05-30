@@ -124,13 +124,14 @@ function TableContent({
         ) : null}
         {rows.map((row, idx) => {
           const key = getRowKey ? getRowKey(row, idx) : idx;
-          const clickable = Boolean(onRowClick);
+          const clickable = Boolean(onRowClick) && !row.isTotal;
           return (
             <tr
               key={key}
               className={cn(
                 bodyRowH,
                 'border-0 border-b border-border/40',
+                row.isTotal && 'font-semibold bg-muted/30 border-t border-t-border border-b-2 border-b-double border-b-border',
                 clickable && 'cursor-pointer hover:bg-muted/40'
               )}
               onClick={
@@ -152,7 +153,8 @@ function TableContent({
                     className={cn(
                       bodyRowInner,
                       col.mono && 'font-mono tabular-nums',
-                      col.align === 'right' && 'justify-end'
+                      col.align === 'right' && 'justify-end',
+                      row.isTotal && 'font-bold text-foreground'
                     )}
                   >
                     {text}

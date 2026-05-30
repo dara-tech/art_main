@@ -1,7 +1,8 @@
 import { RiLoader4Line, RiRefreshLine, RiSearchLine, RiShieldCheckLine } from '@remixicon/react';
 import SiteSelectModal from '../sites/SiteSelectModal';
 import { cn } from '@/lib/utils';
-import { APP_NAV_ICON, APP_NAV_TEXT, appNavItemClass, p360ControlClass } from '../layout/appNavStyles';
+import { APP_NAV_ICON, appNavItemClass, p360ControlClass } from '../layout/appNavStyles';
+import { TOOLBAR_ICON } from '../layout/toolbarIconColors';
 import { DQA_KH } from '../../pages/dqaKh';
 import { Patient360NavBar, Patient360NavRow } from '../patient360/Patient360NavBar';
 import { VizToolbarBtn } from '../visualize/visualizeToolbarUi';
@@ -24,9 +25,12 @@ export default function DqaToolbar({
   return (
     <Patient360NavBar ariaLabel={DQA_KH.pageTitle} rowCount={1}>
       <Patient360NavRow tone="filters" className="gap-2">
-        <div className={cn(appNavItemClass(false), 'pointer-events-none border-transparent px-2')}>
-          <RiShieldCheckLine className={cn(APP_NAV_ICON, 'text-primary')} aria-hidden />
-          <span className={cn('hidden font-semibold sm:inline', APP_NAV_TEXT)}>{DQA_KH.pageTitleShort}</span>
+        <div
+          className={cn(appNavItemClass(false), 'pointer-events-none border-transparent px-2')}
+          title={DQA_KH.pageTitleShort}
+        >
+          <RiShieldCheckLine className={cn(APP_NAV_ICON, TOOLBAR_ICON.brand)} aria-hidden />
+          <span className="sr-only">{DQA_KH.pageTitleShort}</span>
         </div>
 
         <SiteSelectModal
@@ -65,13 +69,14 @@ export default function DqaToolbar({
 
         <VizToolbarBtn
           icon={running ? RiLoader4Line : RiRefreshLine}
+          iconClassName={running ? TOOLBAR_ICON.brand : TOOLBAR_ICON.teal}
           label={running ? DQA_KH.running : DQA_KH.run}
           disabled={!canRun || running}
           onClick={onRun}
           title={DQA_KH.run}
           className={cn(
             'ml-auto shrink-0',
-            running && '[&_svg]:animate-spin [&_svg]:text-primary'
+            running && '[&_svg]:animate-spin'
           )}
         />
       </Patient360NavRow>

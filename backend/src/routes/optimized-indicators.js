@@ -258,7 +258,9 @@ router.get('/details/:indicatorId', authenticateToken, async (req, res) => {
       limit: req.query.limit,
       search: req.query.search,
       ageGroup: req.query.ageGroup,
-      gender: req.query.gender
+      gender: req.query.gender,
+      minAge: req.query.minAge,
+      maxAge: req.query.maxAge
     };
     const params = queryParams(req);
     const indicatorId = req.params.indicatorId;

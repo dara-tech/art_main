@@ -131,6 +131,8 @@ class IndicatorsService {
     const search = String(options.search || '').toLowerCase();
     const ageGroup = options.ageGroup || '';
     const gender = options.gender || '';
+    const minAge = options.minAge ? Number(options.minAge) : null;
+    const maxAge = options.maxAge ? Number(options.maxAge) : null;
 
     let filtered = rows;
     if (gender) {
@@ -142,6 +144,12 @@ class IndicatorsService {
     if (ageGroup === '0-14') filtered = filtered.filter((r) => classifyDetailAgeGroup(r) === '0-14');
     if (ageGroup === '15+' || ageGroup === '>14') {
       filtered = filtered.filter((r) => classifyDetailAgeGroup(r) === '>14');
+    }
+    if (minAge !== null && !Number.isNaN(minAge)) {
+      filtered = filtered.filter((r) => Number(r.age ?? r.Age) >= minAge);
+    }
+    if (maxAge !== null && !Number.isNaN(maxAge)) {
+      filtered = filtered.filter((r) => Number(r.age ?? r.Age) <= maxAge);
     }
     if (search) {
       filtered = filtered.filter((r) =>

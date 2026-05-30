@@ -243,9 +243,9 @@ function filterRegistrySites(sites, user) {
     }
 
     const name = String(site.name || '').toLowerCase();
-    if (name.includes('cambodia')) return false;
-
     const digits = code.replace(/\D/g, '');
+    if (name.includes('cambodia') && digits.length < 4) return false;
+
     if (digits.endsWith('00') || (digits.length === 2 && /^\d{2}$/.test(digits))) {
       const prefix = digits.length >= 2 ? digits.slice(0, 2) : '';
       return facilityList.some((f) => String(f.code || '').replace(/\D/g, '').startsWith(prefix));

@@ -13,11 +13,18 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import {
   P360_TABLE_BODY_ROW_INNER,
+  P360_TABLE_PAD,
   P360_TABLE_TEXT,
   p360CardClass,
   p360ControlClass,
   vizKpiCardClass
 } from '../components/layout/appNavStyles';
+
+const adminUserCellClass = cn(
+  P360_TABLE_PAD,
+  'flex min-h-8 min-w-0 flex-col justify-center gap-0.5 py-1.5',
+  P360_TABLE_TEXT
+);
 
 export default function AdminPage() {
   const [tab, setTab] = useState('users');
@@ -152,7 +159,7 @@ export default function AdminPage() {
         width: 180,
         getValue: (r) => r.fullName,
         renderCell: (row, text) => (
-          <div className={P360_TABLE_BODY_ROW_INNER}>
+          <div className={adminUserCellClass}>
             <button
               type="button"
               className="truncate text-left font-medium text-primary underline-offset-2 hover:underline"
@@ -163,7 +170,9 @@ export default function AdminPage() {
             >
               {text}
             </button>
-            <div className="truncate text-muted-foreground">{row.username}</div>
+            {row.username ? (
+              <div className="truncate font-mono text-[10px] text-muted-foreground">{row.username}</div>
+            ) : null}
           </div>
         )
       },
@@ -340,7 +349,6 @@ export default function AdminPage() {
                         scrollBody
                         fillHeight
                         stickyHeader
-                        compactBodyRows
                         className="h-full min-h-0 flex-1 border border-border/80 shadow-sm"
                         emptyMessage="No users found."
                         onRowClick={(row) => openUserEditor(row)}

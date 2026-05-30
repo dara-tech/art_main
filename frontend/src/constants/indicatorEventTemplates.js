@@ -46,6 +46,7 @@ export const ART_EVENT_GROUPS = [
       '10.2_mmd',
       '10.3_tld',
       '10.4_tpt_start',
+      '10.4.1_tpt_new_start',
       '10.5_tpt_complete'
     ]
   },

@@ -3,6 +3,7 @@ import {
   RiBarChartBoxLine,
   RiBarChartGroupedLine,
   RiClipboardLine,
+  RiDownloadLine,
   RiGitMergeLine,
   RiListCheck2,
   RiLoader4Line,
@@ -17,11 +18,13 @@ import VisualizeCompareSitesModal, { VIZ_COMPARE_MAX } from './VisualizeCompareS
 import { cn } from '@/lib/utils';
 import { APP_NAV_ICON, APP_NAV_TEXT, appNavItemClass } from '../layout/appNavStyles';
 import { VIZ_KH } from '../../pages/visualizeKh';
+import { TOOLBAR_ICON } from '../layout/toolbarIconColors';
 import { Patient360NavBar, Patient360NavRow } from '../patient360/Patient360NavBar';
 import VisualizeChartNav from './VisualizeChartNav';
 import { VizToolbarBtn } from './visualizeToolbarUi';
 import { copyTextToClipboard } from '../../utils/copyToClipboard';
 import { buildVisualizeResultsClipboardText } from '../../utils/visualizeClipboard';
+import { downloadCsv, safeExportFilename } from '../../utils/exportCsv';
 
 export const VIZ_NAV_ROWS = 2;
 
@@ -63,20 +66,46 @@ export default function VisualizeToolbar({
   const navRows = showChartNav ? VIZ_NAV_ROWS : 1;
   const canCopy = results.length > 0 && !loading;
 
-  const handleCopyResults = useCallback(async () => {
-    if (!results.length) {
-      toast.error(VIZ_KH.copyClipboardEmpty);
-      return;
-    }
-    const text = buildVisualizeResultsClipboardText(results, catalog, scopeMode, VIZ_KH);
-    if (!text) {
-      toast.error(VIZ_KH.copyClipboardEmpty);
-      return;
-    }
-    const ok = await copyTextToClipboard(text);
-    if (ok) toast.success(VIZ_KH.copyClipboardSuccess);
-    else toast.error(VIZ_KH.copyClipboardFailed);
-  }, [results, catalog, scopeMode]);
+  const handleCopyResults = useCallback(
+    async (e) => {
+      e?.preventDefault?.();
+      e?.stopPropagation?.();
+      if (!results.length) {
+        toast.error(VIZ_KH.copyClipboardEmpty);
+        return;
+      }
+      const text = buildVisualizeResultsClipboardText(results, catalog, scopeMode, VIZ_KH);
+      if (!text) {
+        toast.error(VIZ_KH.copyClipboardEmpty);
+        return;
+      }
+      const ok = await copyTextToClipboard(text);
+      if (ok) toast.success(VIZ_KH.copyClipboardSuccess);
+      else toast.error(VIZ_KH.copyClipboardFailed);
+    },
+    [results, catalog, scopeMode]
+  );
+
+  const handleExportExcel = useCallback(
+    (e) => {
+      e?.preventDefault?.();
+      e?.stopPropagation?.();
+      if (!results.length) {
+        toast.error(VIZ_KH.copyClipboardEmpty);
+        return;
+      }
+      const text = buildVisualizeResultsClipboardText(results, catalog, scopeMode, VIZ_KH);
+      if (!text) {
+        toast.error(VIZ_KH.copyClipboardEmpty);
+        return;
+      }
+      const cleanText = text.startsWith('\uFEFF') ? text.slice(1) : text;
+      const periodStr = periodKeys.join('_');
+      const filename = safeExportFilename(`visualize_report_${scopeMode}_${periodStr}`);
+      downloadCsv(filename, cleanText);
+    },
+    [results, catalog, scopeMode, periodKeys]
+  );
 
   const indicatorCountFix =
     typeof indicatorCount === 'number' ? indicatorCount : 0;
@@ -84,14 +113,18 @@ export default function VisualizeToolbar({
   return (
     <Patient360NavBar ariaLabel={VIZ_KH.pageTitle} rowCount={navRows}>
       <Patient360NavRow tone="filters" className="gap-2">
-        <div className={cn(appNavItemClass(false), 'pointer-events-none border-transparent px-2')}>
-          <RiBarChartGroupedLine className={cn(APP_NAV_ICON, 'text-primary')} aria-hidden />
-          <span className={cn('hidden font-semibold sm:inline', APP_NAV_TEXT)}>{VIZ_KH.pageTitle}</span>
+        <div
+          className={cn(appNavItemClass(false), 'pointer-events-none border-transparent px-2')}
+          title={VIZ_KH.pageTitle}
+        >
+          <RiBarChartGroupedLine className={cn(APP_NAV_ICON, TOOLBAR_ICON.brand)} aria-hidden />
+          <span className="sr-only">{VIZ_KH.pageTitle}</span>
         </div>
 
         <div className="flex shrink-0 gap-0.5" role="group" aria-label={VIZ_KH.scopeModeLabel}>
           <VizToolbarBtn
             icon={RiStackLine}
+            iconClassName={TOOLBAR_ICON.blue}
             label={VIZ_KH.scopeRollup}
             shortLabel={VIZ_KH.scopeRollupShort}
             active={scopeMode === 'rollup'}
@@ -100,6 +133,7 @@ export default function VisualizeToolbar({
           />
           <VizToolbarBtn
             icon={RiGitMergeLine}
+            iconClassName={TOOLBAR_ICON.violet}
             label={VIZ_KH.scopeCompare}
             active={scopeMode === 'compare'}
             onClick={() => onScopeModeChange?.('compare')}
@@ -138,6 +172,7 @@ export default function VisualizeToolbar({
 
         <VizToolbarBtn
           icon={RiListCheck2}
+          iconClassName={TOOLBAR_ICON.amber}
           label={`${VIZ_KH.pickIndicators} (${indicatorCountFix})`}
           shortLabel={`${VIZ_KH.indicatorsShort} (${indicatorCountFix})`}
           onClick={onOpenIndicators}
@@ -150,6 +185,7 @@ export default function VisualizeToolbar({
           <div className="flex shrink-0 gap-0.5" role="group" aria-label={VIZ_KH.resultViewLabel}>
             <VizToolbarBtn
               icon={RiTable2}
+              iconClassName={TOOLBAR_ICON.slate}
               label={VIZ_KH.viewTable}
               shortLabel={VIZ_KH.viewTableShort}
               active={resultView === 'table'}
@@ -158,6 +194,7 @@ export default function VisualizeToolbar({
             />
             <VizToolbarBtn
               icon={RiBarChartBoxLine}
+              iconClassName={TOOLBAR_ICON.emerald}
               label={VIZ_KH.viewChart}
               shortLabel={VIZ_KH.viewChartShort}
               active={resultView === 'chart'}
@@ -168,11 +205,22 @@ export default function VisualizeToolbar({
 
           <VizToolbarBtn
             icon={RiClipboardLine}
+            iconClassName={TOOLBAR_ICON.cyan}
             label={VIZ_KH.copyClipboard}
             shortLabel={VIZ_KH.copyClipboard}
             disabled={!canCopy}
             onClick={handleCopyResults}
             title={VIZ_KH.copyClipboardTitle}
+          />
+
+          <VizToolbarBtn
+            icon={RiDownloadLine}
+            iconClassName={TOOLBAR_ICON.blue}
+            label={VIZ_KH.exportExcel}
+            shortLabel={VIZ_KH.exportExcel}
+            disabled={!canCopy}
+            onClick={handleExportExcel}
+            title={VIZ_KH.exportExcelTitle}
           />
 
           {loading && progress?.total > 0 ? (
@@ -183,17 +231,18 @@ export default function VisualizeToolbar({
 
           <VizToolbarBtn
             icon={loading ? RiLoader4Line : RiRefreshLine}
+            iconClassName={loading ? TOOLBAR_ICON.brand : TOOLBAR_ICON.teal}
             label={loading ? VIZ_KH.running : VIZ_KH.run}
             disabled={!canRun}
             onClick={onRun}
             title={VIZ_KH.run}
-            className={loading ? '[&_svg]:animate-spin [&_svg]:text-primary' : undefined}
+            className={loading ? '[&_svg]:animate-spin' : undefined}
           />
         </div>
       </Patient360NavRow>
 
       {showChartNav ? (
-        <Patient360NavRow tone="plain" className="gap-2">
+        <Patient360NavRow tone="plain" className="gap-2 overflow-visible">
           <VisualizeChartNav
             results={results}
             panel={chartPanel}

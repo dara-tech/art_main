@@ -56,7 +56,7 @@ function inferSiteLevel(siteCode, siteInfo) {
   if (code.startsWith('province:')) return 'province';
   const digits = code.replace(/\D/g, '');
   const name = String(siteInfo?.name || '').toLowerCase();
-  if (name.includes('cambodia')) return 'country';
+  if (name.includes('cambodia') && digits.length < 4) return 'country';
   if (digits.length <= 2) return 'province';
   if (digits.length >= 4 && digits.endsWith('00')) return 'province';
   return 'facility';
@@ -67,7 +67,8 @@ function isFacilitySite(site) {
   const name = String(site?.name || '').toLowerCase();
   if (!digits || digits.length < 4) return false;
   if (digits.endsWith('00')) return false;
-  if (name.includes('cambodia') || name.includes('province')) return false;
+  if (name.includes('province')) return false;
+  if (name.includes('cambodia') && digits.length < 4) return false;
   return true;
 }
 

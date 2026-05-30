@@ -13,4 +13,4 @@ For **TPT** (tuberculosis preventive therapy) and **INH** start/stop logic:
 
 Do **not** use `tblavoidrug`, `tblcvoidrug`, or other **OI drug** tables for TPT indicators or DQA checks unless the task is explicitly about non-TPT OI drugs.
 
-Align with indicators `10.4_tpt_start.sql` and `10.5_tpt_complete.sql`.
+Align with indicators `10.4_tpt_start.sql`, `10.4.1_tpt_new_start.sql`, and `10.5_tpt_complete.sql`.

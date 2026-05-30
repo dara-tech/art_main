@@ -8,7 +8,8 @@ import {
   RiUser3Line
 } from '@remixicon/react';
 import { cn } from '@/lib/utils';
-import { APP_NAV_ICON, APP_NAV_MUTED, appNavItemClass, p360TabClass } from '../layout/appNavStyles';
+import { APP_NAV_ICON, appNavItemClass, p360TabClass } from '../layout/appNavStyles';
+import { TOOLBAR_ICON } from '../layout/toolbarIconColors';
 import { VIZ_KH } from '../../pages/visualizeKh';
 import {
   buildFacilityCompareTrendData,
@@ -29,12 +30,26 @@ const PANEL_ICONS = {
   demographics: RiUser3Line
 };
 
+const PANEL_ICON_COLOR = {
+  trend: TOOLBAR_ICON.emerald,
+  snapshot: TOOLBAR_ICON.blue,
+  demographics: TOOLBAR_ICON.amber
+};
+
 function ChartPanelTab({ id, active, onClick, label }) {
   const Icon = PANEL_ICONS[id];
   return (
-    <button type="button" onClick={onClick} className={p360TabClass(active)} title={label}>
-      {Icon ? <Icon className={APP_NAV_ICON} aria-hidden /> : null}
-      <span>{label}</span>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(p360TabClass(active), 'px-2')}
+      title={label}
+      aria-label={label}
+    >
+      {Icon ? (
+        <Icon className={cn(APP_NAV_ICON, PANEL_ICON_COLOR[id] || TOOLBAR_ICON.zinc)} aria-hidden />
+      ) : null}
+      <span className="sr-only">{label}</span>
     </button>
   );
 }
@@ -67,10 +82,13 @@ export default function VisualizeChartNav({
   if (!indicators.length) return null;
 
   return (
-    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-      <div className={cn(appNavItemClass(false), 'pointer-events-none border-transparent px-2')}>
-        <RiEqualizerLine className={APP_NAV_ICON} aria-hidden />
-        <span className={cn('hidden font-medium lg:inline', APP_NAV_MUTED)}>{VIZ_KH.chartControls}</span>
+    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 overflow-visible">
+      <div
+        className={cn(appNavItemClass(false), 'pointer-events-none border-transparent px-2')}
+        title={VIZ_KH.chartControls}
+      >
+        <RiEqualizerLine className={cn(APP_NAV_ICON, TOOLBAR_ICON.zinc)} aria-hidden />
+        <span className="sr-only">{VIZ_KH.chartControls}</span>
       </div>
 
       <div className="flex shrink-0 gap-0.5" role="tablist" aria-label={VIZ_KH.chartControls}>
@@ -120,11 +138,11 @@ export default function VisualizeChartNav({
         <>
           <VizToolbarSelect
             icon={RiBarChart2Line}
+            iconClassName={TOOLBAR_ICON.violet}
             label={VIZ_KH.chartTypeSelect}
             value={isValidChartType(variant) ? variant : 'bar'}
             title={VIZ_KH.chartType}
-            onChange={(e) => {
-              const next = e.target.value;
+            onValueChange={(next) => {
               onVariantChange?.(next);
               if (!supportsTrendLine(next) && chartSettings?.showTrendLine) {
                 onChartSettingsChange?.({
@@ -134,16 +152,15 @@ export default function VisualizeChartNav({
                 });
               }
             }}
-          >
-            {CHART_TYPE_IDS.map((id) => (
-              <option key={id} value={id}>
-                {VIZ_KH[`chartType_${id}`] || id}
-              </option>
-            ))}
-          </VizToolbarSelect>
+            options={CHART_TYPE_IDS.map((id) => ({
+              value: id,
+              label: VIZ_KH[`chartType_${id}`] || id
+            }))}
+          />
           {supportsTrendLine(variant) ? (
             <VizToolbarBtn
               icon={RiGuideLine}
+              iconClassName={TOOLBAR_ICON.orange}
               label={VIZ_KH.chartTrendLine}
               active={Boolean(chartSettings?.showTrendLine)}
               onClick={() => {

@@ -42,6 +42,9 @@ import {
 import {
   buildPieSlicesFromTrendData,
   normalizeChartType,
+  PIE_ON_CHART_LABEL_MIN_PERCENT,
+  pieLegendLabel,
+  preparePieDisplay,
   supportsTrendLine
 } from '../../utils/visualizeChartTypes';
 import { buildChartPointDetail, findResultForChartPoint } from '../../utils/visualizeChartDetail';
@@ -213,8 +216,26 @@ function renderTrendSeries({
   barRadius,
   showLabels,
   stackId,
-  typography
+  typography,
+  onPointClick
 }) {
+  const clickHandler = onPointClick
+    ? (s) => (data, indexOrEvent, maybeEvent) => {
+        const event = maybeEvent || (indexOrEvent && typeof indexOrEvent === 'object' ? indexOrEvent : null);
+        if (event && typeof event.stopPropagation === 'function') {
+          event.stopPropagation();
+        }
+        const row = data.payload || data;
+        const val = data.value !== undefined ? data.value : (row ? row[s.dataKey] : null);
+        onPointClick({
+          row,
+          seriesId: s.id,
+          seriesLabel: s.label,
+          value: val
+        });
+      }
+    : null;
+
   if (chartType === 'line') {
     return series.map((s) => (
       <Line
@@ -226,6 +247,7 @@ function renderTrendSeries({
         strokeWidth={lineStrokeWidth}
         dot={{ r: 3, fill: s.color }}
         activeDot={{ r: 5 }}
+        onClick={clickHandler ? clickHandler(s) : undefined}
       />
     ));
   }
@@ -242,6 +264,7 @@ function renderTrendSeries({
         strokeWidth={lineStrokeWidth}
         dot={{ r: 2, fill: s.color }}
         activeDot={{ r: 4 }}
+        onClick={clickHandler ? clickHandler(s) : undefined}
       />
     ));
   }
@@ -255,6 +278,7 @@ function renderTrendSeries({
       radius={barRadius}
       maxBarSize={barMaxSize}
       stackId={stackId}
+      onClick={clickHandler ? clickHandler(s) : undefined}
     >
       {showLabels ? (
         <LabelList
@@ -314,15 +338,21 @@ function MultiTrendChart({
     : { fill: 'oklch(0.5 0.13 46 / 0.12)', stroke: 'oklch(0.5 0.13 46 / 0.25)', strokeWidth: 1 };
 
   if (chartType === 'pie') {
-    const { slices, periodLabel } = buildPieSlicesFromTrendData(chartData, series, xDataKey);
-    if (!slices.length) {
+    const { slices: rawSlices, periodLabel } = buildPieSlicesFromTrendData(chartData, series, xDataKey);
+    if (!rawSlices.length) {
       return (
         <div className="flex min-h-0 flex-1 items-center justify-center">
           <VizEmpty>{VIZ_KH.chartPieNoData}</VizEmpty>
         </div>
       );
     }
-    const pieLegend = slices.map((s) => ({ key: s.id, label: s.name, color: s.color }));
+    const { slices, total, showOnChartLabels } = preparePieDisplay(rawSlices);
+    const pieLegend = slices.map((s) => ({
+      key: s.id,
+      label: pieLegendLabel(s, total),
+      color: s.color
+    }));
+    const useLegend = chartSettings.showLegend !== false || !showOnChartLabels || slices.length > 8;
     const lastRow = chartData[chartData.length - 1];
     const handlePieClick = (slice) => {
       if (!onPointClick || !slice || !lastRow) return;
@@ -333,14 +363,40 @@ function MultiTrendChart({
         value: slice.value
       });
     };
+    const pieLabel =
+      showOnChartLabels &&
+      (({ name, percent, x, y }) => {
+        if (percent < PIE_ON_CHART_LABEL_MIN_PERCENT) return null;
+        return (
+          <text
+            x={x}
+            y={y}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fill={typography.fill}
+            fontSize={typography.fontSize}
+            fontWeight={typography.fontWeight}
+          >
+            {`${name} ${(percent * 100).toFixed(0)}%`}
+          </text>
+        );
+      });
     return (
       <>
         <p
-          className="mb-2 shrink-0 text-center text-muted-foreground"
+          className="mb-1 shrink-0 text-center text-muted-foreground"
           style={{ fontSize: typography.fontSize, fontWeight: typography.fontWeight }}
         >
           {VIZ_KH.chartPiePeriodHint.replace('{period}', periodLabel)}
         </p>
+        {!showOnChartLabels ? (
+          <p
+            className="mb-2 shrink-0 text-center text-muted-foreground/90"
+            style={{ fontSize: Math.max(9, typography.fontSize - 1), fontWeight: typography.fontWeight }}
+          >
+            {VIZ_KH.chartPieLegendHint}
+          </p>
+        ) : null}
         <VizChartPlot className={onPointClick ? 'cursor-pointer' : undefined}>
           <ChartResponsive>
             <PieChart>
@@ -352,20 +408,8 @@ function MultiTrendChart({
                 cx="50%"
                 cy="50%"
                 outerRadius="78%"
-                label={({ name, percent, x, y }) => (
-                  <text
-                    x={x}
-                    y={y}
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    fill={typography.fill}
-                    fontSize={typography.fontSize}
-                    fontWeight={typography.fontWeight}
-                  >
-                    {`${name} ${(percent * 100).toFixed(0)}%`}
-                  </text>
-                )}
-                labelLine={false}
+                label={pieLabel || false}
+                labelLine={Boolean(pieLabel)}
                 onClick={(_, index) => handlePieClick(slices[index])}
               >
                 {slices.map((entry) => (
@@ -375,7 +419,9 @@ function MultiTrendChart({
             </PieChart>
           </ChartResponsive>
         </VizChartPlot>
-        {chartSettings.showLegend ? <VizLegend items={pieLegend} typography={typography} /> : null}
+        {useLegend ? (
+          <VizLegend items={pieLegend} typography={typography} scrollable={pieLegend.length > 6} />
+        ) : null}
       </>
     );
   }
@@ -476,7 +522,8 @@ function MultiTrendChart({
         barRadius,
         showLabels,
         stackId,
-        typography
+        typography,
+        onPointClick
       })}
       {showTrendLine
         ? series.map((s) => (

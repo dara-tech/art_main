@@ -1,7 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { RiSettings3Line } from '@remixicon/react';
 import { cn } from '@/lib/utils';
-import { APP_NAV_ICON, APP_NAV_TEXT, P360_TABLE_TEXT, appNavItemClass, p360ControlClass } from '../layout/appNavStyles';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
+import { APP_NAV_TEXT, P360_TABLE_TEXT, appNavItemClass, p360ControlClass } from '../layout/appNavStyles';
+import { TOOLBAR_ICON } from '../layout/toolbarIconColors';
+import { ToolbarAnchoredPanel, VizToolbarBtn } from './visualizeToolbarUi';
 import { VIZ_KH } from '../../pages/visualizeKh';
 import {
   applySeriesColors,
@@ -13,6 +22,9 @@ import {
   resolveSeriesColor
 } from '../../utils/visualizeChartSettings';
 import { CHART_TYPE_IDS, supportsTrendLine, usesBarOptions, usesLineCurve } from '../../utils/visualizeChartTypes';
+
+const SETTINGS_SELECT_ITEM =
+  'rounded-none px-2 py-1.5 text-[11px] data-[selected]:bg-primary data-[selected]:text-primary-foreground';
 
 function SectionTitle({ children }) {
   return (
@@ -34,6 +46,8 @@ export default function VisualizeChartSettings({
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
+  const anchorRef = useRef(null);
+  const panelRef = useRef(null);
   const s = { ...DEFAULT_CHART_SETTINGS, ...settings };
   const coloredSeries = applySeriesColors(series, s);
   const showTrendPanel = panel === 'trend';
@@ -41,7 +55,13 @@ export default function VisualizeChartSettings({
   useEffect(() => {
     if (!open) return undefined;
     const onDoc = (e) => {
-      if (rootRef.current?.contains(e.target)) return;
+      if (
+        rootRef.current?.contains(e.target) ||
+        panelRef.current?.contains(e.target) ||
+        anchorRef.current?.contains(e.target)
+      ) {
+        return;
+      }
       setOpen(false);
     };
     document.addEventListener('mousedown', onDoc);
@@ -64,40 +84,44 @@ export default function VisualizeChartSettings({
 
   return (
     <div ref={rootRef} className={cn('relative shrink-0', className)}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className={cn(appNavItemClass(open), 'gap-1')}
-        title={VIZ_KH.chartSettingsTitle}
-        aria-expanded={open}
+      <div ref={anchorRef}>
+        <VizToolbarBtn
+          icon={RiSettings3Line}
+          iconClassName={TOOLBAR_ICON.slate}
+          label={VIZ_KH.chartSettings}
+          active={open}
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          title={VIZ_KH.chartSettingsTitle}
+        />
+      </div>
+      <ToolbarAnchoredPanel
+        open={open}
+        anchorRef={anchorRef}
+        panelRef={panelRef}
+        width={288}
+        className="max-h-[min(80vh,28rem)] overflow-y-auto border border-border/80 bg-popover p-3 shadow-lg"
       >
-        <RiSettings3Line className={APP_NAV_ICON} aria-hidden />
-        <span>{VIZ_KH.chartSettings}</span>
-      </button>
-      {open ? (
-        <div
-          className="absolute right-0 top-full z-50 mt-1 max-h-[min(80vh,28rem)] w-72 overflow-y-auto border border-border/80 bg-popover p-3 shadow-md"
-          role="dialog"
-          aria-label={VIZ_KH.chartSettingsTitle}
-        >
+        <div role="dialog" aria-label={VIZ_KH.chartSettingsTitle}>
           {showTrendPanel ? (
             <>
               <SectionTitle>{VIZ_KH.chartOptionsSection}</SectionTitle>
 
-              <label className={cn('mb-2 block', P360_TABLE_TEXT)}>
+              <div className={cn('mb-2 block', P360_TABLE_TEXT)}>
                 <span className="mb-1 block text-muted-foreground">{VIZ_KH.chartType}</span>
-                <select
-                  value={chartVariant}
-                  onChange={(e) => onChartVariantChange?.(e.target.value)}
-                  className={cn(p360ControlClass, 'w-full')}
-                >
-                  {CHART_TYPE_IDS.map((id) => (
-                    <option key={id} value={id}>
-                      {VIZ_KH[`chartType_${id}`] || id}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                <Select value={chartVariant} onValueChange={onChartVariantChange}>
+                  <SelectTrigger className={cn(p360ControlClass, 'w-full rounded-none px-2')}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-none p-1">
+                    {CHART_TYPE_IDS.map((id) => (
+                      <SelectItem key={id} value={id} className={SETTINGS_SELECT_ITEM}>
+                        {VIZ_KH[`chartType_${id}`] || id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               {supportsTrendLine(chartVariant) ? (
                 <label className={cn('mb-2 flex items-center gap-2', P360_TABLE_TEXT)}>
@@ -373,7 +397,7 @@ export default function VisualizeChartSettings({
             </label>
           ) : null}
         </div>
-      ) : null}
+      </ToolbarAnchoredPanel>
     </div>
   );
 }

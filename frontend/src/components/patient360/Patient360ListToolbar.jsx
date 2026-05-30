@@ -1,4 +1,6 @@
 import {
+  RiArrowLeftSLine,
+  RiArrowRightSLine,
   RiFilter3Line,
   RiLayoutColumnLine,
   RiLoader4Line,
@@ -16,7 +18,9 @@ import {
   appNavItemClass,
   p360ControlClass
 } from '../layout/appNavStyles';
+import { TOOLBAR_ICON } from '../layout/toolbarIconColors';
 import { P360_KH } from '../../pages/patient360Kh';
+import { VizToolbarBtn } from '../visualize/visualizeToolbarUi';
 import { Patient360NavBar, Patient360NavRow } from './Patient360NavBar';
 
 /** 3 fixed rows: title · filters · programs+pager */
@@ -48,11 +52,13 @@ export default function Patient360ListToolbar({
   return (
     <Patient360NavBar ariaLabel={P360_KH.pageTitle} rowCount={P360_LIST_NAV_ROWS}>
       <Patient360NavRow>
-        <RiUserSearchLine className={cn(APP_NAV_ICON, 'shrink-0 text-primary')} aria-hidden />
-        <span className={cn('shrink-0 font-semibold', APP_NAV_TEXT)}>{P360_KH.list.title}</span>
-        <span className={cn('hidden min-w-0 truncate text-muted-foreground lg:inline', APP_NAV_MUTED)}>
-          {P360_KH.pageDescription}
-        </span>
+        <div
+          className={cn(appNavItemClass(false), 'pointer-events-none border-transparent px-2')}
+          title={P360_KH.list.title}
+        >
+          <RiUserSearchLine className={cn(APP_NAV_ICON, 'shrink-0', TOOLBAR_ICON.amber)} aria-hidden />
+          <span className="sr-only font-semibold">{P360_KH.list.title}</span>
+        </div>
       </Patient360NavRow>
 
       <Patient360NavRow tone="filters" className="gap-3">
@@ -69,7 +75,10 @@ export default function Patient360ListToolbar({
         />
         <div className="relative min-w-[8rem] flex-1">
           <RiSearchLine
-            className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+            className={cn(
+              'pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2',
+              TOOLBAR_ICON.blue
+            )}
             aria-hidden
           />
           <Input
@@ -83,42 +92,31 @@ export default function Patient360ListToolbar({
             }}
           />
         </div>
-        <button
-          type="button"
+        <VizToolbarBtn
+          icon={listPending ? RiLoader4Line : RiRefreshLine}
+          iconClassName={listPending ? TOOLBAR_ICON.brand : TOOLBAR_ICON.cyan}
+          label={listPending ? P360_KH.loading : P360_KH.list.refresh}
           disabled={listPending}
           onClick={onRefresh}
-          className={appNavItemClass(false, listPending)}
-        >
-          {listPending ? (
-            <RiLoader4Line className={cn(APP_NAV_ICON, 'animate-spin text-primary')} aria-hidden />
-          ) : (
-            <RiRefreshLine className={APP_NAV_ICON} aria-hidden />
-          )}
-          <span className="hidden sm:inline">{listPending ? P360_KH.loading : P360_KH.list.refresh}</span>
-        </button>
-        <button
-          type="button"
+          className={listPending ? '[&_svg]:animate-spin' : undefined}
+        />
+        <VizToolbarBtn
+          icon={RiFilter3Line}
+          iconClassName={TOOLBAR_ICON.amber}
+          label={P360_KH.list.filterTitle}
+          active={activeFilterCount > 0}
           onClick={onOpenFilter}
-          className={cn(appNavItemClass(false), activeFilterCount > 0 && 'border-primary/40 bg-primary/10')}
-          title={P360_KH.list.filterTitle}
-          aria-label={P360_KH.list.filterTitle}
         >
-          <RiFilter3Line className={APP_NAV_ICON} aria-hidden />
-          <span className="hidden sm:inline">{P360_KH.list.filter}</span>
           {activeFilterCount > 0 ? (
-            <span className="font-normal opacity-70">({activeFilterCount})</span>
+            <span className="tabular-nums text-[10px] font-semibold leading-none">{activeFilterCount}</span>
           ) : null}
-        </button>
-        <button
-          type="button"
+        </VizToolbarBtn>
+        <VizToolbarBtn
+          icon={RiLayoutColumnLine}
+          iconClassName={TOOLBAR_ICON.violet}
+          label={P360_KH.list.columnConfigTitle}
           onClick={onOpenColumnConfig}
-          className={appNavItemClass(false)}
-          title={P360_KH.list.columnConfigTitle}
-          aria-label={P360_KH.list.columnConfigTitle}
-        >
-          <RiLayoutColumnLine className={APP_NAV_ICON} aria-hidden />
-          <span className="hidden sm:inline">{P360_KH.list.columnConfig}</span>
-        </button>
+        />
       </Patient360NavRow>
 
       <Patient360NavRow tone="muted" className="justify-between gap-3">
@@ -147,22 +145,20 @@ export default function Patient360ListToolbar({
               ` · ${P360_KH.list.page} ${pagination?.page ?? page}`
             )}
           </span>
-          <button
-            type="button"
+          <VizToolbarBtn
+            icon={RiArrowLeftSLine}
+            iconClassName={TOOLBAR_ICON.slate}
+            label={P360_KH.list.prev}
             disabled={listPending || !pagination?.hasPrev}
             onClick={() => onPageChange((p) => Math.max(1, p - 1))}
-            className={appNavItemClass(false, listPending || !pagination?.hasPrev)}
-          >
-            {P360_KH.list.prev}
-          </button>
-          <button
-            type="button"
+          />
+          <VizToolbarBtn
+            icon={RiArrowRightSLine}
+            iconClassName={TOOLBAR_ICON.slate}
+            label={P360_KH.list.next}
             disabled={listPending || !pagination?.hasNext}
             onClick={() => onPageChange((p) => p + 1)}
-            className={appNavItemClass(false, listPending || !pagination?.hasNext)}
-          >
-            {P360_KH.list.next}
-          </button>
+          />
         </div>
       </Patient360NavRow>
     </Patient360NavBar>

@@ -64,7 +64,9 @@ export async function fetchVisualizePatientRecords({
   periods = [],
   page = 1,
   limit = 25,
-  search = ''
+  search = '',
+  minAge = '',
+  maxAge = ''
 }) {
   const base = buildVisualizeDetailRequest(raw, pageContext, periods);
   const entry = catalogEntryFor(catalog, raw?.indicatorId);
@@ -104,6 +106,11 @@ export async function fetchVisualizePatientRecords({
   };
   const q = String(search || '').trim();
   if (q) params.search = q;
+
+  const minA = String(minAge || '').trim();
+  const maxA = String(maxAge || '').trim();
+  if (minA) params.minAge = minA;
+  if (maxA) params.maxAge = maxA;
 
   const response = await reportingApi.getIndicatorDetails(detailScriptId, params);
   const list = Array.isArray(response?.data) ? response.data : [];

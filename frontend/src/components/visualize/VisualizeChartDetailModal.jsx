@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -52,6 +52,12 @@ export default function VisualizeChartDetailModal({
   const [patientTotal, setPatientTotal] = useState(0);
   const [patientTotalPages, setPatientTotalPages] = useState(1);
   const [patientSearch, setPatientSearch] = useState('');
+  const [patientMinAge, setPatientMinAge] = useState('');
+  const [patientMaxAge, setPatientMaxAge] = useState('');
+  const patientMinAgeRef = useRef('');
+  const patientMaxAgeRef = useRef('');
+  const patientSearchRef = useRef('');
+  const lastLoadedRef = useRef(null);
   const [serverPaged, setServerPaged] = useState(true);
 
   const { totalValue, demoRows } = useMemo(() => {
@@ -64,7 +70,7 @@ export default function VisualizeChartDetailModal({
   }, [detail?.rows]);
 
   const loadPatients = useCallback(
-    async (page, search) => {
+    async (page, search, minAgeVal = patientMinAge, maxAgeVal = patientMaxAge) => {
       if (!detail?.raw || !detail?.hasPatientList) return;
       setPatientLoading(true);
       setPatientError('');
@@ -76,7 +82,9 @@ export default function VisualizeChartDetailModal({
           periods,
           page,
           limit: PAGE_SIZE,
-          search
+          search,
+          minAge: minAgeVal,
+          maxAge: maxAgeVal
         });
         setPatientRows(rows);
         setPatientTotal(Number(pagination?.totalCount ?? rows.length));
@@ -92,7 +100,7 @@ export default function VisualizeChartDetailModal({
         setPatientLoading(false);
       }
     },
-    [detail, catalog, pageContext, periods]
+    [detail, catalog, pageContext, periods, patientMinAge, patientMaxAge]
   );
 
   useEffect(() => {
@@ -112,19 +120,39 @@ export default function VisualizeChartDetailModal({
   useEffect(() => {
     if (!open) {
       setSectionMode('list');
+      lastLoadedRef.current = null;
       return;
     }
+
+    const currentKey = `${detail?.raw?.indicatorId || ''}-${detail?.raw?.periodKey || ''}-${detail?.raw?.facilityCode || ''}`;
+    if (lastLoadedRef.current === currentKey) {
+      return;
+    }
+    lastLoadedRef.current = currentKey;
+
     if (!detail?.hasPatientList) {
       setPatientRows([]);
       setPatientError('');
       setPatientSearch('');
+      patientSearchRef.current = '';
+      setPatientMinAge('');
+      patientMinAgeRef.current = '';
+      setPatientMaxAge('');
+      patientMaxAgeRef.current = '';
       setPatientPage(1);
       return;
     }
-    if (sectionMode === 'list') loadPatients(1, '');
+
+    setPatientSearch('');
+    patientSearchRef.current = '';
+    setPatientMinAge('');
+    patientMinAgeRef.current = '';
+    setPatientMaxAge('');
+    patientMaxAgeRef.current = '';
+    setPatientPage(1);
+    loadPatients(1, '', '', '');
   }, [
     open,
-    sectionMode,
     detail?.raw?.indicatorId,
     detail?.raw?.periodKey,
     detail?.raw?.facilityCode,
@@ -133,13 +161,22 @@ export default function VisualizeChartDetailModal({
   ]);
 
   useEffect(() => {
-    if (!open || !detail?.hasPatientList) return undefined;
-    if (!serverPaged && patientSearch) {
-      const t = setTimeout(() => loadPatients(1, patientSearch), 300);
-      return () => clearTimeout(t);
-    }
-    return undefined;
-  }, [patientSearch, serverPaged, open, detail?.hasPatientList, loadPatients]);
+    if (!open || !detail?.hasPatientList || sectionMode !== 'list') return undefined;
+    if (
+      patientSearch === patientSearchRef.current &&
+      patientMinAge === patientMinAgeRef.current &&
+      patientMaxAge === patientMaxAgeRef.current
+    ) return undefined;
+
+    patientSearchRef.current = patientSearch;
+    patientMinAgeRef.current = patientMinAge;
+    patientMaxAgeRef.current = patientMaxAge;
+
+    const timer = setTimeout(() => {
+      loadPatients(1, patientSearch, patientMinAge, patientMaxAge);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [patientSearch, patientMinAge, patientMaxAge, open, detail?.hasPatientList, sectionMode, loadPatients]);
 
   const includeSiteCol = useMemo(
     () => patientRows.some((r) => r.site_code) || pageContext.scopeMode === 'compare',
@@ -242,7 +279,10 @@ export default function VisualizeChartDetailModal({
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    loadPatients(1, patientSearch);
+    patientSearchRef.current = patientSearch;
+    patientMinAgeRef.current = patientMinAge;
+    patientMaxAgeRef.current = patientMaxAge;
+    loadPatients(1, patientSearch, patientMinAge, patientMaxAge);
   };
 
   const recordCountLabel = patientLoading
@@ -376,6 +416,43 @@ export default function VisualizeChartDetailModal({
                     placeholder={VIZ_KH.chartDetailSearch}
                     className={cn(p360ControlClass, 'h-8 w-full pl-8')}
                   />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className={cn('text-muted-foreground whitespace-nowrap text-xs', P360_TABLE_TEXT)}>
+                    {VIZ_KH.chartDetailAgeRange}:
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Min"
+                    value={patientMinAge}
+                    onChange={(e) => setPatientMinAge(e.target.value)}
+                    className={cn(p360ControlClass, 'h-8 w-14 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none')}
+                  />
+                  <span className="text-muted-foreground">-</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Max"
+                    value={patientMaxAge}
+                    onChange={(e) => setPatientMaxAge(e.target.value)}
+                    className={cn(p360ControlClass, 'h-8 w-14 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none')}
+                  />
+                  {(patientMinAge || patientMaxAge) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPatientMinAge('');
+                        setPatientMaxAge('');
+                        patientMinAgeRef.current = '';
+                        patientMaxAgeRef.current = '';
+                        loadPatients(1, patientSearch, '', '');
+                      }}
+                      className={cn(p360ControlClass, 'h-8 px-2 text-[10px] text-muted-foreground hover:bg-muted')}
+                    >
+                      {VIZ_KH.chartDetailClear}
+                    </button>
+                  )}
                 </div>
                 <button
                   type="submit"

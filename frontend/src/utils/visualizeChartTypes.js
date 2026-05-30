@@ -36,3 +36,26 @@ export function buildPieSlicesFromTrendData(data = [], series = [], xDataKey = '
     .filter((d) => d.value > 0);
   return { slices, periodLabel };
 }
+
+/** Max slices before on-chart labels are hidden (use legend + tooltip). */
+export const PIE_ON_CHART_LABEL_MAX_SLICES = 8;
+/** Min share (0–1) to print a label on the pie when labels are enabled. */
+export const PIE_ON_CHART_LABEL_MIN_PERCENT = 0.05;
+
+/** Sort slices; keep every site/facility — no "Other" bucket. */
+export function preparePieDisplay(slices = []) {
+  const sorted = [...slices].sort((a, b) => b.value - a.value);
+  const total = sorted.reduce((sum, s) => sum + s.value, 0);
+  if (!total) {
+    return { slices: [], total: 0, showOnChartLabels: false };
+  }
+
+  const showOnChartLabels = sorted.length <= PIE_ON_CHART_LABEL_MAX_SLICES;
+
+  return { slices: sorted, total, showOnChartLabels };
+}
+
+export function pieLegendLabel(slice, total) {
+  const pct = total > 0 ? ((slice.value / total) * 100).toFixed(1) : '0';
+  return `${slice.name} (${pct}%)`;
+}

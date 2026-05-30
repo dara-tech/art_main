@@ -32,7 +32,8 @@ export const isFacilitySite = (site) => {
   const name = String(site.name || '').toLowerCase();
   if (!codeDigits || codeDigits.length < 4) return false;
   if (codeDigits.endsWith('00')) return false;
-  if (name.includes('cambodia') || name.includes('province')) return false;
+  if (name.includes('province')) return false;
+  if (name.includes('cambodia') && codeDigits.length < 4) return false;
   return true;
 };
 
@@ -109,8 +110,8 @@ export function inferSiteLevelFromCode(siteCode, sites = []) {
   if (code.startsWith('province:')) return 'province';
   const site = (sites || []).find((s) => String(s.code) === code);
   const name = String(site?.name || '').toLowerCase();
-  if (name.includes('cambodia')) return 'country';
   const digits = code.replace(/\D/g, '');
+  if (name.includes('cambodia') && digits.length < 4) return 'country';
   if (digits.length <= 2) return 'province';
   if (digits.length >= 4 && digits.endsWith('00')) return 'province';
   return 'facility';
@@ -150,9 +151,8 @@ export function filterSitesByUserScope(sites, user) {
     }
 
     const name = String(site.name || '').toLowerCase();
-    if (name.includes('cambodia')) return false;
-
     const digits = code.replace(/\D/g, '');
+    if (name.includes('cambodia') && digits.length < 4) return false;
     if (digits.endsWith('00') || (digits.length === 2 && /^\d{2}$/.test(digits))) {
       const prefix = digits.length >= 2 ? digits.slice(0, 2) : '';
       return facilityList.some((f) => String(f.code || '').replace(/\D/g, '').startsWith(prefix));
@@ -225,7 +225,8 @@ export function resolveDetailSiteParams(siteCode, siteLevel, sites = []) {
   if (inferred === 'country' || level === 'country') {
     const site = (sites || []).find((s) => String(s.code) === code);
     const name = String(site?.name || '').toLowerCase();
-    if (inferred === 'country' || name.includes('cambodia')) {
+    const digits = code.replace(/\D/g, '');
+    if (inferred === 'country' || (name.includes('cambodia') && digits.length < 4)) {
       return { siteCode: 'all', siteLevel: 'country' };
     }
   }

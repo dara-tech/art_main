@@ -70,7 +70,7 @@ export function parseIndicatorNum(indicatorId, label, chapter) {
   const ch = String(chapter || '').trim();
   if (/^\d+(?:\.\d+)*$/.test(ch)) return ch;
   const id = String(indicatorId || '').replace(/^(infant|pntt):/, '');
-  const fromId = id.match(/^(\d+)/)?.[1];
+  const fromId = id.match(/^(\d+(?:\.\d+)*)/)?.[1];
   return fromId || '';
 }
 
