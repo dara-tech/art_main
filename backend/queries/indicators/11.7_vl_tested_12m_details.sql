@@ -256,7 +256,7 @@ WITH tblactive AS (
 )
 
 SELECT
-    '10.7' as step,
+    '11.7' as step,
     clinicid,
     Sex AS sex,
     CASE 

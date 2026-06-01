@@ -1,6 +1,6 @@
 const { loadBackendEnv } = require('./config/loadEnv');
 loadBackendEnv();
-
+// Reload indicators queries after SQL modification
 const express = require('express');
 const cors = require('cors');
 const compression = require('compression');
@@ -17,6 +17,7 @@ const patient360Routes = require('./routes/patient360');
 const visualizeRoutes = require('./routes/visualize');
 const insightRoutes = require('./routes/insight');
 const vcctRoutes = require('./routes/vcct');
+const analyticsRoutes = require('./routes/analytics');
 
 const app = express();
 const port = Number(process.env.PORT || 3001);
@@ -42,6 +43,7 @@ app.use('/apiv1/patient-360', patient360Routes);
 app.use('/apiv1/visualize', visualizeRoutes);
 app.use('/apiv1/insight', insightRoutes);
 app.use('/apiv1/vcct', vcctRoutes);
+app.use('/apiv1/analytics', analyticsRoutes);
 
 app.use((error, _req, res, _next) => {
   res.status(500).json({ success: false, error: error.message || 'Internal server error' });

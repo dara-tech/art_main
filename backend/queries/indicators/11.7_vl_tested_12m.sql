@@ -84,7 +84,7 @@ tblvltested AS (
 )
 
 SELECT
-    '10.7. VL tested in 12M' AS Indicator,
+    '11.7. VL tested in 12M' AS Indicator,
     IFNULL(COUNT(*), 0) AS TOTAL,
     IFNULL(SUM(CASE WHEN i.typepatients = '≤14' AND i.Sex = 1 THEN 1 ELSE 0 END), 0) AS Male_0_14,
     IFNULL(SUM(CASE WHEN i.typepatients = '≤14' AND i.Sex = 0 THEN 1 ELSE 0 END), 0) AS Female_0_14,

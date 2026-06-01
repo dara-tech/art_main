@@ -75,6 +75,14 @@ class IndicatorsService {
     if (!sql && this.loadDetailQueryIfPresent(id)) {
       sql = this.detailQueries.get(id);
     }
+    // Safe fallback: Map legacy 10.x detail queries to 11.x if 10.x is not found
+    if (!sql && id && String(id).startsWith('10.')) {
+      const fallbackId = '11.' + String(id).slice(3);
+      sql = this.detailQueries.get(fallbackId);
+      if (!sql && this.loadDetailQueryIfPresent(fallbackId)) {
+        sql = this.detailQueries.get(fallbackId);
+      }
+    }
     return sql || null;
   }
 

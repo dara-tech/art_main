@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { toast } from 'sonner';
 import { useSites } from '../contexts/SitesContext';
 import { infantReportApi, pnttReportApi, reportingApi } from '../services/reportingApi';
+import { getAnalyticsStatus, getCountryAnalytics, getProvinceAnalytics, getAnalyticsSummary } from '../services/analyticsApi';
 import ReportFilters from '../components/reports/ReportFilters';
 import ReportResultsPanel from '../components/reports/ReportResultsPanel';
 import { filterSitesByUserScope, isFacilitySite, pickDefaultSiteCode } from '../utils/siteSelection';
@@ -66,7 +67,7 @@ function detailCountFromAggregateRow(row, column) {
   return null;
 }
 
-const INDICATOR_LABEL_MAP = {
+export const INDICATOR_LABEL_MAP = {
   '1. Active ART patients in previous quarter': '1. ចំនួនអ្នកជំងឺ ART សកម្មដល់ចុងត្រីមាសមុន (Number of active ART patients in previous quarter)',
   '2. Active Pre-ART patients in previous quarter': '2. ចំនួនអ្នកជំងឺ Pre-ART សកម្មដល់ចុងត្រីមាសមុន (Number of active Pre-ART patients in previous quarter)',
   '3. Newly Enrolled': '3. ចំនួនអ្នកជំងឺចុះឈ្មោះថ្មី (Number of newly enrolled patients)',
@@ -76,12 +77,16 @@ const INDICATOR_LABEL_MAP = {
   '5.1.2. New ART started: 1-7 days': '5.1.2. ពី ១ ទៅ ៧ ថ្ងៃ (1–7 days)',
   '5.1.3. New ART started: >7 days': '5.1.3. ច្រើនជាង ៧ ថ្ងៃ (>7 days)',
   '5.2. New ART started with TLD': '5.2. ចំនួនអ្នកជំងឺចាប់ផ្តើមព្យាបាលថ្មីដោយ TDF+3TC+DTG (Number of new ART started with TLD)',
+  '5.3. New ART patients who are pregnant': '5.3. ចំនួនអ្នកជំងឺ ART ថ្មីដែលមានផ្ទៃពោះ (Number of new ART patients who are pregnant)',
   '6. Transfer-in patients': '6. ចំនួនអ្នកជំងឺដែលបានបញ្ជូនចូល (Number of transfer-in patients)',
   '7. Lost and Return': '7. ចំនួនអ្នកជំងឺដែលបានបោះបង់ហើយត្រឡប់មកវិញ (Number of Lost-Return patients)',
-  '8.1. Dead': '8.1. ចំនួនអ្នកជំងឺដែលបានស្លាប់ (Dead)',
-  '8.2. Lost to follow up (LTFU)': '8.2. ចំនួនអ្នកជំងឺដែលបានបោះបង់ (Lost to follow up – LTFU)',
-  '8.3. Transfer-out': '8.3. ចំនួនអ្នកជំងឺដែលបានបញ្ជូនចេញ (Transfer-out)',
-  '9. Active Pre-ART': '9. ចំនួនអ្នកជំងឺ Pre-ART សកម្មដល់ចុងត្រីមាសនេះ (Number of active Pre-ART patients in this quarter)',
+  '8. Number of patients started TPT in this quarter': '8. ចំនួនអ្នកជំងឺចាប់ផ្តើម TPT ក្នុងត្រីមាសនេះ (Number of patients started TPT in this quarter)',
+  '9. Number of patients who left the service': '9. ចំនួនអ្នកជំងឺដែលបានចាកចេញពីសេវា (Number of patients who left the service)',
+  '9.1. Dead': '9.1. ចំនួនអ្នកជំងឺដែលបានស្លាប់ (Dead)',
+  '9.2. Lost to follow up (LTFU)': '9.2. ចំនួនអ្នកជំងឺដែលបានបោះបង់ (Lost to follow up – LTFU)',
+  '9.3. Transferred-out': '9.3. ចំនួនអ្នកជំងឺដែលបានបញ្ជូនចេញ (Transfer-out)',
+  '9.3. Transfer-out': '9.3. ចំនួនអ្នកជំងឺដែលបានបញ្ជូនចេញ (Transfer-out)',
+  '10. Active Pre-ART patients at end of this quarter': '10. ចំនួនអ្នកជំងឺ Pre-ART សកម្មដល់ចុងត្រីមាសនេះ (Active Pre-ART patients at end of this quarter)',
   '10. Active ART patients in this quarter': '10. ចំនួនអ្នកជំងឺ ART សកម្មដល់ចុងត្រីមាសនេះ (Number of active ART patients in this quarter)',
   '10.1. Eligible MMD': '10.1. ចំនួនអ្នកជំងឺដែលសមស្របសម្រាប់ការផ្តល់ថ្នាំរយៈពេលវែង (Eligible for Multi Month Dispensing – MMD)',
   '10.2. MMD': '10.2. ចំនួនអ្នកជំងឺកំពុងទទួលថ្នាំរយៈពេលវែង (Number of patients received MMD)',
@@ -92,27 +97,42 @@ const INDICATOR_LABEL_MAP = {
   '10.6. Eligible for VL test': '10.6. ចំនួនអ្នកជំងឺដែលសមស្របធ្វើតេស្ត Viral Load (Eligible for Viral Load test)',
   '10.7. VL tested in 12M': '10.7. ចំនួនអ្នកជំងឺធ្វើតេស្ត Viral Load ក្នុងរយៈពេល ១២ ខែចុងក្រោយ (Receive VL test in last 12 months)',
   '10.8. VL suppression': '10.8. ចំនួនអ្នកជំងឺដែលមានលទ្ធផល VL ចុងក្រោយតិចជាង 1000 copies (Last VL is suppressed)',
-  '10.9. Eligible for EAC (VL 40+)': '10.9. ចំនួនអ្នកជំងឺសមស្របប្រឹក្សាប្រកប (VL 40-999 ឬ ≥1000) (Eligible for EAC)',
-  '10.10. EAC session 1 (EAC1)': '10.10. ចំនួនអ្នកជំងឺទទួល EAC លើកទី១ (EAC session 1)',
-  '10.11. EAC session 2 (EAC2)': '10.11. ចំនួនអ្នកជំងឺទទួល EAC លើកទី២ (EAC session 2)',
-  '10.12. EAC session 3 (EAC3)': '10.12. ចំនួនអ្នកជំងឺទទួល EAC លើកទី៣ (EAC session 3)',
-  '10.13. VL follow-up within 6 months after EAC': '10.13. ចំនួនអ្នកជំងឺធ្វើតេស្ត VL តាមដានក្នុង ៦ ខែបន្ទាប់ពី EAC (Follow-up VL within 6 months after EAC)',
-  '10.14. VL follow-up 6+ months after high VL': '10.14. ចំនួនអ្នកជំងឺធ្វើតេស្ត VL តាមដាន ≥៦ ខែបន្ទាប់ពី VL ខ្ពស់ (Follow-up VL 6+ months after high VL)'
+  '11. Active ART patients at end of this quarter': '11. ចំនួនអ្នកជំងឺ ART សកម្មដល់ចុងត្រីមាសនេះ (Number of active ART patients at end of this quarter)',
+  '11.1. Eligible MMD': '11.1. ចំនួនអ្នកជំងឺដែលសមស្របសម្រាប់ការផ្តល់ថ្នាំរយៈពេលវែង (Eligible for Multi Month Dispensing – MMD)',
+  '11.2. MMD': '11.2. ចំនួនអ្នកជំងឺកំពុងទទួលថ្នាំរយៈពេលវែង (Number of patients received MMD)',
+  '11.3. TLD': '11.3. ចំនួនអ្នកជំងឺកំពុងទទួលការព្យាបាលដោយ TLD (Number of patients received TLD)',
+  '11.4. TPT Start': '11.4. ចំនួនអ្នកជំងឺដែលបានចាប់ផ្តើមការបង្ការជំងឺរបេង (Number of patients started TPT)',
+  '11.4.1. TPT Start (new start)': '11.4.1. ចំនួនអ្នកជំងឺចាប់ផ្តើម TPT ថ្មីក្នុងត្រីមាស (Number of patients with new TPT start in this quarter)',
+  '11.5. TPT Complete': '11.5. ចំនួនអ្នកជំងឺដែលបានបញ្ចប់ការបង្ការជំងឺរបេង (Number of patients completed TPT)',
+  '(old) 11.4. TPT Start': '(old) 11.4. ចំនួនអ្នកជំងឺដែលបានចាប់ផ្តើមការបង្ការជំងឺរបេង — វិធីចាស់ (Number of patients started TPT — legacy logic)',
+  '(old) 11.5. TPT Complete': '(old) 11.5. ចំនួនអ្នកជំងឺដែលបានបញ្ចប់ការបង្ការជំងឺរបេង — វិធីចាស់ (Number of patients completed TPT — legacy logic)',
+  '11.6. Eligible for VL test': '11.6. ចំនួនអ្នកជំងឺដែលសមស្របធ្វើតេស្ត Viral Load (Eligible for Viral Load test)',
+  '11.7. VL tested in 12M': '11.7. ចំនួនអ្នកជំងឺធ្វើតេស្ត Viral Load ក្នុងរយៈពេល ១២ ខែចុងក្រោយ (Receive VL test in last 12 months)',
+  '11.8. VL suppression': '11.8. ចំនួនអ្នកជំងឺដែលមានលទ្ធផល VL ចុងក្រោយតិចជាង 1000 copies (Last VL is suppressed)',
+  '11.9. Eligible for EAC (VL 40+)': '11.9. ចំនួនអ្នកជំងឺសមស្របប្រឹក្សាប្រកប (VL 40-999 ឬ ≥1000) (Eligible for EAC)',
+  '11.10. EAC session 1 (EAC1)': '11.10. ចំនួនអ្នកជំងឺទទួល EAC លើកទី១ (EAC session 1)',
+  '11.11. EAC session 2 (EAC2)': '11.11. ចំនួនអ្នកជំងឺទទួល EAC លើកទី២ (EAC session 2)',
+  '11.12. EAC session 3 (EAC3)': '11.12. ចំនួនអ្នកជំងឺទទួល EAC លើកទី៣ (EAC session 3)',
+  '11.13. VL follow-up within 6 months after EAC': '11.13. ចំនួនអ្នកជំងឺធ្វើតេស្ត VL តាមដានក្នុង ៦ ខែបន្ទាប់ពី EAC (Follow-up VL within 6 months after EAC)',
+  '11.14. VL follow-up 6+ months after high VL': '11.14. ចំនួនអ្នកជំងឺធ្វើតេស្ត VL តាមដាន ≥៦ ខែបន្ទាប់ពី VL ខ្ពស់ (Follow-up VL 6+ months after high VL)'
 };
 
 const formatIndicatorLabel = (name) => INDICATOR_LABEL_MAP[name] || name || '-';
 
 const parseIndicatorParts = (label) => {
-  const match = String(label || '').match(/^(\d+(?:\.\d+)*)/);
+  const cleanLabel = String(label || '').replace(/^[^\d]+/, '');
+  const match = cleanLabel.match(/^(\d+(?:\.\d+)*)/);
   if (!match) return null;
   return match[1].split('.').map((part) => Number(part));
 };
 
 const compareIndicatorLabel = (a, b) => {
-  const aParts = parseIndicatorParts(a?.Indicator);
-  const bParts = parseIndicatorParts(b?.Indicator);
+  const aLabel = a?.Indicator || '';
+  const bLabel = b?.Indicator || '';
+  const aParts = parseIndicatorParts(aLabel);
+  const bParts = parseIndicatorParts(bLabel);
 
-  if (!aParts && !bParts) return String(a?.Indicator || '').localeCompare(String(b?.Indicator || ''));
+  if (!aParts && !bParts) return aLabel.localeCompare(bLabel);
   if (!aParts) return 1;
   if (!bParts) return -1;
 
@@ -124,7 +144,14 @@ const compareIndicatorLabel = (a, b) => {
     if (bv == null) return 1;
     if (av !== bv) return av - bv;
   }
-  return String(a?.Indicator || '').localeCompare(String(b?.Indicator || ''));
+
+  const aIsOld = aLabel.startsWith('(old)');
+  const bIsOld = bLabel.startsWith('(old)');
+  if (aIsOld !== bIsOld) {
+    return aIsOld ? 1 : -1;
+  }
+
+  return aLabel.localeCompare(bLabel);
 };
 
 const DEFAULT_DETAIL_COLUMNS = [
@@ -490,29 +517,44 @@ export default function ReportHomePage({ onLogout }) {
     '5.1.2. New ART started: 1-7 days': '05.1.2_art_1_7_days',
     '5.1.3. New ART started: >7 days': '05.1.3_art_over_7_days',
     '5.2. New ART started with TLD': '05.2_art_with_tld',
+    '5.3. New ART patients who are pregnant': '05.3_art_pregnant',
     '6. Transfer-in patients': '06_transfer_in',
     '7. Lost and Return': '07_lost_and_return',
-    '8.1. Dead': '08.1_dead',
-    '8.2. Lost to follow up (LTFU)': '08.2_lost_to_followup',
-    '8.3. Transfer-out': '08.3_transfer_out',
-    '9. Active Pre-ART': '09_active_pre_art',
-    '10. Active ART patients in this quarter': '10_active_art_current',
-    '10.1. Eligible MMD': '10.1_eligible_mmd',
-    '10.2. MMD': '10.2_mmd',
-    '10.3. TLD': '10.3_tld',
-    '10.4. TPT Start': '10.4_tpt_start',
-    '10.4.1. TPT Start (new start)': '10.4.1_tpt_new_start',
-    '10.5. TPT Complete': '10.5_tpt_complete',
-    '10.6. Eligible for VL test': '10.6_eligible_vl_test',
-    '10.7. VL tested in 12M': '10.7_vl_tested_12m',
-    '10.8. VL suppression': '10.8_vl_suppression',
-    '10.9. Eligible for EAC (VL 40+)': '10.9_eligible_eac_high_vl',
-    '10.9. Eligible for EAC (VL >=1000)': '10.9_eligible_eac_high_vl',
-    '10.10. EAC session 1 (EAC1)': '10.10_eac_session_1',
-    '10.11. EAC session 2 (EAC2)': '10.11_eac_session_2',
-    '10.12. EAC session 3 (EAC3)': '10.12_eac_session_3',
-    '10.13. VL follow-up within 6 months after EAC': '10.13_vl_followup_6m_after_eac',
-    '10.14. VL follow-up 6+ months after high VL': '10.14_vl_followup_6m_apart_high_vl'
+    '8. Number of patients started TPT in this quarter': '08_tpt_new_start',
+    '9. Number of patients who left the service': '09.1_dead',
+    '9.1. Dead': '09.1_dead',
+    '9.2. Lost to follow up (LTFU)': '09.2_lost_to_followup',
+    '9.3. Transferred-out': '09.3_transfer_out',
+    '9.3. Transfer-out': '09.3_transfer_out',
+    '10. Active Pre-ART patients at end of this quarter': '10_active_pre_art',
+    '10.1. Eligible MMD': '11.1_eligible_mmd',
+    '10.2. MMD': '11.2_mmd',
+    '10.3. TLD': '11.3_tld',
+    '10.4. TPT Start': '11.4_tpt_start',
+    '10.4.1. TPT Start (new start)': '11.4.1_tpt_new_start',
+    '10.5. TPT Complete': '11.5_tpt_complete',
+    '10.6. Eligible for VL test': '11.6_eligible_vl_test',
+    '10.7. VL tested in 12M': '11.7_vl_tested_12m',
+    '10.8. VL suppression': '11.8_vl_suppression',
+    '11. Active ART patients at end of this quarter': '11_active_art_current',
+    '11.1. Eligible MMD': '11.1_eligible_mmd',
+    '11.2. MMD': '11.2_mmd',
+    '11.3. TLD': '11.3_tld',
+    '11.4. TPT Start': '11.4_tpt_start',
+    '11.4.1. TPT Start (new start)': '11.4.1_tpt_new_start',
+    '11.5. TPT Complete': '11.5_tpt_complete',
+    '(old) 11.4. TPT Start': '11.4_tpt_start_old',
+    '(old) 11.5. TPT Complete': '11.5_tpt_complete_old',
+    '11.6. Eligible for VL test': '11.6_eligible_vl_test',
+    '11.7. VL tested in 12M': '11.7_vl_tested_12m',
+    '11.8. VL suppression': '11.8_vl_suppression',
+    '11.9. Eligible for EAC (VL 40+)': '11.9_eligible_eac_high_vl',
+    '11.9. Eligible for EAC (VL >=1000)': '11.9_eligible_eac_high_vl',
+    '11.10. EAC session 1 (EAC1)': '11.10_eac_session_1',
+    '11.11. EAC session 2 (EAC2)': '11.11_eac_session_2',
+    '11.12. EAC session 3 (EAC3)': '11.12_eac_session_3',
+    '11.13. VL follow-up within 6 months after EAC': '11.13_vl_followup_6m_after_eac',
+    '11.14. VL follow-up 6+ months after high VL': '11.14_vl_followup_6m_apart_high_vl'
   };
   const getDetailScriptId = (section, rowIdx = 0) => {
     if (!section) return null;
@@ -1022,7 +1064,82 @@ export default function ReportHomePage({ onLogout }) {
       const aggregateFacilityCodes = getAggregateFacilityCodes(effectiveSiteCode);
       let success = false;
       if (reportType === 'adult-child') {
-        if (selectedSiteLevel === 'country') {
+        // Try to load from pre-aggregated analytics warehouse first (if not daily)
+        if (periodType !== 'day') {
+          try {
+            const apiPeriod = {
+              periodType: periodType === 'year' ? 'year' : periodType === 'quarter' ? 'quarter' : 'month',
+              year: selectedYear,
+              quarter: selectedQuarter,
+              month: selectedMonth
+            };
+            const status = await getAnalyticsStatus(apiPeriod);
+            if (status && status.hasData) {
+              let warehouseRows = [];
+              if (selectedSiteLevel === 'country') {
+                const res = await getCountryAnalytics(apiPeriod);
+                if (res?.success) warehouseRows = res.data || [];
+              } else if (selectedSiteLevel === 'province') {
+                const res = await getProvinceAnalytics(apiPeriod);
+                if (res?.success) {
+                  warehouseRows = (res.data || []).filter(
+                    (r) => String(r.province_id || r.provinceId || '') === String(effectiveSiteCode)
+                  );
+                }
+              } else if (selectedSiteLevel === 'facility') {
+                const res = await getAnalyticsSummary({ ...apiPeriod, siteCode: effectiveSiteCode });
+                if (res?.success) warehouseRows = res.data || [];
+              }
+
+              if (warehouseRows.length > 0) {
+                const normalizedWarehouseRows = warehouseRows.map((r) => ({
+                  Indicator: r?.Indicator ?? r?.indicator ?? '',
+                  Male_0_14: Number(r?.Male_0_14 ?? r?.male_0_14 ?? 0),
+                  Female_0_14: Number(r?.Female_0_14 ?? r?.female_0_14 ?? 0),
+                  Male_over_14: Number(r?.Male_over_14 ?? r?.male_over_14 ?? 0),
+                  Female_over_14: Number(r?.Female_over_14 ?? r?.female_over_14 ?? 0),
+                  TOTAL: Number(r?.TOTAL ?? r?.total ?? r?.grand_total ?? 0)
+                }));
+
+                const injectIndicator9 = (items) => {
+                  if (!Array.isArray(items)) return items;
+                  const alreadyHas = items.some((r) => String(r?.Indicator || '').startsWith('9. Number of patients who left'));
+                  if (alreadyHas) return items;
+                  
+                  const numericFields = ['TOTAL', 'Male_0_14', 'Female_0_14', 'Male_over_14', 'Female_over_14'];
+                  const row = { Indicator: '9. Number of patients who left the service' };
+                  numericFields.forEach((f) => { row[f] = 0; });
+                  
+                  let found = false;
+                  items.forEach((r) => {
+                    const ind = String(r?.Indicator || '');
+                    const isDead = ind.startsWith('9.1') || ind.startsWith('8.2') || /dead/i.test(ind);
+                    const isLtfu = ind.startsWith('9.2') || ind.startsWith('8.3') || /LTFU|lost to follow/i.test(ind);
+                    const isTo = ind.startsWith('9.3') || ind.startsWith('8.4') || /transfer.?out/i.test(ind);
+                    if (isDead || isLtfu || isTo) {
+                      found = true;
+                      numericFields.forEach((f) => {
+                        row[f] = (row[f] || 0) + (Number(r[f]) || 0);
+                      });
+                    }
+                  });
+                  return found ? [...items, row] : items;
+                };
+
+                const finalRows = injectIndicator9(normalizedWarehouseRows);
+                setRows(finalRows);
+                setRunTimeMs(Math.round(performance.now() - startedAt));
+                setProgress({ completed: finalRows.length, total: finalRows.length });
+                toast.success('⚡ ទិន្នន័យត្រូវបានទាញយកភ្លាមៗពីឃ្លាំងទិន្នន័យ (Loaded instantly from Warehouse)');
+                success = true;
+              }
+            }
+          } catch (err) {
+            console.warn('[Report] Failed to check/fetch warehouse data, falling back to live queries:', err);
+          }
+        }
+
+        if (selectedSiteLevel === 'country' && !success) {
           let attemptRowCount = 0;
           setRows([]);
           setProgress({ completed: 0, total: 0 });
@@ -1052,7 +1169,7 @@ export default function ReportHomePage({ onLogout }) {
           });
           if (attemptRowCount > 0) success = true;
         }
-        if (selectedSiteLevel !== 'facility' && aggregateFacilityCodes.length > 0) {
+        if (selectedSiteLevel !== 'facility' && aggregateFacilityCodes.length > 0 && !success) {
           if (success) {
             setRunTimeMs((prev) => prev ?? Math.round(performance.now() - startedAt));
           } else {

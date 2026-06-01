@@ -2,27 +2,27 @@
 -- This uses the exact same CTE structure and logic as the corrected aggregate query
 WITH tblactive AS (
     WITH tblvisit AS (
-        SELECT 
-            clinicid,
-            DatVisit,
-            ARTnum,
-            DaApp,
-            vid,
-            ROW_NUMBER() OVER (PARTITION BY clinicid ORDER BY DatVisit DESC) AS id 
-        FROM tblavmain 
-        WHERE DatVisit <= :PreviousEndDate
-        
-        UNION ALL 
-        
-        SELECT 
-            clinicid,
-            DatVisit,
-            ARTnum,
-            DaApp,
-            vid,
-            ROW_NUMBER() OVER (PARTITION BY clinicid ORDER BY DatVisit DESC) AS id 
-        FROM tblcvmain 
-        WHERE DatVisit <= :PreviousEndDate
+        SELECT clinicid, DatVisit, ARTnum, DaApp, vid, id
+        FROM (
+            SELECT 
+                clinicid,
+                DatVisit,
+                ARTnum,
+                DaApp,
+                vid,
+                ROW_NUMBER() OVER (PARTITION BY clinicid ORDER BY DatVisit DESC) AS id 
+            FROM (
+                SELECT clinicid, DatVisit, ARTnum, DaApp, vid
+                FROM tblavmain 
+                WHERE DatVisit <= :PreviousEndDate
+                
+                UNION ALL 
+                
+                SELECT clinicid, DatVisit, ARTnum, DaApp, vid
+                FROM tblcvmain 
+                WHERE DatVisit <= :PreviousEndDate
+            ) all_v
+        ) ranked
     ),
     
     tblimain AS (

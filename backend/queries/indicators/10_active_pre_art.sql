@@ -151,7 +151,7 @@ with tblactive as (
     where id = 1 and e.status is null -- and a.clinicid is not null 
 )
 
-select '9. Active Pre-ART' as Indicator, 
+select '10. Active Pre-ART patients at end of this quarter' as Indicator, 
        sum(if(typepatients = '≤14' and sex = 1, 1, 0)) as Male_0_14,
        sum(if(typepatients = '≤14' and sex = 0, 1, 0)) as Female_0_14,
        sum(if(typepatients = '15+' and sex = 1, 1, 0)) as Male_over_14,

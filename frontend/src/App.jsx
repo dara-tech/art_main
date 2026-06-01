@@ -19,6 +19,7 @@ const QueryReferencePage = lazy(() => import('./pages/QueryReferencePage.jsx'));
 const DqaPage = lazy(() => import('./pages/DqaPage.jsx'));
 const AdminPage = lazy(() => import('./pages/AdminPage.jsx'));
 const RequireAdmin = lazy(() => import('./components/auth/RequireAdmin.jsx'));
+const CountryAnalyticsPage = lazy(() => import('./pages/CountryAnalyticsPage.jsx'));
 
 function PageFallback() {
   return (
@@ -77,6 +78,7 @@ function App() {
             </Route>
             <Route path="/dqa" element={<DqaPage onLogout={logout} />} />
             <Route path="/patient-360" element={<Patient360Page onLogout={logout} />} />
+            <Route path="/country-analytics" element={<CountryAnalyticsPage onLogout={logout} />} />
             <Route path="/vcct" element={<VcctPage onLogout={logout} />} />
             <Route path="/visualize" element={<VisualizePage onLogout={logout} />} />
             <Route path="/event-report" element={<Navigate to="/visualize" replace />} />

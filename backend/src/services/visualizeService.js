@@ -4,7 +4,7 @@ const infantReportService = require('./infantReportService');
 const { SECTION_DEFS: INFANT_SECTION_DEFS } = require('./infantReportService');
 const pnttReportService = require('./pnttReportService');
 const { runPool } = require('../utils/asyncPool');
-const { resolveFacilityCodesByHierarchy, provinceIdFromCode } = require('../utils/reportAggregation');
+const { resolveFacilityCodesByHierarchy, provinceIdFromCode, isFacilitySite } = require('../utils/reportAggregation');
 
 const VISUALIZE_CONCURRENCY = Number(process.env.VISUALIZE_CONCURRENCY || 2);
 /** 0 = no cap on periods per run */
@@ -311,13 +311,14 @@ function resolveExecutionScope(ctx) {
   }
 
   if (siteLevel === 'country') {
+    const facilityCodes = sites.filter(isFacilitySite).map((s) => String(s.code));
     return {
       scopeMode: 'rollup',
       siteLevel,
       siteCode,
-      facilityCodes: [],
-      useAll: true,
-      facilityMultiplier: 1
+      facilityCodes,
+      useAll: false,
+      facilityMultiplier: Math.max(1, facilityCodes.length)
     };
   }
 

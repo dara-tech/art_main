@@ -1,6 +1,8 @@
--- TLD
+-- (old) 11.4. TPT Start — Detailed Records
+-- Ported from old artweb: artweb/backend/src/queries/indicators/10.4_tpt_start_details.sql
 
 WITH tblactive AS (
+    -- Visit data CTE
     WITH tblvisit AS (
         SELECT 
             clinicid,
@@ -25,6 +27,7 @@ WITH tblactive AS (
         WHERE DatVisit <= :EndDate
     ),
     
+    -- Patient main data CTE
     tblimain AS (
         SELECT 
             ClinicID,
@@ -59,6 +62,7 @@ WITH tblactive AS (
         WHERE DafirstVisit <= :EndDate
     ),
     
+    -- ART data CTE
     tblart AS (
         SELECT 
             *,
@@ -75,19 +79,15 @@ WITH tblactive AS (
         WHERE DaArt <= :EndDate
     ),
     
+    -- Exit status CTE
     tblexit AS (
-        SELECT * 
-        FROM tblavpatientstatus 
-        WHERE da <= :EndDate
-        
+        SELECT * FROM tblavpatientstatus WHERE da <= :EndDate
         UNION ALL 
-        
-        SELECT * 
-        FROM tblcvpatientstatus  
-        WHERE da <= :EndDate
+        SELECT * FROM tblcvpatientstatus WHERE da <= :EndDate
     ),
     
-    tblarvdrug AS ( 
+    -- ARV drug combinations CTE
+    tblarvdrug AS (
         WITH tbldrug AS (
             SELECT 
                 vid,
@@ -112,6 +112,7 @@ WITH tblactive AS (
         FROM tbldrug
     ),
     
+    -- Viral load testing CTE
     tblvltested AS (
         WITH tblvltest AS (
             SELECT 
@@ -140,43 +141,28 @@ WITH tblactive AS (
         WHERE pt.id = 1
     ),
     
+    -- TPT drug data CTE
     tbltptdrug AS (
         WITH tbltptdrugs AS (
-            SELECT 
-                DrugName, 
-                Status, 
-                Da, 
-                Vid 
+            SELECT DrugName, Status, Da, Vid 
             FROM tblavtptdrug 
             WHERE DrugName != "B6"
             
             UNION ALL 
             
-            SELECT 
-                DrugName, 
-                Status, 
-                Da, 
-                Vid 
+            SELECT DrugName, Status, Da, Vid 
             FROM tblcvtptdrug 
             WHERE DrugName != "B6"
         ),
-        
         tblvisit AS (
-            SELECT 
-                clinicid,
-                DatVisit,
-                vid 
+            SELECT clinicid, DatVisit, vid 
             FROM tblavmain 
             
             UNION ALL 
             
-            SELECT 
-                clinicid,
-                DatVisit,
-                vid 
+            SELECT clinicid, DatVisit, vid 
             FROM tblcvmain 
         ),
-        
         tbltptall AS (
             SELECT 
                 clinicid,
@@ -187,41 +173,47 @@ WITH tblactive AS (
             FROM tbltptdrugs tp 
             LEFT JOIN tblvisit v ON tp.vid = v.vid
         ),
-        
         tbltptstart AS (
             SELECT * 
             FROM (
                 SELECT 
                     *,
-                    ROW_NUMBER() OVER(PARTITION BY clinicid ORDER BY DatVisit ASC) AS id 
+                    ROW_NUMBER() OVER (PARTITION BY clinicid ORDER BY DatVisit ASC) AS id 
                 FROM tbltptall 
                 WHERE status = 0 AND DatVisit <= :EndDate
             ) s 
             WHERE id = 1
         ),
-        
         tbltptstope AS (
             SELECT * 
             FROM (
                 SELECT 
                     *,
-                    ROW_NUMBER() OVER(PARTITION BY clinicid ORDER BY Da DESC) AS id 
+                    ROW_NUMBER() OVER (PARTITION BY clinicid ORDER BY Da DESC) AS id 
                 FROM tbltptall 
                 WHERE status = 1 AND Da <= :EndDate
             ) s 
             WHERE id = 1
         )
-        
         SELECT 
             s.clinicid,
-            s.DatVisit AS dateStart,
+            CASE 
+                WHEN s.Da IS NULL OR s.Da = '1900-12-31' OR YEAR(s.Da) < 2000 OR YEAR(s.Da) > 2030 
+                THEN s.DatVisit 
+                ELSE s.Da 
+            END AS dateStart,
             s.DrugName AS Tptdrugname,
             st.da AS Datestop,
-            DATEDIFF(st.da, s.DatVisit) / 30 AS duration  
+            DATEDIFF(st.da, CASE 
+                WHEN s.Da IS NULL OR s.Da = '1900-12-31' OR YEAR(s.Da) < 2000 OR YEAR(s.Da) > 2030 
+                THEN s.DatVisit 
+                ELSE s.Da 
+            END) / 30 AS duration  
         FROM tbltptstart s
         LEFT JOIN tbltptstope st ON s.clinicid = st.clinicid
     )
 
+    -- Main query combining all CTEs
     SELECT 
         i.clinicid, 
         i.DafirstVisit,
@@ -253,9 +245,13 @@ WITH tblactive AS (
         tp.dateStart,
         tp.Datestop,
         tp.duration,
-        IF(LEFT(tp.Tptdrugname, 1) = 3 AND tp.duration >= 2.50, "TPT Complete",
-           IF(LEFT(tp.Tptdrugname, 1) = 6 AND tp.duration >= 5.50, "TPT Complete",
-              IF(tp.Tptdrugname IS NULL, "Not Start", "Not complete"))) AS tptstatus 
+        IF(
+            LEFT(tp.Tptdrugname, 1) = 3 AND tp.duration >= 2.50, "TPT Complete",
+            IF(
+                LEFT(tp.Tptdrugname, 1) = 6 AND tp.duration >= 5.50, "TPT Complete",
+                IF(tp.Tptdrugname IS NULL, "Not Start", "Not complete")
+            )
+        ) AS tptstatus 
     FROM tblvisit v
     LEFT JOIN tblimain i ON i.clinicid = v.clinicid
     LEFT JOIN tblart a ON a.clinicid = v.clinicid
@@ -266,13 +262,39 @@ WITH tblactive AS (
     WHERE id = 1 AND e.status IS NULL AND a.ART IS NOT NULL
 )
 
-SELECT 
-    '10.3. TLD' AS Indicator, 
-    SUM(IF(sex = 1 AND typepatients = '≤14', 1, 0)) AS Male_0_14,
-    SUM(IF(sex = 0 AND typepatients = '≤14', 1, 0)) AS Female_0_14,
-    SUM(IF(sex = 1 AND typepatients = '15+', 1, 0)) AS Male_over_14,
-    SUM(IF(sex = 0 AND typepatients = '15+', 1, 0)) AS Female_over_14,
-    COUNT(*) AS TOTAL
+SELECT
+    '(old) 11.4' AS step,
+    clinicid,
+    Sex AS sex,
+    CASE 
+        WHEN Sex = 0 THEN 'Female'
+        WHEN Sex = 1 THEN 'Male'
+        ELSE 'Unknown'
+    END AS sex_display,
+    typepatients,
+    age,
+    CASE 
+        WHEN typepatients = '15+' THEN 'Adult'
+        WHEN typepatients = '≤14' THEN 'Child'
+        ELSE 'Unknown'
+    END AS patient_type,
+    ART,
+    DaArt,
+    DafirstVisit,
+    DaBirth,
+    OffIn,
+    CASE 
+        WHEN OffIn = 0 THEN 'Not Transferred'
+        WHEN OffIn = 2 THEN 'Transferred In'
+        WHEN OffIn = 3 THEN 'Transferred Out'
+        ELSE CONCAT('Status: ', OffIn)
+    END AS transfer_status,
+    Startartstatus,
+    MMDStatus,
+    TLDStatus,
+    Tptdrugname,
+    dateStart,
+    tptstatus
 FROM tblactive
-WHERE ART IS NOT NULL
-    AND TLDStatus = 'TLD';
+WHERE ART IS NOT NULL AND tptstatus != 'Not Start'
+ORDER BY DaArt DESC, clinicid;

@@ -1,4 +1,4 @@
--- 10.4.1 TPT Start (new start) - Detailed Records (matching aggregate logic)
+-- 8 TPT Start (new start) - Detailed Records (matching aggregate logic)
 WITH tblvisit AS (
     SELECT clinicid, DatVisit, DaApp, vid
     FROM (
@@ -182,7 +182,7 @@ tbltptdrug_forma AS (
 )
 
 SELECT
-    '11.4.1' AS step,
+    '8' AS step,
     i.clinicid,
     i.Sex AS sex,
     CASE

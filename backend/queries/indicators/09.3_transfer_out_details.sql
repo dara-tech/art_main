@@ -1,6 +1,6 @@
 -- Indicator 8.3: Transfer-out - Detailed Records (matching aggregate logic)
 SELECT
-    '8.3' as step,
+    '9.3' as step,
     main.ClinicID as clinicid,
     art.ART as art_number,
     main.Sex as sex,
@@ -33,7 +33,7 @@ WHERE
 UNION ALL
 
 SELECT
-    '8.3' as step,
+    '9.3' as step,
     main.ClinicID as clinicid,
     art.ART as art_number,
     main.Sex as sex,

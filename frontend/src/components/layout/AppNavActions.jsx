@@ -7,7 +7,8 @@ import {
   RiShieldCheckLine,
   RiTestTubeLine,
   RiUserSearchLine,
-  RiUserSettingsLine
+  RiUserSettingsLine,
+  RiDatabase2Line
 } from '@remixicon/react';
 import { LogOut } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -80,6 +81,10 @@ export default function AppNavActions({ onLogout }) {
         <NavItem to="/visualize" title="វិភាគទិន្នន័យ">
           <RiBarChartGroupedLine className={APP_NAV_ICON} />
           <span className="hidden md:inline">វិភាគ</span>
+        </NavItem>
+        <NavItem to="/country-analytics" title="វិភាគឃ្លាំងទិន្នន័យ (Warehouse Analytics)">
+          <RiDatabase2Line className={APP_NAV_ICON} />
+          <span className="hidden md:inline">ឃ្លាំងទិន្នន័យ</span>
         </NavItem>
         <NavItem to="/dqa" title="Data quality">
           <RiShieldCheckLine className={APP_NAV_ICON} />

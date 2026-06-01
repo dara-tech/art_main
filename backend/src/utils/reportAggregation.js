@@ -268,5 +268,6 @@ module.exports = {
   resolveFacilityCodesByHierarchy,
   mergeIndicatorRows,
   mergeSectionRows,
+  sumNumericFields,
   detailRowDedupeKey
 };

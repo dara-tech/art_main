@@ -1,4 +1,5 @@
--- TPT Complete (10.5) — visit TPT preferred; Form A fallback
+-- TPT Start - new start in reporting period only (8)
+-- Same cohort logic as 10.4_tpt_start; counts patients whose first TPT start date is between :StartDate and :EndDate.
 WITH tblvisit AS (
     SELECT clinicid
     FROM (
@@ -84,10 +85,21 @@ tbltptdrug_visit AS (
     )
     SELECT
         s.clinicid,
-        s.DatVisit AS dateStart,
+        CASE
+            WHEN s.Da IS NULL OR s.Da = '1900-12-31' OR YEAR(s.Da) < 2000 OR YEAR(s.Da) > 2030
+            THEN s.DatVisit
+            ELSE s.Da
+        END AS dateStart,
         s.DrugName AS Tptdrugname,
         st.Da AS Datestop,
-        DATEDIFF(st.Da, s.DatVisit) / 30 AS duration
+        DATEDIFF(
+            st.Da,
+            CASE
+                WHEN s.Da IS NULL OR s.Da = '1900-12-31' OR YEAR(s.Da) < 2000 OR YEAR(s.Da) > 2030
+                THEN s.DatVisit
+                ELSE s.Da
+            END
+        ) / 30 AS duration
     FROM tbltptstart s
     LEFT JOIN tbltptstope st ON s.clinicid = st.clinicid
 ),
@@ -103,8 +115,7 @@ tbltptdrug_forma AS (
             ELSE NULL
         END AS Tptdrugname,
         IF(DaEndTPT >= '1990-01-02', DaEndTPT, NULL) AS Datestop,
-        IF(DaEndTPT >= '1990-01-02', DATEDIFF(DaEndTPT, DaStartTPT) / 30, NULL) AS duration,
-        TPT AS forma_tpt
+        IF(DaEndTPT >= '1990-01-02', DATEDIFF(DaEndTPT, DaStartTPT) / 30, NULL) AS duration
     FROM tblaimain
     WHERE DaStartTPT >= '1990-01-02'
       AND TPTdrug >= 0
@@ -122,8 +133,7 @@ tbltptdrug_forma AS (
             ELSE NULL
         END AS Tptdrugname,
         IF(DaEndTPT >= '1990-01-02', DaEndTPT, NULL) AS Datestop,
-        IF(DaEndTPT >= '1990-01-02', DATEDIFF(DaEndTPT, DaStartTPT) / 30, NULL) AS duration,
-        CASE Inh WHEN 0 THEN 1 WHEN 3 THEN 2 ELSE 0 END AS forma_tpt
+        IF(DaEndTPT >= '1990-01-02', DATEDIFF(DaEndTPT, DaStartTPT) / 30, NULL) AS duration
     FROM tblcimain
     WHERE DaStartTPT >= '1990-01-02'
       AND TPTdrug >= 0
@@ -136,6 +146,7 @@ tpt_merged AS (
         i.typepatients,
         i.Sex,
         IF(tv.Tptdrugname IS NOT NULL, tv.Tptdrugname, tf.Tptdrugname) AS Tptdrugname,
+        IF(tv.Tptdrugname IS NOT NULL, tv.dateStart, tf.dateStart) AS dateStart,
         IF(tv.Tptdrugname IS NOT NULL, tv.duration, tf.duration) AS duration,
         IF(
             tv.Tptdrugname IS NOT NULL,
@@ -150,9 +161,7 @@ tpt_merged AS (
                 LEFT(tf.Tptdrugname, 1) = 3 AND tf.duration >= 2.50, 'TPT Complete',
                 IF(
                     LEFT(tf.Tptdrugname, 1) = 6 AND tf.duration >= 5.50, 'TPT Complete',
-                    IF(tf.forma_tpt = 1, 'TPT Complete',
-                        IF(tf.Tptdrugname IS NULL, 'Not Start', 'Not complete')
-                    )
+                    IF(tf.Tptdrugname IS NOT NULL, 'Not complete', 'Not Start')
                 )
             )
         ) AS tptstatus
@@ -167,11 +176,12 @@ tpt_merged AS (
 )
 
 SELECT
-    '11.5. TPT Complete' AS Indicator,
+    '8. Number of patients started TPT in this quarter' AS Indicator,
     IFNULL(SUM(IF(Sex = 1 AND typepatients = '≤14', 1, 0)), 0) AS Male_0_14,
     IFNULL(SUM(IF(Sex = 0 AND typepatients = '≤14', 1, 0)), 0) AS Female_0_14,
     IFNULL(SUM(IF(Sex = 1 AND typepatients = '15+', 1, 0)), 0) AS Male_over_14,
     IFNULL(SUM(IF(Sex = 0 AND typepatients = '15+', 1, 0)), 0) AS Female_over_14,
     IFNULL(COUNT(*), 0) AS TOTAL
 FROM tpt_merged
-WHERE tptstatus = 'TPT Complete';
+WHERE tptstatus != 'Not Start'
+  AND dateStart BETWEEN :StartDate AND :EndDate;

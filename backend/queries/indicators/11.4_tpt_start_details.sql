@@ -86,31 +86,18 @@ tblarvdrug AS (
     FROM tbldrug
 ),
 tbltptdrug_visit AS (
-    WITH tbltptdrugs AS (
-        SELECT DrugName, Status, Da, Vid
-        FROM tblavtptdrug
-        WHERE DrugName != "B6"
+    WITH tbltptall AS (
+        SELECT v.clinicid, v.DatVisit, tp.DrugName, tp.Status, tp.Da
+        FROM tblavtptdrug tp
+        LEFT JOIN tblavmain v ON tp.vid = v.vid
+        WHERE tp.DrugName != "B6"
+        
         UNION ALL
-        SELECT DrugName, Status, Da, Vid
-        FROM tblcvtptdrug
-        WHERE DrugName != "B6"
-    ),
-    tptvisit AS (
-        SELECT clinicid, DatVisit, vid
-        FROM tblavmain
-        UNION ALL
-        SELECT clinicid, DatVisit, vid
-        FROM tblcvmain
-    ),
-    tbltptall AS (
-        SELECT
-            v.clinicid,
-            v.DatVisit,
-            tp.DrugName,
-            tp.Status,
-            tp.Da
-        FROM tbltptdrugs tp
-        LEFT JOIN tptvisit v ON tp.vid = v.vid
+        
+        SELECT v.clinicid, v.DatVisit, tp.DrugName, tp.Status, tp.Da
+        FROM tblcvtptdrug tp
+        LEFT JOIN tblcvmain v ON tp.vid = v.vid
+        WHERE tp.DrugName != "B6"
     ),
     tbltptstart AS (
         SELECT *

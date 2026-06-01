@@ -10,9 +10,47 @@ const {
   isFacilitySite,
   mergeIndicatorRows,
   resolveFacilityCodesByHierarchy,
-  setCache
+  setCache,
+  sumNumericFields
 } = require('../utils/reportAggregation');
 const { enforceSiteAccess } = require('../utils/siteAccess');
+
+/**
+ * Indicator 9 is computed: sum of 9.1 (Dead) + 9.2 (LTFU) + 9.3 (Transfer-out).
+ * SQL file stems: 09.1_dead, 09.2_lost_to_followup, 09.3_transfer_out.
+ */
+const INDICATOR_9_LABEL = '9. Number of patients who left the service';
+const LEFT_SERVICE_STEMS = ['09.1_dead', '09.2_lost_to_followup', '09.3_transfer_out'];
+const NUMERIC_FIELDS = ['TOTAL', 'Male_0_14', 'Female_0_14', 'Male_over_14', 'Female_over_14'];
+
+function buildIndicator9Row(dataArray) {
+  const row = { Indicator: INDICATOR_9_LABEL };
+  for (const field of NUMERIC_FIELDS) row[field] = 0;
+  let found = false;
+  for (const stem of LEFT_SERVICE_STEMS) {
+    const r = dataArray.find((d) => {
+      const ind = String(d?.Indicator || '');
+      if (stem === '09.1_dead') return ind.startsWith('9.1') || ind.startsWith('8.2') || /dead/i.test(ind);
+      if (stem === '09.2_lost_to_followup') return ind.startsWith('9.2') || ind.startsWith('8.3') || /LTFU|lost to follow/i.test(ind);
+      if (stem === '09.3_transfer_out') return ind.startsWith('9.3') || ind.startsWith('8.4') || /transfer.?out/i.test(ind);
+      return false;
+    });
+    if (r) {
+      found = true;
+      for (const field of NUMERIC_FIELDS) row[field] = (row[field] || 0) + Number(r[field] || 0);
+    }
+  }
+  return found ? row : null;
+}
+
+function injectIndicator9(dataArray) {
+  if (!Array.isArray(dataArray)) return dataArray;
+  const alreadyHas = dataArray.some((r) => String(r?.Indicator || '').startsWith('9. Number of patients who left'));
+  if (alreadyHas) return dataArray;
+  const row = buildIndicator9Row(dataArray);
+  if (!row) return dataArray;
+  return [...dataArray, row];
+}
 
 const router = express.Router();
 
@@ -85,15 +123,34 @@ router.get('/all', authenticateToken, async (req, res) => {
       const cacheKey = buildCacheKey('indicators-all', { ...params, siteCode: 'all', siteLevel });
       const cached = getCache(cacheKey);
       if (cached) return res.json(cached);
-      const result = await indicatorsService.executeAll('all', params);
+      
+      const codes = resolvedSiteCodes.length > 0 
+        ? resolvedSiteCodes 
+        : ctx.sites.filter(isFacilitySite).map((s) => String(s.code));
+
+      const batchResults = await runPool(codes, SITE_BATCH_CONCURRENCY, async (childCode) => {
+        try {
+          const value = await indicatorsService.executeAll(childCode, params);
+          return { ok: true, value };
+        } catch (error) {
+          return { ok: false, error };
+        }
+      });
+
+      const merged = mergeIndicatorRows(
+        batchResults.filter((r) => r.ok).map((r) => (Array.isArray(r.value?.data) ? r.value.data : []))
+      );
+      const withIndicator9 = injectIndicator9(merged);
+
       const payload = {
-        ...result,
+        success: true,
+        data: withIndicator9,
         metadata: {
           siteLevel,
           aggregated: true,
           aggregateSupported: true,
-          childCount: resolvedSiteCodes.length,
-          resolvedSiteCodes
+          childCount: codes.length,
+          resolvedSiteCodes: codes
         }
       };
       setCache(cacheKey, payload);
@@ -101,8 +158,10 @@ router.get('/all', authenticateToken, async (req, res) => {
     }
     if (siteLevel === 'facility') {
       const result = await indicatorsService.executeAll(siteCode, params);
+      const withIndicator9 = injectIndicator9(Array.isArray(result?.data) ? result.data : []);
       return res.json({
         ...result,
+        data: withIndicator9,
         metadata: {
           siteLevel,
           aggregated: false,
@@ -143,9 +202,10 @@ router.get('/all', authenticateToken, async (req, res) => {
     const merged = mergeIndicatorRows(
       batchResults.filter((r) => r.ok).map((r) => (Array.isArray(r.value?.data) ? r.value.data : []))
     );
+    const withIndicator9 = injectIndicator9(merged);
     const payload = {
       success: true,
-      data: merged,
+      data: withIndicator9,
       metadata: {
         siteLevel,
         aggregated: true,
@@ -178,6 +238,9 @@ router.get('/all/stream', authenticateToken, async (req, res) => {
       });
     }
     const runSiteCode = siteLevel === 'country' ? 'all' : siteCode;
+    const codes = siteLevel === 'country'
+      ? (ctx.resolvedSiteCodes.length > 0 ? ctx.resolvedSiteCodes : ctx.sites.filter(isFacilitySite).map((s) => String(s.code)))
+      : [];
 
     const params = queryParams(req);
     const ids = Array.from(indicatorsService.queries.keys()).sort();
@@ -193,7 +256,28 @@ router.get('/all/stream', authenticateToken, async (req, res) => {
 
     await runPool(ids, STREAM_INDICATOR_CONCURRENCY, async (id) => {
       try {
-        const row = await indicatorsService.executeOne(runSiteCode, id, params);
+        let row;
+        if (siteLevel === 'country') {
+          const results = await runPool(codes, 15, async (fc) => {
+            try {
+              const res = await indicatorsService.executeOne(fc, id, params);
+              return { ok: true, value: res };
+            } catch (err) {
+              return { ok: false, error: err.message };
+            }
+          });
+          const validResults = results.filter((r) => r.ok).map((r) => r.value);
+          if (!validResults.length) {
+            throw new Error(`All facilities failed to load indicator ${id}: ${results[0]?.error}`);
+          }
+          row = { Indicator: validResults[0].Indicator || id, TOTAL: 0 };
+          for (const fr of validResults) {
+            row = sumNumericFields(row, fr);
+          }
+        } else {
+          row = await indicatorsService.executeOne(runSiteCode, id, params);
+        }
+
         completed += 1;
         res.write(
           `${JSON.stringify({
@@ -302,17 +386,14 @@ router.get('/:indicatorId', authenticateToken, async (req, res) => {
   }
 });
 
-/** Dev only: reload indicator SQL from disk without restarting Node. */
+/** Reload indicator SQL files from disk without restarting Node.
+ *  Safe — reads only from the server's own queries/indicators/ directory.
+ *  Requires a valid auth token. */
 router.post('/reload-queries', authenticateToken, (req, res) => {
-  if (process.env.ENABLE_INDICATOR_HOT_RELOAD !== 'true') {
-    return res.status(403).json({
-      success: false,
-      error: 'Set ENABLE_INDICATOR_HOT_RELOAD=true to reload SQL at runtime'
-    });
-  }
   indicatorsService.reload();
   res.json({
     success: true,
+    message: 'Indicator SQL queries reloaded from disk.',
     count: indicatorsService.queries.size,
     detailCount: indicatorsService.detailQueries.size
   });

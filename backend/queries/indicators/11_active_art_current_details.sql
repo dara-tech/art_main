@@ -87,7 +87,7 @@ tblexit AS (
 )
 
 SELECT
-    '10' as step,
+    '11' as step,
     i.clinicid as site_code,
     i.clinicid,
     i.Sex AS sex,

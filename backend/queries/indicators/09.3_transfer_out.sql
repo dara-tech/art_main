@@ -1,6 +1,6 @@
 -- Indicator 8.3: Transfer-out
 SELECT
-    '8.3. Transfer-out' AS Indicator,
+    '9.3. Transferred-out' AS Indicator,
     IFNULL(COUNT(*), 0) AS TOTAL,
     IFNULL(SUM(CASE WHEN PatientList.type = 'Child' AND PatientList.Sex = 'Male' THEN 1 ELSE 0 END), 0) AS Male_0_14,
     IFNULL(SUM(CASE WHEN PatientList.type = 'Child' AND PatientList.Sex = 'Female' THEN 1 ELSE 0 END), 0) AS Female_0_14,

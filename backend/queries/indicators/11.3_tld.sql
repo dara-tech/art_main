@@ -83,7 +83,7 @@ tblarvdrug AS (
 )
 
 SELECT
-    '10.3. TLD' AS Indicator,
+    '11.3. TLD' AS Indicator,
     IFNULL(SUM(IF(i.Sex = 1 AND i.typepatients = '≤14', 1, 0)), 0) AS Male_0_14,
     IFNULL(SUM(IF(i.Sex = 0 AND i.typepatients = '≤14', 1, 0)), 0) AS Female_0_14,
     IFNULL(SUM(IF(i.Sex = 1 AND i.typepatients = '15+', 1, 0)), 0) AS Male_over_14,

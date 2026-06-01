@@ -69,7 +69,7 @@ matched AS (
 )
 
 SELECT
-    '10.11. EAC session 2 (EAC2)' AS Indicator,
+    '11.11. EAC session 2 (EAC2)' AS Indicator,
     IFNULL(COUNT(*), 0) AS TOTAL,
     IFNULL(SUM(CASE WHEN typepatients = '≤14' AND Sex = 1 THEN 1 ELSE 0 END), 0) AS Male_0_14,
     IFNULL(SUM(CASE WHEN typepatients = '≤14' AND Sex = 0 THEN 1 ELSE 0 END), 0) AS Female_0_14,

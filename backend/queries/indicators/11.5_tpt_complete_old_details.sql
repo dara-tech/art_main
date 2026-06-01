@@ -1,5 +1,6 @@
--- Indicator 10.5: TPT Complete - Detailed Records (matching aggregate logic)
--- This replicates the exact same CTE structure and logic as the aggregate query
+-- (old) 11.5. TPT Complete — Detailed Records
+-- Ported from old artweb: artweb/backend/src/queries/indicators/10.5_tpt_complete_details.sql
+
 WITH tblvisit AS (
     SELECT clinicid, DatVisit, ARTnum, DaApp, vid, 
            ROW_NUMBER() OVER (PARTITION BY clinicid ORDER BY DatVisit DESC) AS id 
@@ -101,9 +102,9 @@ tbltptdrug AS (
 )
 
 SELECT
-    '10.5' as step,
+    '(old) 11.5' AS step,
     i.clinicid,
-    a.ART as art_number,
+    a.ART AS art_number,
     i.Sex AS sex,
     CASE 
         WHEN i.Sex = 0 THEN 'Female'
