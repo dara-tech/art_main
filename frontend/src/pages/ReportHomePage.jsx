@@ -92,7 +92,6 @@ export const INDICATOR_LABEL_MAP = {
   '10.2. MMD': '10.2. ចំនួនអ្នកជំងឺកំពុងទទួលថ្នាំរយៈពេលវែង (Number of patients received MMD)',
   '10.3. TLD': '10.3. ចំនួនអ្នកជំងឺកំពុងទទួលការព្យាបាលដោយ TLD (Number of patients received TLD)',
   '10.4. TPT Start': '10.4. ចំនួនអ្នកជំងឺដែលបានចាប់ផ្តើមការបង្ការជំងឺរបេង (Number of patients started TPT)',
-  '10.4.1. TPT Start (new start)': '10.4.1. ចំនួនអ្នកជំងឺចាប់ផ្តើម TPT ថ្មីក្នុងត្រីមាស (Number of patients with new TPT start in this quarter)',
   '10.5. TPT Complete': '10.5. ចំនួនអ្នកជំងឺដែលបានបញ្ចប់ការបង្ការជំងឺរបេង (Number of patients completed TPT)',
   '10.6. Eligible for VL test': '10.6. ចំនួនអ្នកជំងឺដែលសមស្របធ្វើតេស្ត Viral Load (Eligible for Viral Load test)',
   '10.7. VL tested in 12M': '10.7. ចំនួនអ្នកជំងឺធ្វើតេស្ត Viral Load ក្នុងរយៈពេល ១២ ខែចុងក្រោយ (Receive VL test in last 12 months)',
@@ -102,7 +101,6 @@ export const INDICATOR_LABEL_MAP = {
   '11.2. MMD': '11.2. ចំនួនអ្នកជំងឺកំពុងទទួលថ្នាំរយៈពេលវែង (Number of patients received MMD)',
   '11.3. TLD': '11.3. ចំនួនអ្នកជំងឺកំពុងទទួលការព្យាបាលដោយ TLD (Number of patients received TLD)',
   '11.4. TPT Start': '11.4. ចំនួនអ្នកជំងឺដែលបានចាប់ផ្តើមការបង្ការជំងឺរបេង (Number of patients started TPT)',
-  '11.4.1. TPT Start (new start)': '11.4.1. ចំនួនអ្នកជំងឺចាប់ផ្តើម TPT ថ្មីក្នុងត្រីមាស (Number of patients with new TPT start in this quarter)',
   '11.5. TPT Complete': '11.5. ចំនួនអ្នកជំងឺដែលបានបញ្ចប់ការបង្ការជំងឺរបេង (Number of patients completed TPT)',
   '(old) 11.4. TPT Start': '(old) 11.4. ចំនួនអ្នកជំងឺដែលបានចាប់ផ្តើមការបង្ការជំងឺរបេង — វិធីចាស់ (Number of patients started TPT — legacy logic)',
   '(old) 11.5. TPT Complete': '(old) 11.5. ចំនួនអ្នកជំងឺដែលបានបញ្ចប់ការបង្ការជំងឺរបេង — វិធីចាស់ (Number of patients completed TPT — legacy logic)',
@@ -531,7 +529,6 @@ export default function ReportHomePage({ onLogout }) {
     '10.2. MMD': '11.2_mmd',
     '10.3. TLD': '11.3_tld',
     '10.4. TPT Start': '11.4_tpt_start',
-    '10.4.1. TPT Start (new start)': '11.4.1_tpt_new_start',
     '10.5. TPT Complete': '11.5_tpt_complete',
     '10.6. Eligible for VL test': '11.6_eligible_vl_test',
     '10.7. VL tested in 12M': '11.7_vl_tested_12m',
@@ -541,7 +538,6 @@ export default function ReportHomePage({ onLogout }) {
     '11.2. MMD': '11.2_mmd',
     '11.3. TLD': '11.3_tld',
     '11.4. TPT Start': '11.4_tpt_start',
-    '11.4.1. TPT Start (new start)': '11.4.1_tpt_new_start',
     '11.5. TPT Complete': '11.5_tpt_complete',
     '(old) 11.4. TPT Start': '11.4_tpt_start_old',
     '(old) 11.5. TPT Complete': '11.5_tpt_complete_old',
@@ -1130,7 +1126,7 @@ export default function ReportHomePage({ onLogout }) {
                 setRows(finalRows);
                 setRunTimeMs(Math.round(performance.now() - startedAt));
                 setProgress({ completed: finalRows.length, total: finalRows.length });
-                toast.success('⚡ ទិន្នន័យត្រូវបានទាញយកភ្លាមៗពីឃ្លាំងទិន្នន័យ (Loaded instantly from Warehouse)');
+                toast.success('⚡ បានទាញយកពីឃ្លាំងទិន្នន័យ (Loaded from Warehouse)');
                 success = true;
               }
             }

@@ -11,3 +11,8 @@ export function isAdmin(user) {
 export function hasRole(user, roleSlug) {
   return userRoleSlugs(user).includes(String(roleSlug).toLowerCase());
 }
+
+export function isGuest(user) {
+  const slugs = userRoleSlugs(user);
+  return slugs.length === 0 || (slugs.length === 1 && slugs[0] === 'guest');
+}

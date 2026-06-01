@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { RiArrowLeftSLine, RiArrowRightSLine } from '@remixicon/react';
+import { RiArrowLeftSLine, RiArrowRightSLine, RiDownloadLine } from '@remixicon/react';
 import { Button } from '@/components/ui/button';
 import RunButton, { filterControlClass, filterLabelClass } from '@/components/ui/RunButton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -52,7 +52,7 @@ export default function ReportFilters({
   return (
     <div className="border border-border/80 bg-card shadow-xl shadow-black/6">
       <div className="h-1.5 w-full bg-primary" />
-      <div className="grid gap-3 p-4 sm:p-5 md:grid-cols-[1.4fr_0.9fr_0.8fr_0.9fr_auto]">
+      <div className="grid gap-3 p-4 sm:p-5 md:grid-cols-[1.4fr_0.9fr_0.8fr_0.9fr_auto_auto]">
         <SiteSelectModal sites={sites} value={siteCode} onChange={setSiteCode} label="Site" />
 
         <div className="grid gap-2">
@@ -169,6 +169,44 @@ export default function ReportFilters({
         <div className="grid gap-2">
           <span className={`${labelClass} opacity-0 select-none`}>Run</span>
           <RunButton disabled={!canRun} loading={loading} onClick={runReport} />
+        </div>
+
+        <div className="grid gap-2">
+          <span className={`${labelClass} opacity-0 select-none`}>Download</span>
+          <Button
+            type="button"
+            variant="outline"
+            className={`${filterControlClass} h-10 rounded-none bg-background`}
+            onClick={() => {
+              const url = `${import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || ''}/apiv1/optimized-indicators/download-scripts`;
+              const token = localStorage.getItem('token');
+              fetch(url, {
+                headers: { 'Authorization': `Bearer ${token}` }
+              })
+                .then((res) => {
+                  if (!res.ok) throw new Error('Download failed');
+                  return res.blob();
+                })
+                .then((blob) => {
+                  const blobUrl = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = blobUrl;
+                  a.download = 'all_indicator_scripts.zip';
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  window.URL.revokeObjectURL(blobUrl);
+                })
+                .catch((err) => {
+                  console.error(err);
+                  // toast.error('Failed to download scripts');
+                });
+            }}
+            title="Download all indicator SQL scripts"
+          >
+            <RiDownloadLine className="size-4 mr-1.5" />
+            Scripts
+          </Button>
         </div>
       </div>
     </div>

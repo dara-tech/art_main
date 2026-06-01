@@ -399,4 +399,33 @@ router.post('/reload-queries', authenticateToken, (req, res) => {
   });
 });
 
+const { execSync } = require('child_process');
+const os = require('os');
+const fs = require('fs');
+const path = require('path');
+
+/** Download all indicator SQL scripts as a ZIP archive */
+router.get('/download-scripts', authenticateToken, (req, res) => {
+  try {
+    const queriesDir = path.resolve(__dirname, '../../queries');
+    const tmpZipPath = path.join(os.tmpdir(), `indicator_scripts_${Date.now()}.zip`);
+
+    // Use native zip command for maximum compatibility, ignoring .DS_Store
+    execSync(`zip -r ${tmpZipPath} . -x "*.DS_Store"`, { cwd: queriesDir });
+
+    res.download(tmpZipPath, 'all_indicator_scripts.zip', (err) => {
+      if (err) {
+        console.error('Error sending zip file:', err);
+      }
+      // Clean up the temporary file after download completes or fails
+      if (fs.existsSync(tmpZipPath)) {
+        fs.unlinkSync(tmpZipPath);
+      }
+    });
+  } catch (error) {
+    console.error('Error generating script download:', error);
+    res.status(500).json({ success: false, error: 'Failed to generate download' });
+  }
+});
+
 module.exports = router;

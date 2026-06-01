@@ -126,7 +126,8 @@ export const P360_KH = {
     adult: 'មនុស្សពេញវ័យ ART',
     child: 'កុមារ ART',
     infant: 'ទារក / EID',
-    pntt: 'PNTT'
+    pntt: 'PNTT',
+    vcct: 'VCCT'
   },
 
   tabs: {

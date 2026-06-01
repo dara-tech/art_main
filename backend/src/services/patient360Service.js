@@ -1281,7 +1281,7 @@ function buildListOrderBy(sortBy, sortDir) {
   return `${col} IS NULL, ${col} ${dir}, program ASC, clinicId ASC`;
 }
 
-function listWhereClauses(searchQ, filters = {}) {
+function listWhereClauses(searchQ, programFilter, filters = {}) {
   const q = escapeSqlLiteral(String(searchQ || '').trim());
   const hasSearch = q.length >= 2;
   const sexRaw = filters.sex;
@@ -1325,9 +1325,12 @@ function listWhereClauses(searchQ, filters = {}) {
       ? `(SELECT s.Status FROM tblevpatientstatus s WHERE s.ClinicID = i.ClinicID ORDER BY s.DaStatus DESC LIMIT 1) = ${statusNum}`
       : '1=1';
 
+  const adultVcct = programFilter === 'vcct' ? `(m.VcctID IS NOT NULL AND m.VcctID != '')` : '1=1';
+  const childVcct = programFilter === 'vcct' ? `(c.VcctID IS NOT NULL AND c.VcctID != '')` : '1=1';
+
   return {
-    adult: `(${adultSearch}) AND (${sexClause('m.Sex')}) AND (${adultProv}) AND (${adultStatus})`,
-    child: `(${childSearch}) AND (${sexClause('c.Sex')}) AND (${childProv}) AND (${childStatus})`,
+    adult: `(${adultSearch}) AND (${sexClause('m.Sex')}) AND (${adultProv}) AND (${adultStatus}) AND (${adultVcct})`,
+    child: `(${childSearch}) AND (${sexClause('c.Sex')}) AND (${childProv}) AND (${childStatus}) AND (${childVcct})`,
     infant: `(${infantSearch}) AND (${sexClause('i.Sex')}) AND (${infantProv}) AND (${infantStatus})`
   };
 }
@@ -1347,10 +1350,10 @@ function listLatestStatusSql(program, clinicRef) {
 
 /** Lite union = no province subquery (fast). Province filled in enrichListProvinces(). */
 function buildListUnionSql(programFilter, searchQ, { lite = false, filters = {} } = {}) {
-  const w = listWhereClauses(searchQ, filters);
+  const w = listWhereClauses(searchQ, programFilter, filters);
   const branches = [];
 
-  if (!programFilter || programFilter === 'adult') {
+  if (!programFilter || programFilter === 'adult' || programFilter === 'vcct') {
     const provinceCol = lite
       ? 'NULL AS Province'
       : `(SELECT u.Province FROM tblaumain u
@@ -1364,7 +1367,7 @@ function buildListUnionSql(programFilter, searchQ, { lite = false, filters = {} 
        FROM tblaimain m WHERE ${w.adult}`
     );
   }
-  if (!programFilter || programFilter === 'child') {
+  if (!programFilter || programFilter === 'child' || programFilter === 'vcct') {
     const provinceCol = lite
       ? 'NULL AS Province'
       : `(SELECT u.Province FROM tblcumain u
@@ -1393,16 +1396,16 @@ function buildListUnionSql(programFilter, searchQ, { lite = false, filters = {} 
 
 /** Fast COUNT: sum per main table (no union, no province subquery). */
 async function countListPatientsFast(siteCode, programFilter, searchQ, filters = {}) {
-  const w = listWhereClauses(searchQ, filters);
+  const w = listWhereClauses(searchQ, programFilter, filters);
   const jobs = [];
-  if (!programFilter || programFilter === 'adult') {
+  if (!programFilter || programFilter === 'adult' || programFilter === 'vcct') {
     jobs.push(
       selectSite(siteCode, `SELECT COUNT(*) AS c FROM tblaimain m WHERE ${w.adult}`).then(
         ([r]) => Number(r?.c || 0)
       )
     );
   }
-  if (!programFilter || programFilter === 'child') {
+  if (!programFilter || programFilter === 'child' || programFilter === 'vcct') {
     jobs.push(
       selectSite(siteCode, `SELECT COUNT(*) AS c FROM tblcimain c WHERE ${w.child}`).then(
         ([r]) => Number(r?.c || 0)
@@ -1536,8 +1539,8 @@ async function listPatients(siteCode, options = {}) {
   const limit = Math.min(LIST_PAGE_MAX, Math.max(1, Number(options.limit) || LIST_PAGE_DEFAULT));
   const offset = (page - 1) * limit;
   const program = options.program ? String(options.program).toLowerCase() : '';
-  if (program && !['adult', 'child', 'infant'].includes(program)) {
-    const err = new Error('program must be adult, child, infant, or omitted');
+  if (program && !['adult', 'child', 'infant', 'vcct'].includes(program)) {
+    const err = new Error('program must be adult, child, infant, vcct, or omitted');
     err.statusCode = 400;
     throw err;
   }

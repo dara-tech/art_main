@@ -21,6 +21,16 @@ const AdminPage = lazy(() => import('./pages/AdminPage.jsx'));
 const RequireAdmin = lazy(() => import('./components/auth/RequireAdmin.jsx'));
 const CountryAnalyticsPage = lazy(() => import('./pages/CountryAnalyticsPage.jsx'));
 
+import { isGuest } from './utils/authRoles.js';
+
+function RequireNotGuest({ children }) {
+  const { user } = useAuth();
+  if (isGuest(user)) {
+    return <Navigate to="/reports" replace />;
+  }
+  return children;
+}
+
 function PageFallback() {
   return (
     <AppPageShell wide>
@@ -71,16 +81,17 @@ function App() {
       <AppLayout onLogout={logout}>
         <Suspense fallback={<PageFallback />}>
           <Routes>
-            <Route path="/" element={<ReportHomePage onLogout={logout} />} />
-            <Route path="/documents" element={<DocumentPage onLogout={logout} />} />
-            <Route path="/queries" element={<QueryLayout />}>
+            <Route path="/reports" element={<ReportHomePage onLogout={logout} />} />
+            <Route path="/" element={<Navigate to="/reports" replace />} />
+            <Route path="/documents" element={<RequireNotGuest><DocumentPage onLogout={logout} /></RequireNotGuest>} />
+            <Route path="/queries" element={<RequireNotGuest><QueryLayout /></RequireNotGuest>}>
               <Route index element={<QueryReferencePage />} />
             </Route>
-            <Route path="/dqa" element={<DqaPage onLogout={logout} />} />
-            <Route path="/patient-360" element={<Patient360Page onLogout={logout} />} />
-            <Route path="/country-analytics" element={<CountryAnalyticsPage onLogout={logout} />} />
-            <Route path="/vcct" element={<VcctPage onLogout={logout} />} />
-            <Route path="/visualize" element={<VisualizePage onLogout={logout} />} />
+            <Route path="/dqa" element={<RequireNotGuest><DqaPage onLogout={logout} /></RequireNotGuest>} />
+            <Route path="/patient-360" element={<RequireNotGuest><Patient360Page onLogout={logout} /></RequireNotGuest>} />
+            <Route path="/country-analytics" element={<RequireNotGuest><CountryAnalyticsPage onLogout={logout} /></RequireNotGuest>} />
+            <Route path="/vcct" element={<RequireNotGuest><VcctPage onLogout={logout} /></RequireNotGuest>} />
+            <Route path="/visualize" element={<RequireNotGuest><VisualizePage onLogout={logout} /></RequireNotGuest>} />
             <Route path="/event-report" element={<Navigate to="/visualize" replace />} />
             <Route
               path="/admin"

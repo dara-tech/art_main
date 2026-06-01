@@ -26,6 +26,7 @@ export default function ReportResultsPanel({
   onPnttCellClick
 }) {
   const [showQueryMs, setShowQueryMs] = useState(false);
+  const [showEacIndicators, setShowEacIndicators] = useState(false);
   const [sectionLoadElapsedMs, setSectionLoadElapsedMs] = useState(0);
   const isSectionReport = reportType === 'infants' || reportType === 'pntt';
   const sectionReportLoading = Boolean(loading && isSectionReport);
@@ -43,9 +44,18 @@ export default function ReportResultsPanel({
   }, [sectionReportLoading]);
   const splitIndicatorLabel = (label) => {
     const text = String(label || '').trim();
-    const match = text.match(/^(.*)\s\(([^()]*)\)\s*$/);
-    if (!match) return { khmerPart: text, englishPart: '' };
-    return { khmerPart: match[1].trim(), englishPart: match[2].trim() };
+    let numberPrefix = '';
+    let mainText = text;
+    
+    const numMatch = text.match(/^((?:\(old\)\s*)?\d+(?:\.\d+)*\.?)\s+(.*)/i);
+    if (numMatch) {
+      numberPrefix = numMatch[1].trim().replace(/\.$/, '');
+      mainText = numMatch[2].trim();
+    }
+    
+    const match = mainText.match(/^(.*)\s\(([^()]*)\)\s*$/);
+    if (!match) return { numberPrefix, khmerPart: mainText, englishPart: '' };
+    return { numberPrefix, khmerPart: match[1].trim(), englishPart: match[2].trim() };
   };
   const reportTitle =
     reportType === 'adult-child'
@@ -115,7 +125,9 @@ export default function ReportResultsPanel({
               <table className="w-full border-collapse">
                 <thead className="sticky top-0 border-b border-border/80 bg-muted/70">
                   <tr>
-                    <th className="w-[52%] border-r border-border/50 px-3 py-2 text-left text-xs font-semibold text-foreground">សូចនាករ </th>
+                    <th className="w-10 whitespace-nowrap border-r border-border/50 px-2 py-2 text-center text-xs font-semibold text-foreground"></th>
+                    <th className="w-16 whitespace-nowrap border-r border-border/50 px-2 py-2 text-center text-xs font-semibold text-foreground"></th>
+                    <th className="w-[45%] border-r border-border/50 px-3 py-2 text-left text-xs font-semibold text-foreground">សូចនាករ </th>
                     <th className="w-24 border-r border-border/50 px-3 py-2 text-right text-xs font-semibold text-foreground">អាយុ</th>
                     <th className="w-32 border-r border-border/50 px-3 py-2 text-right text-xs font-semibold text-foreground">ប្រុស</th>
                     <th className="w-32 border-r border-border/50 px-3 py-2 text-right text-xs font-semibold text-foreground">ស្រី</th>
@@ -124,35 +136,83 @@ export default function ReportResultsPanel({
                   </tr>
                 </thead>
                 <tbody className="bg-card divide-y divide-border/60">
-                  {adultChildRows.map((item, idx) => (
-                    <Fragment key={`${item.indicator}-${idx}`}>
-                      <tr className="hover:bg-muted/15">
-                        <td
-                          rowSpan={3}
-                          className="cursor-pointer border-r border-border/60 px-3 py-2 align-middle text-xs font-medium hover:bg-muted/35"
-                          onClick={() => onAdultChildCellClick?.(item, 'all', 'all')}
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              onAdultChildCellClick?.(item, 'all', 'all');
-                            }
-                          }}
-                        >
-                          {(() => {
-                            const { khmerPart, englishPart } = splitIndicatorLabel(item.indicator);
-                            return (
-                              <div className="leading-snug">
-                                <div>{khmerPart}</div>
-                                {englishPart && (
-                                  <div className="text-[11px] text-muted-foreground">({englishPart})</div>
-                                )}
-                              </div>
-                            );
-                          })()}
-                        </td>
-                        <td className="border-r border-border/50 px-3 py-2 text-right text-xs">{item.younger.age}</td>
+                  {(() => {
+                    const visibleRows = adultChildRows.filter((item) => {
+                      const label = String(item.indicator || '');
+                      if (label.startsWith('10.4.1') || label.startsWith('11.4.1')) return false;
+                      if (showEacIndicators) return true;
+                      return !['11.9.', '11.10.', '11.11.', '11.12.', '11.13.', '11.14.'].some(prefix => label.startsWith(prefix));
+                    });
+                    
+                    const rowsWithMeta = visibleRows.map((item, idx) => {
+                      const { numberPrefix, khmerPart, englishPart } = splitIndicatorLabel(item.indicator);
+                      let mainNum = `no-num-${idx}`;
+                      if (numberPrefix) {
+                        const m = numberPrefix.match(/\d+/);
+                        if (m) mainNum = m[0];
+                        if (numberPrefix.includes('(old)')) mainNum = `(old) ${mainNum}`;
+                      }
+                      return { ...item, idx, numberPrefix, khmerPart, englishPart, mainNum };
+                    });
+                    
+                    let currentMainNum = null;
+                    let currentGroupStartIdx = -1;
+                    for (let i = 0; i < rowsWithMeta.length; i++) {
+                      const row = rowsWithMeta[i];
+                      if (row.mainNum !== currentMainNum) {
+                        currentMainNum = row.mainNum;
+                        currentGroupStartIdx = i;
+                        row.isFirstInGroup = true;
+                        row.groupSpan = 1;
+                      } else {
+                        row.isFirstInGroup = false;
+                        rowsWithMeta[currentGroupStartIdx].groupSpan += 1;
+                      }
+                    }
+                    
+                    return rowsWithMeta.map((item) => {
+                      const { idx, numberPrefix, khmerPart, englishPart, isFirstInGroup, groupSpan, mainNum } = item;
+                    return (
+                      <Fragment key={`${item.indicator}-${idx}`}>
+                        <tr className="hover:bg-muted/15">
+                          {isFirstInGroup && (
+                            <td
+                              rowSpan={groupSpan * 3}
+                              colSpan={groupSpan === 1 ? 2 : 1}
+                              className="border-r border-border/60 px-2 py-2 text-center align-middle text-[11px] font-bold text-muted-foreground bg-muted/10"
+                            >
+                              {mainNum.startsWith('no-num') ? (idx + 1) : mainNum}
+                            </td>
+                          )}
+                          {(!isFirstInGroup || groupSpan > 1) && (
+                            <td
+                              rowSpan={3}
+                              className="whitespace-nowrap border-r border-border/60 px-2 py-2 text-center align-middle text-[11px] font-bold text-muted-foreground bg-muted/5"
+                            >
+                              {numberPrefix === mainNum ? '' : (numberPrefix || '-')}
+                            </td>
+                          )}
+                          <td
+                            rowSpan={3}
+                            className="cursor-pointer border-r border-border/60 px-3 py-2 align-middle text-xs font-medium hover:bg-muted/35"
+                            onClick={() => onAdultChildCellClick?.(item, 'all', 'all')}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                onAdultChildCellClick?.(item, 'all', 'all');
+                              }
+                            }}
+                          >
+                            <div className="leading-snug">
+                              <div>{khmerPart}</div>
+                              {englishPart && (
+                                <div className="text-[11px] text-muted-foreground">({englishPart})</div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="border-r border-border/50 px-3 py-2 text-right text-xs">{item.younger.age}</td>
                         <td
                           className="cursor-pointer border-r border-border/50 px-3 py-2 text-right text-xs tabular-nums hover:bg-muted/40"
                           onClick={() => onAdultChildCellClick?.(item, 'younger', 'male')}
@@ -220,7 +280,9 @@ export default function ReportResultsPanel({
                         </td>
                       </tr>
                     </Fragment>
-                  ))}
+                    );
+                  });
+                })()}
                 </tbody>
               </table>
             </div>
@@ -335,16 +397,28 @@ export default function ReportResultsPanel({
       </div>
       <div className="flex items-center justify-end gap-2 border-t border-border px-4 py-3">
         {isAdultChild && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setShowQueryMs((v) => !v)}
-            className="mr-auto h-8 rounded-none px-3 text-xs inline-flex items-center gap-1.5"
-          >
-            {showQueryMs ? <RiEyeOffLine className="size-3.5" /> : <RiEyeLine className="size-3.5" />}
-            {showQueryMs ? 'Hide ms' : 'Show ms'}
-          </Button>
+          <div className="flex items-center gap-2 mr-auto">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowQueryMs((v) => !v)}
+              className="h-8 rounded-md px-3 text-xs inline-flex items-center gap-1.5"
+            >
+              {showQueryMs ? <RiEyeOffLine className="size-3.5" /> : <RiEyeLine className="size-3.5" />}
+              {showQueryMs ? 'Hide ms' : 'Show ms'}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowEacIndicators((v) => !v)}
+              className="h-8 rounded-md px-3 text-xs inline-flex items-center gap-1.5"
+            >
+              {showEacIndicators ? <RiEyeOffLine className="size-3.5" /> : <RiEyeLine className="size-3.5" />}
+              {showEacIndicators ? 'Hide EAC (11.9-11.14)' : 'Show EAC (11.9-11.14)'}
+            </Button>
+          </div>
         )}
         {isAdultChild && loading && progress.total > 0 && (
           <Badge variant="outline" className="h-8 rounded-md border-border px-3 text-xs inline-flex items-center bg-background">
