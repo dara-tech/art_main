@@ -453,6 +453,122 @@ async function runEtlMulti({ periodKeys = [], triggeredBy = 'manual' } = {}) {
 }
 
 /**
+ * Classifier to determine yearly rollup aggregation rules.
+ */
+function getIndicatorRollupType(indicatorName) {
+  const name = String(indicatorName || '').trim();
+  const match = name.match(/^(\d+(?:\.\d+)*)/);
+  if (match) {
+    const num = match[1];
+    if (num === '1' || num === '2') return 'FIRST';
+    
+    const parts = num.split('.');
+    const mainNum = parts[0];
+    if (mainNum === '10') return 'LATEST';
+    if (mainNum === '11') {
+      const subNum = parts[1];
+      if (!subNum) return 'LATEST';
+      const subVal = Number(subNum);
+      if (subVal >= 1 && subVal <= 8) return 'LATEST';
+      return 'SUM';
+    }
+  }
+  return 'SUM';
+}
+
+/**
+ * Roll up quarterly records for a year.
+ */
+function aggregateQuartersForYear(rows, year, groupKeys = ['indicator']) {
+  const grouped = {};
+  
+  for (const row of rows) {
+    const gKey = groupKeys.map(k => String(row[k] || '')).join('::');
+    if (!grouped[gKey]) {
+      grouped[gKey] = [];
+    }
+    grouped[gKey].push(row);
+  }
+  
+  const result = [];
+  const start_date = `${year}-01-01`;
+  const end_date = `${year}-12-31`;
+  
+  for (const gKey in grouped) {
+    const groupRows = grouped[gKey];
+    
+    // Sort ascending by quarter label
+    groupRows.sort((a, b) => {
+      const qA = String(a.period_label || '');
+      const qB = String(b.period_label || '');
+      return qA.localeCompare(qB);
+    });
+    
+    const firstRow = groupRows[0];
+    const latestRow = groupRows[groupRows.length - 1];
+    const indicatorName = latestRow.Indicator || latestRow.indicator;
+    const rollupType = getIndicatorRollupType(indicatorName);
+    
+    const aggRow = { ...latestRow };
+    aggRow.period_type = 'year';
+    aggRow.period_label = String(year);
+    aggRow.start_date = start_date;
+    aggRow.end_date = end_date;
+    
+    if (rollupType === 'SUM') {
+      aggRow.Male_0_14 = 0;
+      aggRow.Female_0_14 = 0;
+      aggRow.Male_over_14 = 0;
+      aggRow.Female_over_14 = 0;
+      if (aggRow.TOTAL !== undefined) aggRow.TOTAL = 0;
+      
+      let maxSiteCount = 0;
+      for (const r of groupRows) {
+        aggRow.Male_0_14 += Number(r.Male_0_14 || r.male_0_14 || 0);
+        aggRow.Female_0_14 += Number(r.Female_0_14 || r.female_0_14 || 0);
+        aggRow.Male_over_14 += Number(r.Male_over_14 || r.male_over_14 || 0);
+        aggRow.Female_over_14 += Number(r.Female_over_14 || r.female_over_14 || 0);
+        if (aggRow.TOTAL !== undefined) {
+          aggRow.TOTAL += Number(r.TOTAL || r.total || 0);
+        }
+        if (r.site_count !== undefined) {
+          maxSiteCount = Math.max(maxSiteCount, Number(r.site_count || 0));
+        }
+      }
+      if (aggRow.site_count !== undefined) {
+        aggRow.site_count = maxSiteCount;
+      }
+    } else if (rollupType === 'FIRST') {
+      aggRow.Male_0_14 = Number(firstRow.Male_0_14 || firstRow.male_0_14 || 0);
+      aggRow.Female_0_14 = Number(firstRow.Female_0_14 || firstRow.female_0_14 || 0);
+      aggRow.Male_over_14 = Number(firstRow.Male_over_14 || firstRow.male_over_14 || 0);
+      aggRow.Female_over_14 = Number(firstRow.Female_over_14 || firstRow.female_over_14 || 0);
+      if (aggRow.TOTAL !== undefined) {
+        aggRow.TOTAL = Number(firstRow.TOTAL || firstRow.total || 0);
+      }
+      if (aggRow.site_count !== undefined) {
+        aggRow.site_count = Number(firstRow.site_count || 0);
+      }
+    } else {
+      aggRow.Male_0_14 = Number(latestRow.Male_0_14 || latestRow.male_0_14 || 0);
+      aggRow.Female_0_14 = Number(latestRow.Female_0_14 || latestRow.female_0_14 || 0);
+      aggRow.Male_over_14 = Number(latestRow.Male_over_14 || latestRow.male_over_14 || 0);
+      aggRow.Female_over_14 = Number(latestRow.Female_over_14 || latestRow.female_over_14 || 0);
+      if (aggRow.TOTAL !== undefined) {
+        aggRow.TOTAL = Number(latestRow.TOTAL || latestRow.total || 0);
+      }
+      if (aggRow.site_count !== undefined) {
+        aggRow.site_count = Number(latestRow.site_count || 0);
+      }
+    }
+    
+    result.push(aggRow);
+  }
+  
+  return result;
+}
+
+/**
  * Query the pre-aggregated warehouse — FAST, no clinical table access.
  *
  * @param {object} options
@@ -468,14 +584,25 @@ async function querySummary({ periodLabel, periodType, provinceId, siteCode } = 
   const conditions = ['1=1'];
   const replacements = {};
 
-  if (periodLabel) {
-    conditions.push('period_label = :periodLabel');
-    replacements.periodLabel = periodLabel;
+  if (periodType === 'year') {
+    const year = periodLabel;
+    conditions.push("period_type = 'quarter'");
+    conditions.push("period_label IN (:q1, :q2, :q3, :q4)");
+    replacements.q1 = `${year}-Q1`;
+    replacements.q2 = `${year}-Q2`;
+    replacements.q3 = `${year}-Q3`;
+    replacements.q4 = `${year}-Q4`;
+  } else {
+    if (periodLabel) {
+      conditions.push('period_label = :periodLabel');
+      replacements.periodLabel = periodLabel;
+    }
+    if (periodType) {
+      conditions.push('period_type = :periodType');
+      replacements.periodType = periodType;
+    }
   }
-  if (periodType) {
-    conditions.push('period_type = :periodType');
-    replacements.periodType = periodType;
-  }
+  
   if (provinceId) {
     conditions.push('province_id = :provinceId');
     replacements.provinceId = provinceId;
@@ -503,7 +630,11 @@ async function querySummary({ periodLabel, periodType, provinceId, siteCode } = 
     ORDER BY province_name, site_name, indicator
   `;
 
-  return sequelize.query(sql, { replacements, type: sequelize.QueryTypes.SELECT });
+  const rows = await sequelize.query(sql, { replacements, type: sequelize.QueryTypes.SELECT });
+  if (periodType === 'year') {
+    return aggregateQuartersForYear(rows, periodLabel, ['site_code', 'Indicator']);
+  }
+  return rows;
 }
 
 /**
@@ -515,13 +646,23 @@ async function queryCountryRollup({ periodLabel, periodType } = {}) {
   const conditions = ['1=1'];
   const replacements = {};
 
-  if (periodLabel) {
-    conditions.push('period_label = :periodLabel');
-    replacements.periodLabel = periodLabel;
-  }
-  if (periodType) {
-    conditions.push('period_type = :periodType');
-    replacements.periodType = periodType;
+  if (periodType === 'year') {
+    const year = periodLabel;
+    conditions.push("period_type = 'quarter'");
+    conditions.push("period_label IN (:q1, :q2, :q3, :q4)");
+    replacements.q1 = `${year}-Q1`;
+    replacements.q2 = `${year}-Q2`;
+    replacements.q3 = `${year}-Q3`;
+    replacements.q4 = `${year}-Q4`;
+  } else {
+    if (periodLabel) {
+      conditions.push('period_label = :periodLabel');
+      replacements.periodLabel = periodLabel;
+    }
+    if (periodType) {
+      conditions.push('period_type = :periodType');
+      replacements.periodType = periodType;
+    }
   }
 
   const sql = `
@@ -540,7 +681,11 @@ async function queryCountryRollup({ periodLabel, periodType } = {}) {
     ORDER BY indicator
   `;
 
-  return sequelize.query(sql, { replacements, type: sequelize.QueryTypes.SELECT });
+  const rows = await sequelize.query(sql, { replacements, type: sequelize.QueryTypes.SELECT });
+  if (periodType === 'year') {
+    return aggregateQuartersForYear(rows, periodLabel, ['indicator']);
+  }
+  return rows;
 }
 
 /**
@@ -552,13 +697,23 @@ async function queryProvinceRollup({ periodLabel, periodType } = {}) {
   const conditions = ['1=1'];
   const replacements = {};
 
-  if (periodLabel) {
-    conditions.push('period_label = :periodLabel');
-    replacements.periodLabel = periodLabel;
-  }
-  if (periodType) {
-    conditions.push('period_type = :periodType');
-    replacements.periodType = periodType;
+  if (periodType === 'year') {
+    const year = periodLabel;
+    conditions.push("period_type = 'quarter'");
+    conditions.push("period_label IN (:q1, :q2, :q3, :q4)");
+    replacements.q1 = `${year}-Q1`;
+    replacements.q2 = `${year}-Q2`;
+    replacements.q3 = `${year}-Q3`;
+    replacements.q4 = `${year}-Q4`;
+  } else {
+    if (periodLabel) {
+      conditions.push('period_label = :periodLabel');
+      replacements.periodLabel = periodLabel;
+    }
+    if (periodType) {
+      conditions.push('period_type = :periodType');
+      replacements.periodType = periodType;
+    }
   }
 
   const sql = `
@@ -577,7 +732,11 @@ async function queryProvinceRollup({ periodLabel, periodType } = {}) {
     ORDER BY province_name, indicator
   `;
 
-  return sequelize.query(sql, { replacements, type: sequelize.QueryTypes.SELECT });
+  const rows = await sequelize.query(sql, { replacements, type: sequelize.QueryTypes.SELECT });
+  if (periodType === 'year') {
+    return aggregateQuartersForYear(rows, periodLabel, ['province_id', 'indicator']);
+  }
+  return rows;
 }
 
 /**
@@ -596,12 +755,31 @@ async function getEtlHistory({ limit = 20 } = {}) {
  */
 async function getLastRefreshed(periodLabel) {
   await ensureAnalyticsTables();
-  const rows = await sequelize.query(
-    `SELECT finished_at FROM analytics_etl_log
-     WHERE period_label = :periodLabel AND status = 'success'
-     ORDER BY finished_at DESC LIMIT 1`,
-    { replacements: { periodLabel }, type: sequelize.QueryTypes.SELECT }
-  );
+  let rows;
+  if (/^\d{4}$/.test(String(periodLabel))) {
+    const year = periodLabel;
+    rows = await sequelize.query(
+      `SELECT finished_at FROM analytics_etl_log
+       WHERE period_label IN (:q1, :q2, :q3, :q4) AND status = 'success'
+       ORDER BY finished_at DESC LIMIT 1`,
+      {
+        replacements: {
+          q1: `${year}-Q1`,
+          q2: `${year}-Q2`,
+          q3: `${year}-Q3`,
+          q4: `${year}-Q4`
+        },
+        type: sequelize.QueryTypes.SELECT
+      }
+    );
+  } else {
+    rows = await sequelize.query(
+      `SELECT finished_at FROM analytics_etl_log
+       WHERE period_label = :periodLabel AND status = 'success'
+       ORDER BY finished_at DESC LIMIT 1`,
+      { replacements: { periodLabel }, type: sequelize.QueryTypes.SELECT }
+    );
+  }
   return rows[0]?.finished_at || null;
 }
 
