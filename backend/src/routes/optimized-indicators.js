@@ -145,7 +145,7 @@ router.get('/all', authenticateToken, async (req, res) => {
       const payload = {
         success: true,
         data: withIndicator9,
-        metadata: {
+        metadata: { 
           siteLevel,
           aggregated: true,
           aggregateSupported: true,
