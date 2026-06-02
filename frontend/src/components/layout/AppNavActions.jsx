@@ -12,7 +12,7 @@ import {
 } from '@remixicon/react';
 import { LogOut } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { isAdmin, isGuest } from '../../utils/authRoles';
+import { isAdmin, isGuest, hasRole } from '../../utils/authRoles';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { APP_NAV_ICON, APP_NAV_MUTED, APP_NAV_ROW, APP_NAV_TEXT, appNavItemClass } from './appNavStyles';
@@ -42,6 +42,7 @@ export default function AppNavActions({ onLogout }) {
   const displayName = user?.name || user?.username || 'User';
   const adminUser = isAdmin(user);
   const guestUser = isGuest(user);
+  const pdmoUser = hasRole(user, 'pdmo');
 
   return (
     <header
@@ -95,22 +96,26 @@ export default function AppNavActions({ onLogout }) {
               <RiBarChartGroupedLine className={APP_NAV_ICON} />
               <span className="hidden md:inline">វិភាគ</span>
             </NavItem>
-            <NavItem to="/country-analytics" title="វិភាគឃ្លាំងទិន្នន័យ (Warehouse Analytics)">
-              <RiDatabase2Line className={APP_NAV_ICON} />
-              <span className="hidden md:inline">ឃ្លាំងទិន្នន័យ</span>
-            </NavItem>
-            <NavItem to="/dqa" title="Data quality">
-              <RiShieldCheckLine className={APP_NAV_ICON} />
-              <span className="hidden md:inline">DQA</span>
-            </NavItem>
-            <NavItem to="/queries" title="Indicator SQL">
-              <RiCodeSSlashLine className={APP_NAV_ICON} />
-              <span className="hidden md:inline">Queries</span>
-            </NavItem>
-            <NavItem to="/documents" title="API reference">
-              <RiFileTextLine className={APP_NAV_ICON} />
-              <span className="hidden md:inline">API</span>
-            </NavItem>
+            {!pdmoUser && (
+              <>
+                <NavItem to="/country-analytics" title="វិភាគឃ្លាំងទិន្នន័យ (Warehouse Analytics)">
+                  <RiDatabase2Line className={APP_NAV_ICON} />
+                  <span className="hidden md:inline">ឃ្លាំងទិន្នន័យ</span>
+                </NavItem>
+                <NavItem to="/dqa" title="Data quality">
+                  <RiShieldCheckLine className={APP_NAV_ICON} />
+                  <span className="hidden md:inline">DQA</span>
+                </NavItem>
+                <NavItem to="/queries" title="Indicator SQL">
+                  <RiCodeSSlashLine className={APP_NAV_ICON} />
+                  <span className="hidden md:inline">Queries</span>
+                </NavItem>
+                <NavItem to="/documents" title="API reference">
+                  <RiFileTextLine className={APP_NAV_ICON} />
+                  <span className="hidden md:inline">API</span>
+                </NavItem>
+              </>
+            )}
             {adminUser ? (
               <NavItem to="/admin" title="Admin" admin>
                 <RiUserSettingsLine className={APP_NAV_ICON} />
