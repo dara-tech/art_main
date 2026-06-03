@@ -261,20 +261,20 @@ export default function VisualizePickerModal({
       }}
     >
       <div
-        className="flex max-h-[min(92vh,44rem)] w-full max-w-4xl flex-col overflow-hidden bg-card shadow-2xl shadow-black/15"
+        className="flex max-h-[min(92vh,44rem)] w-full max-w-4xl flex-col overflow-hidden bg-card shadow-2xl shadow-black/15 border-none rounded-2xl"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border/80 bg-muted/30 px-4 py-3">
+        <div className="flex shrink-0 items-center justify-between gap-3 bg-[#2a1720] border-b border-white/10 px-4 py-3.5 text-white">
           <div className="flex min-w-0 items-start gap-2">
-            <RiListCheck2 className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
+            <RiListCheck2 className="mt-0.5 size-5 shrink-0" fill="url(#icon-gradient)" aria-hidden />
             <div className="min-w-0">
-              <h2 id="viz-picker-title" className="text-base font-semibold text-foreground">
+              <h2 id="viz-picker-title" className="text-base font-semibold text-white">
                 {isEventsView ? VIZ_KH.modalEventsTitle : VIZ_KH.modalIndicatorsTitle}
               </h2>
-              <p className={cn('mt-0.5 text-muted-foreground', P360_TABLE_TEXT)}>
+              <p className={cn('mt-0.5 text-white/70', P360_TABLE_TEXT)}>
                 {isEventsView ? VIZ_KH.modalEventsHint : VIZ_KH.programFilterHint}
                 {' · '}
-                <strong className="font-semibold text-foreground">{draftIds.length}</strong>{' '}
+                <strong className="font-semibold text-white">{draftIds.length}</strong>{' '}
                 {VIZ_KH.selectedIndicators}
               </p>
             </div>
@@ -282,10 +282,10 @@ export default function VisualizePickerModal({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex size-8 shrink-0 items-center justify-center border border-border/80 bg-card hover:bg-muted/50"
+            className="inline-flex size-7 shrink-0 items-center justify-center rounded-md cursor-pointer text-white/70 hover:text-white hover:bg-white/10 transition-colors"
             aria-label={VIZ_KH.modalCancel}
           >
-            <RiCloseLine className="size-4" />
+            <RiCloseLine className="size-4.5" />
           </button>
         </div>
 

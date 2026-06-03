@@ -59,26 +59,26 @@ export default function Patient360ListFilterModal({
       onClick={onClose}
     >
       <div
-        className="flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden bg-card shadow-2xl shadow-black/15"
+        className="flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden bg-card shadow-2xl shadow-black/15 border-none rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-border/80 bg-muted/35 px-5 py-4">
+        <div className="flex items-center justify-between bg-[#2a1720] border-b border-white/10 px-5 py-3.5 text-white">
           <div className="flex items-center gap-2">
-            <RiFilter3Line className="size-5 text-primary" aria-hidden />
+            <RiFilter3Line className="size-5" fill="url(#icon-gradient)" aria-hidden />
             <div>
-              <h2 id="p360-filter-modal-title" className="text-base font-semibold text-foreground">
+              <h2 id="p360-filter-modal-title" className="text-base font-semibold text-white">
                 {P360_KH.list.filterTitle}
               </h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">{P360_KH.list.filterHint}</p>
+              <p className="mt-0.5 text-xs text-white/70">{P360_KH.list.filterHint}</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex size-8 items-center justify-center border border-border/80 bg-background hover:bg-muted/50"
+            className="inline-flex size-7 shrink-0 items-center justify-center rounded-md cursor-pointer text-white/70 hover:text-white hover:bg-white/10 transition-colors"
             aria-label={P360_KH.list.filterClose}
           >
-            <RiCloseLine className="size-4" />
+            <RiCloseLine className="size-4.5" />
           </button>
         </div>
 

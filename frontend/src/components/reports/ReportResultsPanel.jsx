@@ -123,19 +123,19 @@ export default function ReportResultsPanel({
           <div className="overflow-hidden border border-border/80 bg-card shadow-sm">
             <div className="max-h-[520px] overflow-auto">
               <table className="w-full border-collapse">
-                <thead className="sticky top-0 border-b border-border/80 bg-muted/70">
-                  <tr>
-                    <th className="w-10 whitespace-nowrap border-r border-border/50 px-2 py-2 text-center text-xs font-semibold text-foreground"></th>
-                    <th className="w-16 whitespace-nowrap border-r border-border/50 px-2 py-2 text-center text-xs font-semibold text-foreground"></th>
-                    <th className="w-[45%] border-r border-border/50 px-3 py-2 text-left text-xs font-semibold text-foreground">សូចនាករ </th>
-                    <th className="w-24 border-r border-border/50 px-3 py-2 text-right text-xs font-semibold text-foreground">អាយុ</th>
-                    <th className="w-32 border-r border-border/50 px-3 py-2 text-right text-xs font-semibold text-foreground">ប្រុស</th>
-                    <th className="w-32 border-r border-border/50 px-3 py-2 text-right text-xs font-semibold text-foreground">ស្រី</th>
-                    <th className="w-32 border-r border-border/50 px-3 py-2 text-right text-xs font-semibold text-foreground">សរុប</th>
-                    {showQueryMs && <th className="w-28 px-3 py-2 text-right text-xs font-bold text-foreground">ms</th>}
+                <thead className="sticky top-0 border-b border-border/20 bg-muted/95 backdrop-blur-md">
+                  <tr className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    <th className="w-10 whitespace-nowrap border-r border-border/20 px-2 py-2 text-center"></th>
+                    <th className="w-16 whitespace-nowrap border-r border-border/20 px-2 py-2 text-center"></th>
+                    <th className="w-[45%] border-r border-border/20 px-3 py-2 text-left">សូចនាករ </th>
+                    <th className="w-24 border-r border-border/20 px-3 py-2 text-right">អាយុ</th>
+                    <th className="w-32 border-r border-border/20 px-3 py-2 text-right">ប្រុស</th>
+                    <th className="w-32 border-r border-border/20 px-3 py-2 text-right">ស្រី</th>
+                    <th className="w-32 border-r border-border/20 px-3 py-2 text-right">សរុប</th>
+                    {showQueryMs && <th className="w-28 px-3 py-2 text-right font-semibold">ms</th>}
                   </tr>
                 </thead>
-                <tbody className="bg-card divide-y divide-border/60">
+                <tbody className="bg-card divide-y divide-border/20">
                   {(() => {
                     const visibleRows = adultChildRows.filter((item) => {
                       const label = String(item.indicator || '');
@@ -174,12 +174,12 @@ export default function ReportResultsPanel({
                       const { idx, numberPrefix, khmerPart, englishPart, isFirstInGroup, groupSpan, mainNum } = item;
                     return (
                       <Fragment key={`${item.indicator}-${idx}`}>
-                        <tr className="hover:bg-muted/15">
+                        <tr className="hover:bg-muted/20 transition-colors duration-150">
                           {isFirstInGroup && (
                             <td
                               rowSpan={groupSpan * 3}
                               colSpan={groupSpan === 1 ? 2 : 1}
-                              className="border-r border-border/60 px-2 py-2 text-center align-middle text-[11px] font-bold text-muted-foreground bg-muted/10"
+                              className="border-r border-border/20 px-2 py-2 text-center align-middle text-[11px] font-bold text-muted-foreground bg-muted/5"
                             >
                               {mainNum.startsWith('no-num') ? (idx + 1) : mainNum}
                             </td>
@@ -187,98 +187,98 @@ export default function ReportResultsPanel({
                           {(!isFirstInGroup || groupSpan > 1) && (
                             <td
                               rowSpan={3}
-                              className="whitespace-nowrap border-r border-border/60 px-2 py-2 text-center align-middle text-[11px] font-bold text-muted-foreground bg-muted/5"
+                              className="whitespace-nowrap border-r border-border/20 px-2 py-2 text-center align-middle text-[11px] font-bold text-muted-foreground bg-muted/5"
                             >
                               {numberPrefix === mainNum ? '' : (numberPrefix || '-')}
                             </td>
                           )}
                           <td
                             rowSpan={3}
-                            className="cursor-pointer border-r border-border/60 px-3 py-2 align-middle text-xs font-medium hover:bg-muted/35"
+                            className="cursor-pointer border-r border-border/20 px-3 py-2 align-middle text-xs font-medium hover:bg-muted/30 transition-colors duration-150"
                             onClick={() => onAdultChildCellClick?.(item, 'all', 'all')}
                             role="button"
                             tabIndex={0}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                onAdultChildCellClick?.(item, 'all', 'all');
-                              }
-                            }}
+                                  e.preventDefault();
+                                  onAdultChildCellClick?.(item, 'all', 'all');
+                                }
+                              }}
+                            >
+                              <div className="leading-snug">
+                                <div>{khmerPart}</div>
+                                {englishPart && (
+                                  <div className="text-[11px] text-muted-foreground">({englishPart})</div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="border-r border-border/20 px-3 py-2 text-right text-xs">{item.younger.age}</td>
+                          <td
+                            className="cursor-pointer border-r border-border/20 px-3 py-2 text-right text-xs tabular-nums hover:bg-muted/30 transition-colors duration-150"
+                            onClick={() => onAdultChildCellClick?.(item, 'younger', 'male')}
                           >
-                            <div className="leading-snug">
-                              <div>{khmerPart}</div>
-                              {englishPart && (
-                                <div className="text-[11px] text-muted-foreground">({englishPart})</div>
-                              )}
-                            </div>
+                            {formatValue(item.younger.male)}
                           </td>
-                          <td className="border-r border-border/50 px-3 py-2 text-right text-xs">{item.younger.age}</td>
-                        <td
-                          className="cursor-pointer border-r border-border/50 px-3 py-2 text-right text-xs tabular-nums hover:bg-muted/40"
-                          onClick={() => onAdultChildCellClick?.(item, 'younger', 'male')}
-                        >
-                          {formatValue(item.younger.male)}
-                        </td>
-                        <td
-                          className="cursor-pointer border-r border-border/50 px-3 py-2 text-right text-xs tabular-nums hover:bg-muted/40"
-                          onClick={() => onAdultChildCellClick?.(item, 'younger', 'female')}
-                        >
-                          {formatValue(item.younger.female)}
-                        </td>
-                        <td
-                          className="cursor-pointer border-r border-border/50 px-3 py-2 text-right text-xs font-medium tabular-nums hover:bg-muted/40"
-                          onClick={() => onAdultChildCellClick?.(item, 'younger', 'total')}
-                        >
-                          {formatValue(item.younger.total)}
-                        </td>
-                        {showQueryMs && (
-                          <td rowSpan={3} className="border-border/50 px-3 py-2 align-middle text-right text-xs tabular-nums text-muted-foreground">
-                            {item.queryMs != null ? formatValue(item.queryMs) : '-'}
+                          <td
+                            className="cursor-pointer border-r border-border/20 px-3 py-2 text-right text-xs tabular-nums hover:bg-muted/30 transition-colors duration-150"
+                            onClick={() => onAdultChildCellClick?.(item, 'younger', 'female')}
+                          >
+                            {formatValue(item.younger.female)}
                           </td>
-                        )}
-                      </tr>
-                      <tr className="hover:bg-muted/15">
-                        <td className="border-r border-border/50 px-3 py-2 text-right text-xs">{item.older.age}</td>
-                        <td
-                          className="cursor-pointer border-r border-border/50 px-3 py-2 text-right text-xs tabular-nums hover:bg-muted/40"
-                          onClick={() => onAdultChildCellClick?.(item, 'older', 'male')}
-                        >
-                          {formatValue(item.older.male)}
-                        </td>
-                        <td
-                          className="cursor-pointer border-r border-border/50 px-3 py-2 text-right text-xs tabular-nums hover:bg-muted/40"
-                          onClick={() => onAdultChildCellClick?.(item, 'older', 'female')}
-                        >
-                          {formatValue(item.older.female)}
-                        </td>
-                        <td
-                          className="cursor-pointer border-r border-border/50 px-3 py-2 text-right text-xs font-medium tabular-nums hover:bg-muted/40"
-                          onClick={() => onAdultChildCellClick?.(item, 'older', 'total')}
-                        >
-                          {formatValue(item.older.total)}
-                        </td>
-                      </tr>
-                      <tr className="bg-muted/50 hover:bg-muted/60">
-                        <td className="border-r border-border/50 px-3 py-2 text-right text-xs font-semibold">{item.subtotal.age}</td>
-                        <td
-                          className="cursor-pointer border-r border-border/50 px-3 py-2 text-right text-xs font-semibold tabular-nums text-report-male hover:bg-muted/40"
-                          onClick={() => onAdultChildCellClick?.(item, 'subtotal', 'male')}
-                        >
-                          {formatValue(item.subtotal.male)}
-                        </td>
-                        <td
-                          className="cursor-pointer border-r border-border/50 px-3 py-2 text-right text-xs font-semibold tabular-nums text-report-female hover:bg-muted/40"
-                          onClick={() => onAdultChildCellClick?.(item, 'subtotal', 'female')}
-                        >
-                          {formatValue(item.subtotal.female)}
-                        </td>
-                        <td
-                          className="cursor-pointer border-r border-border/50 px-3 py-2 text-right text-xs font-bold tabular-nums underline hover:bg-muted/40"
-                          onClick={() => onAdultChildCellClick?.(item, 'subtotal', 'total')}
-                        >
-                          {formatValue(item.subtotal.total)}
-                        </td>
-                      </tr>
+                          <td
+                            className="cursor-pointer border-r border-border/20 px-3 py-2 text-right text-xs font-medium tabular-nums hover:bg-muted/30 transition-colors duration-150"
+                            onClick={() => onAdultChildCellClick?.(item, 'younger', 'total')}
+                          >
+                            {formatValue(item.younger.total)}
+                          </td>
+                          {showQueryMs && (
+                            <td rowSpan={3} className="border-border/20 px-3 py-2 align-middle text-right text-xs tabular-nums text-muted-foreground">
+                              {item.queryMs != null ? formatValue(item.queryMs) : '-'}
+                            </td>
+                          )}
+                        </tr>
+                        <tr className="hover:bg-muted/20 transition-colors duration-150">
+                          <td className="border-r border-border/20 px-3 py-2 text-right text-xs">{item.older.age}</td>
+                          <td
+                            className="cursor-pointer border-r border-border/20 px-3 py-2 text-right text-xs tabular-nums hover:bg-muted/30 transition-colors duration-150"
+                            onClick={() => onAdultChildCellClick?.(item, 'older', 'male')}
+                          >
+                            {formatValue(item.older.male)}
+                          </td>
+                          <td
+                            className="cursor-pointer border-r border-border/20 px-3 py-2 text-right text-xs tabular-nums hover:bg-muted/30 transition-colors duration-150"
+                            onClick={() => onAdultChildCellClick?.(item, 'older', 'female')}
+                          >
+                            {formatValue(item.older.female)}
+                          </td>
+                          <td
+                            className="cursor-pointer border-r border-border/20 px-3 py-2 text-right text-xs font-medium tabular-nums hover:bg-muted/30 transition-colors duration-150"
+                            onClick={() => onAdultChildCellClick?.(item, 'older', 'total')}
+                          >
+                            {formatValue(item.older.total)}
+                          </td>
+                        </tr>
+                        <tr className="bg-muted/10 hover:bg-muted/20 transition-colors duration-150">
+                          <td className="border-r border-border/20 px-3 py-2 text-right text-xs font-semibold">{item.subtotal.age}</td>
+                          <td
+                            className="cursor-pointer border-r border-border/20 px-3 py-2 text-right text-xs font-semibold tabular-nums text-report-male hover:bg-muted/30 transition-colors duration-150"
+                            onClick={() => onAdultChildCellClick?.(item, 'subtotal', 'male')}
+                          >
+                            {formatValue(item.subtotal.male)}
+                          </td>
+                          <td
+                            className="cursor-pointer border-r border-border/20 px-3 py-2 text-right text-xs font-semibold tabular-nums text-report-female hover:bg-muted/30 transition-colors duration-150"
+                            onClick={() => onAdultChildCellClick?.(item, 'subtotal', 'female')}
+                          >
+                            {formatValue(item.subtotal.female)}
+                          </td>
+                          <td
+                            className="cursor-pointer border-r border-border/20 px-3 py-2 text-right text-xs font-bold tabular-nums underline hover:bg-muted/30 transition-colors duration-150"
+                            onClick={() => onAdultChildCellClick?.(item, 'subtotal', 'total')}
+                          >
+                            {formatValue(item.subtotal.total)}
+                          </td>
+                        </tr>
                     </Fragment>
                     );
                   });
@@ -331,13 +331,13 @@ export default function ReportResultsPanel({
           typeof previewRows[0] === 'object' &&
           Object.prototype.hasOwnProperty.call(previewRows[0], 'sectionNumber') &&
           Object.prototype.hasOwnProperty.call(previewRows[0], 'rows') ? (
-          <div className="overflow-x-auto border border-border">
+          <div className="overflow-x-auto border border-border/20">
             <table className="w-full border-collapse text-xs">
               <thead>
-                <tr className="border-b border-border bg-muted">
-                  <th className="border-r border-border px-3 py-2 text-left font-semibold">Category</th>
-                  <th className="border-r border-border px-3 py-2 text-right font-semibold">Male</th>
-                  <th className="border-r border-border px-3 py-2 text-right font-semibold">Female</th>
+                <tr className="border-b border-border/20 bg-muted/15 text-[10px] font-semibold text-muted-foreground/85 uppercase tracking-wider">
+                  <th className="border-r border-border/20 px-3 py-2 text-left font-semibold">Category</th>
+                  <th className="border-r border-border/20 px-3 py-2 text-right font-semibold">Male</th>
+                  <th className="border-r border-border/20 px-3 py-2 text-right font-semibold">Female</th>
                   <th className="px-3 py-2 text-right font-semibold">Total</th>
                 </tr>
               </thead>
@@ -347,25 +347,25 @@ export default function ReportResultsPanel({
                   const rowCount = Math.max(rows.length, 1);
                   return rows.length > 0 ? (
                     rows.map((row, rowIdx) => (
-                      <tr key={`${section.sectionNumber}-${rowIdx}`} className={row.isSubtotal ? 'bg-muted/40 font-semibold' : ''}>
+                      <tr key={`${section.sectionNumber}-${rowIdx}`} className={row.isSubtotal ? 'bg-muted/10 font-semibold' : ''}>
                         {rowIdx === 0 && (
-                          <td rowSpan={rowCount} className="border-r border-b border-border px-3 py-2 align-top font-medium">
+                          <td rowSpan={rowCount} className="border-r border-b border-border/20 px-3 py-2 align-top font-medium">
                             {section.sectionNumber}. {section.sectionLabelEn || section.sectionLabelKh || `Section ${sectionIdx + 1}`}
                           </td>
                         )}
-                        <td className="border-r border-b border-border px-3 py-2 text-right tabular-nums">{formatValue(row.male)}</td>
-                        <td className="border-r border-b border-border px-3 py-2 text-right tabular-nums">{formatValue(row.female)}</td>
-                        <td className="border-b border-border px-3 py-2 text-right tabular-nums">{formatValue(row.total)}</td>
+                        <td className="border-r border-b border-border/20 px-3 py-2 text-right tabular-nums">{formatValue(row.male)}</td>
+                        <td className="border-r border-b border-border/20 px-3 py-2 text-right tabular-nums">{formatValue(row.female)}</td>
+                        <td className="border-b border-border/20 px-3 py-2 text-right tabular-nums">{formatValue(row.total)}</td>
                       </tr>
                     ))
                   ) : (
                     <tr key={`${section.sectionNumber}-empty`}>
-                      <td className="border-r border-b border-border px-3 py-2 align-top font-medium">
+                      <td className="border-r border-b border-border/20 px-3 py-2 align-top font-medium">
                         {section.sectionNumber}. {section.sectionLabelEn || section.sectionLabelKh || `Section ${sectionIdx + 1}`}
                       </td>
-                      <td className="border-r border-b border-border px-3 py-2 text-right">0</td>
-                      <td className="border-r border-b border-border px-3 py-2 text-right">0</td>
-                      <td className="border-b border-border px-3 py-2 text-right">0</td>
+                      <td className="border-r border-b border-border/20 px-3 py-2 text-right">0</td>
+                      <td className="border-r border-b border-border/20 px-3 py-2 text-right">0</td>
+                      <td className="border-b border-border/20 px-3 py-2 text-right">0</td>
                     </tr>
                   );
                 })}
@@ -373,12 +373,12 @@ export default function ReportResultsPanel({
             </table>
           </div>
         ) : (
-          <div className="max-h-[520px] overflow-auto border border-border">
+          <div className="max-h-[520px] overflow-auto border border-border/20">
             <Table>
-              <TableHeader className="sticky top-0 bg-muted">
+              <TableHeader className="sticky top-0 bg-muted/15">
                 <TableRow>
                   {Object.keys(previewRows[0] || {}).map((key) => (
-                    <TableHead key={key} className="text-foreground font-semibold">{key}</TableHead>
+                    <TableHead key={key} className="text-muted-foreground/85 font-semibold text-[10px] uppercase tracking-wider">{key}</TableHead>
                   ))}
                 </TableRow>
               </TableHeader>

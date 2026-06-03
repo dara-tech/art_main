@@ -1,4 +1,4 @@
-import { RiRefreshLine, RiShieldUserLine, RiUserAddLine, RiUserLine, RiUserSettingsLine } from '@remixicon/react';
+import { RiRefreshLine, RiShieldKeyholeLine, RiUserAddLine, RiGroupLine } from '@remixicon/react';
 import { cn } from '@/lib/utils';
 import { APP_NAV_ICON, appNavItemClass, p360ControlClass } from '../layout/appNavStyles';
 import { TOOLBAR_ICON } from '../layout/toolbarIconColors';
@@ -13,17 +13,11 @@ export default function AdminToolbar({
   loading = false
 }) {
   return (
-    <Patient360NavBar ariaLabel="Admin" rowCount={2}>
-      <Patient360NavRow>
-        <div className={cn(appNavItemClass(false), 'pointer-events-none border-transparent px-2')} title="Admin">
-          <RiUserSettingsLine className={cn(APP_NAV_ICON, 'shrink-0', TOOLBAR_ICON.brand)} aria-hidden />
-          <span className="sr-only font-semibold">Admin — Users, roles, and site scope</span>
-        </div>
-      </Patient360NavRow>
+    <Patient360NavBar ariaLabel="Admin" rowCount={1}>
 
       <Patient360NavRow tone="filters" className="gap-1">
         <VizToolbarBtn
-          icon={RiUserLine}
+          icon={RiGroupLine}
           iconClassName={TOOLBAR_ICON.blue}
           label="Users"
           active={tab === 'users'}
@@ -31,7 +25,7 @@ export default function AdminToolbar({
           aria-pressed={tab === 'users'}
         />
         <VizToolbarBtn
-          icon={RiShieldUserLine}
+          icon={RiShieldKeyholeLine}
           iconClassName={TOOLBAR_ICON.violet}
           label="Roles"
           active={tab === 'roles'}

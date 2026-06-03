@@ -115,7 +115,7 @@ export function VizPeriodAxis({
 }
 
 /** Flat legend row — no border-top (P360 style). */
-export function VizLegend({ items = [], typography, scrollable = false }) {
+export function VizLegend({ items = [], typography, scrollable = false, activeKeys, onToggle }) {
   if (!items.length) return null;
   const textStyle = typography
     ? { fontSize: typography.fontSize, fontWeight: typography.fontWeight }
@@ -133,24 +133,38 @@ export function VizLegend({ items = [], typography, scrollable = false }) {
       style={textStyle}
       aria-label="legend"
     >
-      {items.map((item) => (
-        <li
-          key={item.key}
-          className={cn(
-            'inline-flex min-w-0 items-center gap-1.5 text-muted-foreground',
-            scrollable && 'py-0.5'
-          )}
-        >
-          <span
-            className="size-2.5 shrink-0 border border-border/60"
-            style={{ backgroundColor: item.color }}
-            aria-hidden
-          />
-          <span className={cn('text-foreground', scrollable && 'truncate')} title={item.label}>
-            {item.label}
-          </span>
-        </li>
-      ))}
+      {items.map((item) => {
+        const isHidden = activeKeys && !activeKeys.has(item.key);
+        return (
+          <li
+            key={item.key}
+            className={cn(
+              'inline-flex min-w-0 items-center gap-1.5 text-muted-foreground select-none',
+              scrollable && 'py-0.5',
+              onToggle && 'cursor-pointer hover:text-foreground transition-opacity duration-150',
+              isHidden && 'opacity-35 line-through'
+            )}
+            onClick={onToggle ? () => onToggle(item.key) : undefined}
+          >
+            {item.dashed ? (
+              <span
+                className="w-4 h-0.5 shrink-0 border-t-2 border-dashed"
+                style={{ borderColor: item.color }}
+                aria-hidden
+              />
+            ) : (
+              <span
+                className="size-2.5 shrink-0 border border-border/60"
+                style={{ backgroundColor: item.color }}
+                aria-hidden
+              />
+            )}
+            <span className={cn('text-foreground', scrollable && 'truncate')} title={item.label}>
+              {item.label}
+            </span>
+          </li>
+        );
+      })}
     </ul>
   );
 }

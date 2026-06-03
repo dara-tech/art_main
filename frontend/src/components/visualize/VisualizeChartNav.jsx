@@ -66,7 +66,12 @@ export default function VisualizeChartNav({
   chartSettings,
   onChartSettingsChange,
   catalog = [],
-  scopeMode = 'rollup'
+  scopeMode = 'rollup',
+  sites = [],
+  siteCode = '',
+  compareSiteCodes = [],
+  indicatorIds = [],
+  periodKeys = []
 }) {
   const indicators = listIndicatorsFromResults(results, catalog);
   const showDemo = indicators.some((i) => hasDemographicChartData(results, i.id));
@@ -120,19 +125,8 @@ export default function VisualizeChartNav({
         selectedIds={chartIndicatorIds}
         onChange={onChartIndicatorIdsChange}
         single={panel === 'demographics'}
+        maxSeries={Number(chartSettings?.maxChartSeries) || 6}
       />
-
-      {panel === 'trend' || panel === 'snapshot' || panel === 'demographics' ? (
-        <VisualizeChartSettings
-          settings={chartSettings}
-          onChange={onChartSettingsChange}
-          series={chartSeries}
-          colorByFacility={facilityCompare}
-          chartVariant={variant}
-          onChartVariantChange={onVariantChange}
-          panel={panel}
-        />
-      ) : null}
 
       {panel === 'trend' ? (
         <>
@@ -171,6 +165,27 @@ export default function VisualizeChartNav({
             />
           ) : null}
         </>
+      ) : null}
+
+      {panel === 'trend' || panel === 'snapshot' || panel === 'demographics' ? (
+        <div className="ml-auto flex shrink-0 items-center">
+          <VisualizeChartSettings
+            settings={chartSettings}
+            onChange={onChartSettingsChange}
+            series={chartSeries}
+            colorByFacility={facilityCompare}
+            chartVariant={variant}
+            onChartVariantChange={onVariantChange}
+            panel={panel}
+            sites={sites}
+            siteCode={siteCode}
+            compareSiteCodes={compareSiteCodes}
+            indicatorIds={indicatorIds}
+            periodKeys={periodKeys}
+            catalog={catalog}
+            scopeMode={scopeMode}
+          />
+        </div>
       ) : null}
     </div>
   );

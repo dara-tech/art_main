@@ -31,15 +31,29 @@ function TableContent({
   sortKey,
   sortDirection,
   onSortColumn,
-  compactBodyRows = false
+  compactBodyRows = false,
+  density = 'normal',
+  fontSize = 'normal',
+  fixRowHeaders = false
 }) {
-  const bodyRowInner = compactBodyRows ? P360_TABLE_BODY_ROW_INNER : P360_TABLE_ROW_INNER;
-  const bodyRowH = compactBodyRows ? 'h-7 min-h-7' : 'h-8 min-h-8';
+  const bodyRowH = density === 'compact'
+    ? 'h-7 min-h-7'
+    : density === 'comfortable'
+      ? 'h-10 min-h-10'
+      : 'h-8 min-h-8';
+
+  const bodyRowInner = density === 'compact'
+    ? P360_TABLE_BODY_ROW_INNER
+    : density === 'comfortable'
+      ? cn(P360_TABLE_ROW_INNER, 'min-h-10 py-2.5')
+      : P360_TABLE_ROW_INNER;
+
   const tableMinWidth = sizedColumns.reduce((sum, col) => sum + col._w, 0);
+  const textSizeClass = fontSize === 'small' ? 'text-[10px]' : fontSize === 'large' ? 'text-[12px]' : 'text-[11px]';
 
   return (
     <table
-      className="border-collapse text-[11px] table-fixed"
+      className={cn("border-collapse table-fixed", textSizeClass)}
       style={{ width: tableMinWidth, minWidth: '100%' }}
     >
       <colgroup>
@@ -48,8 +62,8 @@ function TableContent({
         ))}
       </colgroup>
       <thead>
-        <tr className="border-0 border-b border-border/80 bg-muted">
-          {sizedColumns.map((col) => {
+        <tr className="border-0 border-b border-border/20 bg-muted/50">
+          {sizedColumns.map((col, colIndex) => {
             const sortable = Boolean(onSortColumn);
             const active = sortable && sortKey === col.id;
             const inner = (
@@ -58,20 +72,25 @@ function TableContent({
                 {sortable ? <SortIndicator active={active} direction={sortDirection} /> : null}
               </>
             );
+            const isFirstCol = colIndex === 0;
+            const isStickyLeft = fixRowHeaders && isFirstCol;
             return (
               <th
                 key={col.id}
                 scope="col"
                 title={col.label}
                 className={cn(
-                  'h-8 min-h-8 p-0 align-middle font-medium text-foreground border-0',
+                  'h-8 min-h-8 p-0 align-middle font-semibold text-muted-foreground uppercase tracking-wider text-[10px] border-0',
                   col.align === 'right' ? 'text-right' : 'text-left',
                   stickyHeader &&
                     (scrollBody
-                      ? 'sticky top-0 z-20 border-0 border-b border-border/80 bg-muted'
-                      : 'sticky top-0 z-10 border-0 bg-muted/95 backdrop-blur-sm'),
+                      ? 'sticky top-0 z-20 border-0 border-b border-border/20 bg-muted/95 backdrop-blur-md'
+                      : 'sticky top-0 z-10 border-0 bg-muted/95 backdrop-blur-md'),
+                  isStickyLeft && 'sticky left-0 border-r border-r-border/30 bg-muted/95 shadow-[1px_0_3px_rgba(0,0,0,0.04)]',
+                  stickyHeader && isStickyLeft && 'z-30',
                   col.headerClassName
                 )}
+                style={isStickyLeft ? { left: 0 } : undefined}
               >
                 {sortable ? (
                   <button
@@ -86,9 +105,9 @@ function TableContent({
                     }
                     aria-sort={active ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
                     className={cn(
-                      'h-8 min-h-8 w-full cursor-pointer select-none border-0 bg-transparent p-0 font-medium text-foreground',
-                      'hover:text-foreground/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-                      active && 'text-foreground'
+                      'h-8 min-h-8 w-full cursor-pointer select-none border-0 bg-transparent p-0 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]',
+                      'hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                      active && 'text-foreground font-bold'
                     )}
                   >
                     <span className={cn(P360_TABLE_ROW_INNER, col.align === 'right' && 'justify-end')}>
@@ -130,9 +149,9 @@ function TableContent({
               key={key}
               className={cn(
                 bodyRowH,
-                'border-0 border-b border-border/40',
-                row.isTotal && 'font-semibold bg-muted/30 border-t border-t-border border-b-2 border-b-double border-b-border',
-                clickable && 'cursor-pointer hover:bg-muted/40'
+                'border-0 border-b border-border/20',
+                row.isTotal && 'font-semibold bg-muted/15 border-t border-t-border/30 border-b-2 border-b-double border-b-border/30',
+                clickable && 'cursor-pointer group hover:bg-muted/20 transition-colors duration-150'
               )}
               onClick={
                 clickable
@@ -143,7 +162,7 @@ function TableContent({
                   : undefined
               }
             >
-              {sizedColumns.map((col) => {
+              {sizedColumns.map((col, colIndex) => {
                 const raw = col.getValue ? col.getValue(row) : row[col.id];
                 const text = raw == null || raw === '' ? '—' : String(raw);
                 const content = col.renderCell ? (
@@ -160,11 +179,22 @@ function TableContent({
                     {text}
                   </span>
                 );
+                const isFirstCol = colIndex === 0;
+                const isStickyLeft = fixRowHeaders && isFirstCol;
                 return (
                   <td
                     key={col.id}
                     title={typeof text === 'string' ? text : undefined}
-                    className={cn(bodyRowH, 'p-0 align-middle border-0', col.cellClassName)}
+                    className={cn(
+                      bodyRowH,
+                      'p-0 align-middle border-0 bg-card',
+                      isStickyLeft && cn(
+                        'sticky left-0 border-r border-r-border/30 shadow-[1px_0_3px_rgba(0,0,0,0.04)]',
+                        row.isTotal ? 'bg-muted/15 z-20' : 'bg-card z-10 group-hover:bg-muted/20 transition-colors duration-150'
+                      ),
+                      col.cellClassName
+                    )}
+                    style={isStickyLeft ? { left: 0 } : undefined}
                   >
                     {content}
                   </td>
@@ -197,7 +227,10 @@ export default function Patient360DataTable({
   sortKey,
   sortDirection,
   onSortColumn,
-  compactBodyRows = false
+  compactBodyRows = false,
+  density = 'normal',
+  fontSize = 'normal',
+  fixRowHeaders = false
 }) {
   const sizedColumns = useMemo(
     () =>
@@ -246,6 +279,9 @@ export default function Patient360DataTable({
             sortDirection={sortDirection}
             onSortColumn={onSortColumn}
             compactBodyRows={compactBodyRows}
+            density={density}
+            fontSize={fontSize}
+            fixRowHeaders={fixRowHeaders}
           />
         </div>
       </div>
@@ -271,6 +307,9 @@ export default function Patient360DataTable({
         sortDirection={sortDirection}
         onSortColumn={onSortColumn}
         compactBodyRows={compactBodyRows}
+        density={density}
+        fontSize={fontSize}
+        fixRowHeaders={fixRowHeaders}
       />
     </div>
   );

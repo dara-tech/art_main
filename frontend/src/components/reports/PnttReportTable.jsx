@@ -75,19 +75,19 @@ function renderMainHeader(type = 'default') {
     ? ['ធ្លាប់', '៦ខែ', 'មិនធ្លាប់', 'ធ្លាប់', '៦ខែ', 'មិនធ្លាប់']
     : ['ប្រុស', 'ស្រី', 'សរុប', 'ប្រុស', 'ស្រី', 'សរុប'];
     return (
-    <thead>
-      <tr className="border-b border-border/50 bg-muted">
-        <th className="w-[48%] border-r border-border/50 px-3 py-2 text-left align-middle text-xs font-bold text-foreground" rowSpan={2}>{firstColTitle}</th>
-        <th className="border-r border-border/50 bg-muted px-2 py-2 text-center text-xs font-bold text-foreground" colSpan={3}>អ្នកចុះឈ្មោះថ្មី</th>
-        <th className="border-r border-border/50 bg-muted px-2 py-2 text-center text-xs font-bold text-foreground" colSpan={3}>ករណីតាមដានបន្ត</th>
+    <thead className="sticky top-0 z-10 border-b border-border/20 bg-muted/95 backdrop-blur-md">
+      <tr className="border-b border-border/20 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+        <th className="w-[48%] border-r border-border/20 px-3 py-2 text-left align-middle" rowSpan={2}>{firstColTitle}</th>
+        <th className="border-r border-border/20 px-2 py-2 text-center bg-muted/30" colSpan={3}>អ្នកចុះឈ្មោះថ្មី</th>
+        <th className="border-r border-border/20 px-2 py-2 text-center bg-muted/30" colSpan={3}>ករណីតាមដានបន្ត</th>
       </tr>
-      <tr className="border-b border-border/50 bg-muted">
-        <th className="w-[12%] border-r border-border/50 px-2 py-1.5 text-center text-xs font-medium text-foreground">{subHeaders[0]}</th>
-        <th className="w-[12%] border-r border-border/50 px-2 py-1.5 text-center text-xs font-medium text-foreground">{subHeaders[1]}</th>
-        <th className="w-[12%] border-r border-border/50 px-2 py-1.5 text-center text-xs font-medium text-foreground">{subHeaders[2]}</th>
-        <th className="w-[12%] border-r border-border/50 px-2 py-1.5 text-center text-xs font-medium text-foreground">{subHeaders[3]}</th>
-        <th className="w-[12%] border-r border-border/50 px-2 py-1.5 text-center text-xs font-medium text-foreground">{subHeaders[4]}</th>
-        <th className="w-[12%] border-r border-border/50 px-2 py-1.5 text-center text-xs font-medium text-foreground">{subHeaders[5]}</th>
+      <tr className="border-b border-border/20 bg-muted/30 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+        <th className="w-[12%] border-r border-border/20 px-2 py-1.5 text-center">{subHeaders[0]}</th>
+        <th className="w-[12%] border-r border-border/20 px-2 py-1.5 text-center">{subHeaders[1]}</th>
+        <th className="w-[12%] border-r border-border/20 px-2 py-1.5 text-center">{subHeaders[2]}</th>
+        <th className="w-[12%] border-r border-border/20 px-2 py-1.5 text-center">{subHeaders[3]}</th>
+        <th className="w-[12%] border-r border-border/20 px-2 py-1.5 text-center">{subHeaders[4]}</th>
+        <th className="w-[12%] border-r border-border/20 px-2 py-1.5 text-center">{subHeaders[5]}</th>
       </tr>
     </thead>
   );
@@ -105,14 +105,14 @@ function RiskBlock({ sections, formatValue, onCellClick }) {
         const nRow = newRows[i] || {};
         const oRow = oldRows[i] || {};
         return (
-          <tr key={`risk-${i}`} className={`${i % 2 ? 'bg-muted/20' : ''} hover:bg-muted/25`}>
-            <td className="border border-border/50 px-3 py-2 align-top text-xs font-medium text-foreground wrap-break-word w-[28%]">{i + 1}. {RISK_INDICATOR_KHMER[i] || `កត្តាប្រឈម ${i + 1}`}</td>
-            <td className="cursor-pointer border border-border/50 px-2 py-2 text-right text-xs tabular-nums text-report-male hover:bg-muted/40" onClick={() => onCellClick?.(newSec, nRow, i, 'ever')}>{formatValue(asNum(nRow.ever))}</td>
-            <td className="cursor-pointer border border-border/50 px-2 py-2 text-right text-xs tabular-nums text-report-female hover:bg-muted/40" onClick={() => onCellClick?.(newSec, nRow, i, 'sixMonths')}>{formatValue(asNum(nRow.sixMonths))}</td>
-            <td className="cursor-pointer border border-border/50 px-2 py-2 text-right text-xs tabular-nums hover:bg-muted/40" onClick={() => onCellClick?.(newSec, nRow, i, 'never')}>{formatValue(asNum(nRow.never))}</td>
-            <td className="cursor-pointer border border-border/50 px-2 py-2 text-right text-xs tabular-nums text-report-male hover:bg-muted/40" onClick={() => onCellClick?.(oldSec, oRow, i, 'ever')}>{formatValue(asNum(oRow.ever))}</td>
-            <td className="cursor-pointer border border-border/50 px-2 py-2 text-right text-xs tabular-nums text-report-female hover:bg-muted/40" onClick={() => onCellClick?.(oldSec, oRow, i, 'sixMonths')}>{formatValue(asNum(oRow.sixMonths))}</td>
-            <td className="cursor-pointer border border-border/50 px-2 py-2 text-right text-xs tabular-nums hover:bg-muted/40" onClick={() => onCellClick?.(oldSec, oRow, i, 'never')}>{formatValue(asNum(oRow.never))}</td>
+          <tr key={`risk-${i}`} className={`${i % 2 ? 'bg-muted/5' : ''} hover:bg-muted/20 transition-colors duration-150`}>
+            <td className="border border-border/20 px-3 py-2 align-top text-xs font-medium text-foreground wrap-break-word w-[28%]">{i + 1}. {RISK_INDICATOR_KHMER[i] || `កត្តាប្រឈម ${i + 1}`}</td>
+            <td className="cursor-pointer border border-border/20 px-2 py-2 text-right text-xs tabular-nums text-report-male hover:bg-muted/30 transition-colors duration-150" onClick={() => onCellClick?.(newSec, nRow, i, 'ever')}>{formatValue(asNum(nRow.ever))}</td>
+            <td className="cursor-pointer border border-border/20 px-2 py-2 text-right text-xs tabular-nums text-report-female hover:bg-muted/30 transition-colors duration-150" onClick={() => onCellClick?.(newSec, nRow, i, 'sixMonths')}>{formatValue(asNum(nRow.sixMonths))}</td>
+            <td className="cursor-pointer border border-border/20 px-2 py-2 text-right text-xs tabular-nums hover:bg-muted/30 transition-colors duration-150" onClick={() => onCellClick?.(newSec, nRow, i, 'never')}>{formatValue(asNum(nRow.never))}</td>
+            <td className="cursor-pointer border border-border/20 px-2 py-2 text-right text-xs tabular-nums text-report-male hover:bg-muted/30 transition-colors duration-150" onClick={() => onCellClick?.(oldSec, oRow, i, 'ever')}>{formatValue(asNum(oRow.ever))}</td>
+            <td className="cursor-pointer border border-border/20 px-2 py-2 text-right text-xs tabular-nums text-report-female hover:bg-muted/30 transition-colors duration-150" onClick={() => onCellClick?.(oldSec, oRow, i, 'sixMonths')}>{formatValue(asNum(oRow.sixMonths))}</td>
+            <td className="cursor-pointer border border-border/20 px-2 py-2 text-right text-xs tabular-nums hover:bg-muted/30 transition-colors duration-150" onClick={() => onCellClick?.(oldSec, oRow, i, 'never')}>{formatValue(asNum(oRow.never))}</td>
           </tr>
         );
       })}
@@ -124,14 +124,14 @@ function FlatRowsBlock({ rows, formatValue, onCellClick }) {
   return (
     <tbody>
       {rows.map((r) => (
-        <tr key={r.key} className={r.isSubtotal ? 'bg-muted font-semibold' : 'hover:bg-muted/25'}>
-          <td className="border border-border/50 px-3 py-2 text-xs text-foreground">{r.label}</td>
-          <td className="cursor-pointer border border-border/50 px-2 py-2 text-right text-xs tabular-nums text-report-male hover:bg-muted/40" onClick={() => r.newSection && onCellClick?.(r.newSection, r.newRow || {}, 0, 'male')}>{formatValue(r.newMale)}</td>
-          <td className="cursor-pointer border border-border/50 px-2 py-2 text-right text-xs tabular-nums text-report-female hover:bg-muted/40" onClick={() => r.newSection && onCellClick?.(r.newSection, r.newRow || {}, 0, 'female')}>{formatValue(r.newFemale)}</td>
-          <td className={`cursor-pointer border border-border/50 px-2 py-2 text-right text-xs tabular-nums hover:bg-muted/40 ${r.isSubtotal ? 'font-bold underline text-foreground' : 'text-foreground'}`} onClick={() => r.newSection && onCellClick?.(r.newSection, r.newRow || {}, 0, 'total')}>{formatValue(r.newTotal)}</td>
-          <td className="cursor-pointer border border-border/50 px-2 py-2 text-right text-xs tabular-nums text-report-male hover:bg-muted/40" onClick={() => r.oldSection && onCellClick?.(r.oldSection, r.oldRow || {}, 0, 'male')}>{formatValue(r.oldMale)}</td>
-          <td className="cursor-pointer border border-border/50 px-2 py-2 text-right text-xs tabular-nums text-report-female hover:bg-muted/40" onClick={() => r.oldSection && onCellClick?.(r.oldSection, r.oldRow || {}, 0, 'female')}>{formatValue(r.oldFemale)}</td>
-          <td className={`cursor-pointer border border-border/50 px-2 py-2 text-right text-xs tabular-nums hover:bg-muted/40 ${r.isSubtotal ? 'font-bold underline text-foreground' : 'text-foreground'}`} onClick={() => r.oldSection && onCellClick?.(r.oldSection, r.oldRow || {}, 0, 'total')}>{formatValue(r.oldTotal)}</td>
+        <tr key={r.key} className={r.isSubtotal ? 'bg-muted/10 font-semibold' : 'hover:bg-muted/20 transition-colors duration-150'}>
+          <td className="border border-border/20 px-3 py-2 text-xs text-foreground">{r.label}</td>
+          <td className="cursor-pointer border border-border/20 px-2 py-2 text-right text-xs tabular-nums text-report-male hover:bg-muted/30 transition-colors duration-150" onClick={() => r.newSection && onCellClick?.(r.newSection, r.newRow || {}, 0, 'male')}>{formatValue(r.newMale)}</td>
+          <td className="cursor-pointer border border-border/20 px-2 py-2 text-right text-xs tabular-nums text-report-female hover:bg-muted/30 transition-colors duration-150" onClick={() => r.newSection && onCellClick?.(r.newSection, r.newRow || {}, 0, 'female')}>{formatValue(r.newFemale)}</td>
+          <td className={`cursor-pointer border border-border/20 px-2 py-2 text-right text-xs tabular-nums hover:bg-muted/30 transition-colors duration-150 ${r.isSubtotal ? 'font-bold underline text-foreground' : 'text-foreground'}`} onClick={() => r.newSection && onCellClick?.(r.newSection, r.newRow || {}, 0, 'total')}>{formatValue(r.newTotal)}</td>
+          <td className="cursor-pointer border border-border/20 px-2 py-2 text-right text-xs tabular-nums text-report-male hover:bg-muted/30 transition-colors duration-150" onClick={() => r.oldSection && onCellClick?.(r.oldSection, r.oldRow || {}, 0, 'male')}>{formatValue(r.oldMale)}</td>
+          <td className="cursor-pointer border border-border/20 px-2 py-2 text-right text-xs tabular-nums text-report-female hover:bg-muted/30 transition-colors duration-150" onClick={() => r.oldSection && onCellClick?.(r.oldSection, r.oldRow || {}, 0, 'female')}>{formatValue(r.oldFemale)}</td>
+          <td className={`cursor-pointer border border-border/20 px-2 py-2 text-right text-xs tabular-nums hover:bg-muted/30 transition-colors duration-150 ${r.isSubtotal ? 'font-bold underline text-foreground' : 'text-foreground'}`} onClick={() => r.oldSection && onCellClick?.(r.oldSection, r.oldRow || {}, 0, 'total')}>{formatValue(r.oldTotal)}</td>
         </tr>
       ))}
     </tbody>
@@ -224,7 +224,7 @@ export default function PnttReportTable({ sections = [], loading = false, format
         return (
           <div key={block.titleKh} className="space-y-2">
             <h2 className="py-2 text-center text-base font-bold text-foreground sm:text-lg">{block.titleKh}</h2>
-            <table className="w-full border-collapse border border-border/50 text-xs" style={{ tableLayout: 'fixed' }}>
+            <table className="w-full border-collapse border border-border/20 text-xs" style={{ tableLayout: 'fixed' }}>
               {renderMainHeader(block.type)}
               {block.type === 'risk'
                 ? <RiskBlock sections={sections} formatValue={formatValue} onCellClick={onCellClick} />

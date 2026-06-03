@@ -63,9 +63,19 @@ export default function VisualizeResults({
                   : 56,
         align: c.id === 'indicatorLabel' || c.id === 'periodLabel' || c.id === 'facilityLabel' || c.id === 'scopeLabel' ? undefined : 'right',
         mono: c.id !== 'indicatorLabel' && c.id !== 'periodLabel' && c.id !== 'facilityLabel' && c.id !== 'scopeLabel',
-        getValue: (r) => r[c.id]
+        getValue: (r) => {
+          const val = r[c.id];
+          const isNumeric = c.id !== 'indicatorLabel' && c.id !== 'periodLabel' && c.id !== 'facilityLabel' && c.id !== 'scopeLabel';
+          if (isNumeric && val != null && val !== '' && val !== '—') {
+            const separator = chartSettings?.digitSeparator || 'space';
+            if (separator === 'none') return val;
+            const sep = separator === 'comma' ? ',' : ' ';
+            return String(val).replace(/\B(?=(\d{3})+(?!\d))/g, sep);
+          }
+          return val;
+        }
       })),
-    [tableCols]
+    [tableCols, chartSettings?.digitSeparator]
   );
 
   if (!results.length) {
@@ -98,15 +108,32 @@ export default function VisualizeResults({
     );
   }
 
+  const tableTitle = chartSettings?.tableTitle;
+  const tableSubtitle = chartSettings?.tableSubtitle;
+
   return (
-    <Patient360DataTable
-      columns={columns}
-      rows={tableRows}
-      getRowKey={(r) => r._key}
-      scrollBody
-      fillHeight
-      emptyMessage={VIZ_KH.noResults}
-      className="min-h-0 flex-1"
-    />
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      {tableTitle && (
+        <div className="px-5 py-3 border-b border-border/80 bg-muted/5 flex flex-col gap-0.5 select-text">
+          <h3 className="text-xs font-bold text-foreground tracking-wide">{tableTitle}</h3>
+          {tableSubtitle && (
+            <p className="text-[10px] text-muted-foreground">{tableSubtitle}</p>
+          )}
+        </div>
+      )}
+      <Patient360DataTable
+        columns={columns}
+        rows={tableRows}
+        getRowKey={(r) => r._key}
+        scrollBody
+        fillHeight
+        emptyMessage={VIZ_KH.noResults}
+        className="min-h-0 flex-1"
+        density={chartSettings?.displayDensity || 'normal'}
+        fontSize={chartSettings?.tableFontSize || 'normal'}
+        stickyHeader={chartSettings?.fixColumnHeaders !== false}
+        fixRowHeaders={Boolean(chartSettings?.fixRowHeaders)}
+      />
+    </div>
   );
 }

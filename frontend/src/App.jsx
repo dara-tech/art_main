@@ -14,8 +14,6 @@ import ReportHomePage from './pages/ReportHomePage.jsx';
 
 const DocumentPage = lazy(() => import('./pages/DocumentPage.jsx'));
 const IndicatorDetailsPage = lazy(() => import('./pages/IndicatorDetailsPage.jsx'));
-const QueryLayout = lazy(() => import('./components/queries/QueryLayout.jsx'));
-const QueryReferencePage = lazy(() => import('./pages/QueryReferencePage.jsx'));
 const DqaPage = lazy(() => import('./pages/DqaPage.jsx'));
 const AdminPage = lazy(() => import('./pages/AdminPage.jsx'));
 const RequireAdmin = lazy(() => import('./components/auth/RequireAdmin.jsx'));
@@ -44,6 +42,19 @@ function PageFallback() {
     <AppPageShell wide>
       <Patient360LoadingPanel label="កំពុងផ្ទុកទំព័រ…" minHeight="min-h-[40vh]" />
     </AppPageShell>
+  );
+}
+
+function GlobalGradients() {
+  return (
+    <svg width="0" height="0" style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }} aria-hidden="true">
+      <defs>
+        <linearGradient id="icon-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="var(--primary, #f97316)" />
+          <stop offset="100%" stopColor="var(--gradient-end, #ec4899)" />
+        </linearGradient>
+      </defs>
+    </svg>
   );
 }
 
@@ -80,6 +91,7 @@ function App() {
       <>
         <LoginPage />
         <Toaster {...toasterProps} />
+        <GlobalGradients />
       </>
     );
   }
@@ -92,9 +104,6 @@ function App() {
             <Route path="/reports" element={<ReportHomePage onLogout={logout} />} />
             <Route path="/" element={<Navigate to="/reports" replace />} />
             <Route path="/documents" element={<RequireNotGuestOrPdmo><DocumentPage onLogout={logout} /></RequireNotGuestOrPdmo>} />
-            <Route path="/queries" element={<RequireNotGuestOrPdmo><QueryLayout /></RequireNotGuestOrPdmo>}>
-              <Route index element={<QueryReferencePage />} />
-            </Route>
             <Route path="/dqa" element={<RequireNotGuestOrPdmo><DqaPage onLogout={logout} /></RequireNotGuestOrPdmo>} />
             <Route path="/patient-360" element={<RequireNotGuest><Patient360Page onLogout={logout} /></RequireNotGuest>} />
             <Route path="/country-analytics" element={<RequireNotGuestOrPdmo><CountryAnalyticsPage onLogout={logout} /></RequireNotGuestOrPdmo>} />
@@ -110,13 +119,13 @@ function App() {
               }
             />
             <Route path="/queries/dqa" element={<Navigate to="/dqa" replace />} />
-            <Route path="/queries/indicators" element={<Navigate to="/queries" replace />} />
             <Route path="/details/:indicatorId" element={<IndicatorDetailsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
       </AppLayout>
       <Toaster {...toasterProps} />
+      <GlobalGradients />
     </SitesProvider>
   );
 }

@@ -334,6 +334,7 @@ export default function VisualizePage() {
       compareSiteCodes={compareSiteCodes}
       onCompareSiteCodesChange={setCompareSiteCodes}
       maxCompareFacilities={vizLimits.maxCompareFacilities || VIZ_COMPARE_MAX}
+      indicatorIds={indicatorIds}
       indicatorCount={indicatorIds.length}
       periodKeys={periodKeys}
       onPeriodKeysChange={setPeriodKeys}

@@ -9,7 +9,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --app-topbar-h: 2rem;
+  --app-topbar-h: 2.5rem;
   --p360-row-h: 2rem;
   /* Unified warm paper surface — top nav, page canvas, and cards */
   --app-surface: oklch(0.995 0.004 82);
@@ -145,6 +145,16 @@
   /* Measured by Patient360Layout → --p360-toolbar-h (fallback only) */
   .pt-p360-toolbar {
     padding-top: var(--p360-toolbar-h, calc(var(--p360-row-h) * 3));
+  }
+
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
   }
 }
 

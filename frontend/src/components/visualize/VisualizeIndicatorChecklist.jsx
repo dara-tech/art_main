@@ -63,7 +63,8 @@ export default function VisualizeIndicatorChecklist({
   selectedIds = [],
   onChange,
   single = false,
-  disabled = false
+  disabled = false,
+  maxSeries = VIZ_CHART_SERIES_MAX
 }) {
   const [open, setOpen] = useState(false);
   const [dragId, setDragId] = useState('');
@@ -118,15 +119,15 @@ export default function VisualizeIndicatorChecklist({
       onChange?.(next);
       return;
     }
-    if (selectedIds.length >= VIZ_CHART_SERIES_MAX) {
-      toast.error(VIZ_KH.chartSeriesMax.replace('{n}', String(VIZ_CHART_SERIES_MAX)));
+    if (selectedIds.length >= maxSeries) {
+      toast.error(VIZ_KH.chartSeriesMax.replace('{n}', String(maxSeries)));
       return;
     }
     onChange?.([...selectedIds, id]);
   };
 
   const selectAll = () => {
-    const ids = indicators.slice(0, VIZ_CHART_SERIES_MAX).map((i) => i.id);
+    const ids = indicators.slice(0, maxSeries).map((i) => i.id);
     onChange?.(ids);
   };
 
@@ -248,7 +249,7 @@ export default function VisualizeIndicatorChecklist({
               P360_TABLE_TEXT
             )}
           >
-            {single ? VIZ_KH.chartPickOneHint : VIZ_KH.chartPickManyHint.replace('{n}', String(VIZ_CHART_SERIES_MAX))}
+            {single ? VIZ_KH.chartPickOneHint : VIZ_KH.chartPickManyHint.replace('{n}', String(maxSeries))}
           </p>
         </div>
       </ToolbarAnchoredPanel>

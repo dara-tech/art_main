@@ -226,23 +226,23 @@ export default function VisualizeCompareSitesModal({
             aria-modal="true"
             aria-labelledby="viz-compare-sites-title"
           >
-            <div className="flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden bg-card shadow-2xl">
-              <div className="flex items-center justify-between border-b border-border/80 bg-muted/35 px-6 py-4">
+            <div className="flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden bg-card shadow-2xl shadow-black/15 border-none rounded-2xl">
+              <div className="flex items-center justify-between bg-[#2a1720] border-b border-white/10 px-6 py-3.5 text-white">
                 <div>
-                  <div id="viz-compare-sites-title" className="text-lg font-semibold">
+                  <div id="viz-compare-sites-title" className="text-base font-semibold text-white">
                     {mt.title}
                   </div>
-                  <div className="mt-0.5 text-xs text-muted-foreground">
+                  <div className="mt-0.5 text-xs text-white/70">
                     {isProvinceMode ? mt.hintProvince : mt.hint}
                   </div>
                 </div>
                 <button
                   type="button"
-                  className="inline-flex h-9 w-9 items-center justify-center border border-border/80 bg-background hover:bg-muted"
                   onClick={() => setOpen(false)}
+                  className="inline-flex size-7 shrink-0 items-center justify-center rounded-md cursor-pointer text-white/70 hover:text-white hover:bg-white/10 transition-colors"
                   aria-label={mt.cancel}
                 >
-                  <RiCloseLine className="size-5" />
+                  <RiCloseLine className="size-4.5" />
                 </button>
               </div>
 

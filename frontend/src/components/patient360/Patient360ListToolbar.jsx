@@ -23,8 +23,8 @@ import { P360_KH } from '../../pages/patient360Kh';
 import { VizToolbarBtn } from '../visualize/visualizeToolbarUi';
 import { Patient360NavBar, Patient360NavRow } from './Patient360NavBar';
 
-/** 3 fixed rows: title · filters · programs+pager */
-export const P360_LIST_NAV_ROWS = 3;
+/** 2 fixed rows: filters · programs+pager */
+export const P360_LIST_NAV_ROWS = 2;
 
 export default function Patient360ListToolbar({
   sites,
@@ -51,15 +51,6 @@ export default function Patient360ListToolbar({
 }) {
   return (
     <Patient360NavBar ariaLabel={P360_KH.pageTitle} rowCount={P360_LIST_NAV_ROWS}>
-      <Patient360NavRow>
-        <div
-          className={cn(appNavItemClass(false), 'pointer-events-none border-transparent px-2')}
-          title={P360_KH.list.title}
-        >
-          <RiUserSearchLine className={cn(APP_NAV_ICON, 'shrink-0', TOOLBAR_ICON.amber)} aria-hidden />
-          <span className="sr-only font-semibold">{P360_KH.list.title}</span>
-        </div>
-      </Patient360NavRow>
 
       <Patient360NavRow tone="filters" className="gap-3">
         <SiteSelectModal

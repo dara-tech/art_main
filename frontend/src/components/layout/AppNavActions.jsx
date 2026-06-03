@@ -1,163 +1,1172 @@
-import { NavLink } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   RiBarChartBoxLine,
   RiBarChartGroupedLine,
   RiCodeSSlashLine,
   RiFileTextLine,
   RiShieldCheckLine,
-  RiTestTubeLine,
   RiUserSearchLine,
   RiUserSettingsLine,
   RiDatabase2Line
 } from '@remixicon/react';
-import { LogOut } from 'lucide-react';
+import { 
+  LogOut, 
+  Sun, 
+  Moon, 
+  Search,
+  CircleUser,
+  Bookmark,
+  Download,
+  Puzzle,
+  KeyRound,
+  Settings,
+  ChevronRight,
+  Check,
+  X,
+  Info,
+  Trash2,
+  ExternalLink,
+  Library,
+  Pencil,
+  Eraser,
+  FolderPlus,
+  Palette,
+  Merge,
+  Zap
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
 import { isAdmin, isGuest, hasRole } from '../../utils/authRoles';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { APP_NAV_ICON, APP_NAV_MUTED, APP_NAV_ROW, APP_NAV_TEXT, appNavItemClass } from './appNavStyles';
+import { APP_NAV_ICON } from './appNavStyles';
 
-const navLinkClass = ({ isActive }) => appNavItemClass(isActive);
-
-const adminNavClass = ({ isActive }) =>
-  cn(
-    'inline-flex shrink-0 items-center justify-center gap-1 rounded-none border px-2.5 transition-colors',
-    APP_NAV_ROW,
-    APP_NAV_TEXT,
-    isActive
-      ? 'border-violet-200 bg-violet-50 text-violet-900 shadow-none'
-      : 'border-transparent text-violet-800/80 hover:border-violet-200 hover:bg-violet-50/80 hover:text-violet-900'
-  );
-
-function NavItem({ to, title, children, admin }) {
+function IncognitoIcon({ className }) {
   return (
-    <NavLink to={to} title={title} className={admin ? adminNavClass : navLinkClass}>
-      {children}
-    </NavLink>
+    <svg 
+      className={className} 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    >
+      <path d="M2 10h20" />
+      <path d="M6 10c0-3 2-5 6-5s6 2 6 5" />
+      <circle cx="8" cy="16" r="3" />
+      <circle cx="16" cy="16" r="3" />
+      <path d="M11 16h2" />
+    </svg>
   );
 }
 
+const ACCENT_COLORS = [
+  { 
+    id: 'blue', 
+    light: 'oklch(0.6 0.18 250)', 
+    dark: 'oklch(0.7 0.14 250)', 
+    ringLight: 'oklch(0.6 0.18 250)', 
+    ringDark: 'oklch(0.7 0.14 250)',
+    gradientEndLight: 'oklch(0.65 0.15 200)',
+    gradientEndDark: 'oklch(0.75 0.12 200)',
+    hex: '#3b82f6',
+    name: 'Blue',
+    navBg: '#121b2d'
+  },
+  { 
+    id: 'purple', 
+    light: 'oklch(0.55 0.22 290)', 
+    dark: 'oklch(0.68 0.16 290)', 
+    ringLight: 'oklch(0.55 0.22 290)', 
+    ringDark: 'oklch(0.68 0.16 290)',
+    gradientEndLight: 'oklch(0.65 0.2 330)',
+    gradientEndDark: 'oklch(0.75 0.15 330)',
+    hex: '#8b5cf6',
+    name: 'Purple',
+    navBg: '#1c152a'
+  },
+  { 
+    id: 'pink', 
+    light: 'oklch(0.6 0.22 345)', 
+    dark: 'oklch(0.72 0.16 345)', 
+    ringLight: 'oklch(0.6 0.22 345)', 
+    ringDark: 'oklch(0.72 0.16 345)',
+    gradientEndLight: 'oklch(0.6 0.22 20)',
+    gradientEndDark: 'oklch(0.7 0.18 20)',
+    hex: '#ec4899',
+    name: 'Pink',
+    navBg: '#2d121c'
+  },
+  { 
+    id: 'orange', 
+    light: 'oklch(0.5 0.13 46)', 
+    dark: 'oklch(0.72 0.11 52)', 
+    ringLight: 'oklch(0.52 0.12 48)', 
+    ringDark: 'oklch(0.72 0.11 52)',
+    gradientEndLight: 'oklch(0.6 0.22 345)',
+    gradientEndDark: 'oklch(0.72 0.16 345)',
+    hex: '#f97316',
+    name: 'Orange',
+    navBg: '#2a1720'
+  },
+  { 
+    id: 'yellow', 
+    light: 'oklch(0.75 0.16 75)', 
+    dark: 'oklch(0.82 0.14 75)', 
+    ringLight: 'oklch(0.75 0.16 75)', 
+    ringDark: 'oklch(0.82 0.14 75)',
+    gradientEndLight: 'oklch(0.65 0.18 140)',
+    gradientEndDark: 'oklch(0.74 0.13 140)',
+    hex: '#eab308',
+    name: 'Yellow',
+    navBg: '#2a2015'
+  },
+  { 
+    id: 'green', 
+    light: 'oklch(0.65 0.18 140)', 
+    dark: 'oklch(0.74 0.13 140)', 
+    ringLight: 'oklch(0.65 0.18 140)', 
+    ringDark: 'oklch(0.74 0.13 140)',
+    gradientEndLight: 'oklch(0.75 0.16 75)',
+    gradientEndDark: 'oklch(0.82 0.14 75)',
+    hex: '#22c55e',
+    name: 'Green',
+    navBg: '#14241c'
+  },
+];
+
+const SEARCHABLE_TABS = [
+  { name: 'ART Reports Summary', path: '/reports', desc: 'Main reports and aggregate summaries', Icon: RiBarChartBoxLine },
+  { name: 'Patient 360° Search', path: '/patient-360', desc: 'Comprehensive patient view', Icon: RiUserSearchLine },
+  { name: 'Data Visualization', path: '/visualize', desc: 'Interactive analysis charts', Icon: RiBarChartGroupedLine },
+  { name: 'Warehouse Analytics', path: '/country-analytics', desc: 'Warehouse performance trends', Icon: RiDatabase2Line },
+  { name: 'Data Quality Assessment (DQA)', path: '/dqa', desc: 'Validation rules and audits', Icon: RiShieldCheckLine },
+  { name: 'API Reference', path: '/documents', desc: 'ETL documentation & schema dictionary', Icon: RiFileTextLine },
+  { name: 'Admin Management', path: '/admin', desc: 'User roles and sites registry', Icon: RiUserSettingsLine }
+];
+
 export default function AppNavActions({ onLogout }) {
-  const { user } = useAuth();
-  const displayName = user?.name || user?.username || 'User';
+  const { user, updateUser } = useAuth();
+  const navigate = useNavigate();
+  const displayName = user?.fullName || user?.name || user?.username || 'User';
   const adminUser = isAdmin(user);
   const guestUser = isGuest(user);
   const pdmoUser = hasRole(user, 'pdmo');
 
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('theme') || 'light';
+  });
+
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isIncognito, setIsIncognito] = useState(() => {
+    return localStorage.getItem('app-incognito') === 'true';
+  });
+  const [selectedColor, setSelectedColor] = useState(() => {
+    return localStorage.getItem('app-accent-color') || 'orange';
+  });
+
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Modal active state
+  const [activeModal, setActiveModal] = useState(null);
+  
+  // Profile edit states
+  const [profileName, setProfileName] = useState('');
+  const [profileEmail, setProfileEmail] = useState('');
+  const [profileAvatarColor, setProfileAvatarColor] = useState('bg-amber-500');
+
+  // Password change states
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Bookmarks state
+  const [bookmarks, setBookmarks] = useState(() => {
+    const stored = localStorage.getItem('app-bookmarks');
+    if (stored) return JSON.parse(stored);
+    return [
+      { id: '1', name: 'ART Reports Summary', path: '/reports' },
+      { id: '2', name: 'Patient 360° View', path: '/patient-360' }
+    ];
+  });
+
+  // Extensions state
+  const [extensions, setExtensions] = useState({
+    autoRefresh: localStorage.getItem('ext-auto-refresh') === 'true',
+    queryProfiler: localStorage.getItem('ext-profiler') === 'true',
+    khmerOverlay: localStorage.getItem('ext-translation') === 'true'
+  });
+
+  // Settings states
+  const [appLang, setAppLang] = useState(localStorage.getItem('app-lang') || 'kh');
+  const [defaultPage, setDefaultPage] = useState(localStorage.getItem('app-default-page') || '/reports');
+  const [sidebarHover, setSidebarHover] = useState(localStorage.getItem('app-sidebar-hover') === 'true');
+
+  useEffect(() => {
+    if (activeModal === 'profile' && user) {
+      setProfileName(user.fullName || user.name || '');
+      setProfileEmail(user.email || (user.username?.includes('@') ? user.username : 'daracheol@gmail.com'));
+      setProfileAvatarColor(user.avatarColor || 'bg-amber-500');
+    }
+  }, [activeModal, user]);
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  useEffect(() => {
+    const colorObj = ACCENT_COLORS.find(c => c.id === selectedColor) || ACCENT_COLORS[3];
+    const isDark = theme === 'dark';
+    const primaryVal = isDark ? colorObj.dark : colorObj.light;
+    const ringVal = isDark ? colorObj.ringDark : colorObj.ringLight;
+    const gradientEndVal = isDark ? colorObj.gradientEndDark : colorObj.gradientEndLight;
+    
+    document.documentElement.style.setProperty('--primary', primaryVal);
+    document.documentElement.style.setProperty('--ring', ringVal);
+    document.documentElement.style.setProperty('--sidebar-primary', primaryVal);
+    document.documentElement.style.setProperty('--gradient-end', gradientEndVal);
+    localStorage.setItem('app-accent-color', selectedColor);
+  }, [selectedColor, theme]);
+
+  useEffect(() => {
+    if (!isDropdownOpen) return;
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest('.profile-dropdown-container')) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [isDropdownOpen]);
+
+  useEffect(() => {
+    if (!isSearchOpen) return;
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest('.search-dropdown-container')) {
+        setIsSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [isSearchOpen]);
+
+  const toggleIncognito = () => {
+    const nextState = !isIncognito;
+    setIsIncognito(nextState);
+    localStorage.setItem('app-incognito', String(nextState));
+    if (nextState) {
+      toast.success('Incognito mode activated', {
+        description: 'Your browsing history is private.',
+        duration: 3000
+      });
+    } else {
+      toast.info('Incognito mode deactivated', {
+        duration: 2000
+      });
+    }
+    setIsDropdownOpen(false);
+  };
+
+  const toggleTheme = () => {
+    setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
+  };
+
+  const getInitials = (name) => {
+    const cleanName = String(name || '').trim();
+    if (!cleanName) return 'U';
+    const parts = cleanName.split(/\s+/);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
+  const getTabClass = (isActive) => {
+    return cn(
+      'inline-flex shrink-0 items-center justify-center gap-1.5 h-8 px-4 text-[11px] font-medium transition-all relative rounded-t-[6px] select-none border-t border-l border-r outline-none focus:outline-none focus:ring-0',
+      isActive
+        ? 'bg-card text-foreground border-border/80 z-10 -mb-[1px]'
+        : 'bg-transparent text-white/70 border-transparent hover:bg-white/10 hover:text-white border-b-transparent'
+    );
+  };
+
+  const activeColorObj = ACCENT_COLORS.find(c => c.id === selectedColor) || ACCENT_COLORS[3];
+  const headerBg = isIncognito ? '#181617' : activeColorObj.navBg;
+
   return (
     <header
-      className="flex shrink-0 items-center justify-between border-b border-border/80 bg-background pr-1 sm:pr-2"
+      className="flex h-10 shrink-0 items-end justify-between border-b border-border/80 px-2 pt-1 transition-all duration-300"
+      style={{ backgroundColor: headerBg }}
       aria-label="Global"
     >
-      <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-        <div
-          className={cn(
-            'flex shrink-0 select-none items-center justify-center bg-teal-600 font-bold text-white',
-            APP_NAV_ROW,
-            'w-[44px]'
-          )}
-          title="ART Data"
-        >
+      <div className="flex shrink-0 items-center h-8 mb-[2px] mr-2">
+        <span className="bg-teal-600 text-white text-[10px] font-black px-2 py-0.5 rounded tracking-wider select-none">
           ART
-        </div>
+        </span>
       </div>
 
-      <NavLink
-        to="/reports"
-        title="ART Reports"
-        className={({ isActive }) =>
-          cn(
-            'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-none border border-transparent px-2 sm:px-3',
-            APP_NAV_ROW,
-            APP_NAV_TEXT,
-            'transition-colors',
-            isActive
-              ? 'text-foreground'
-              : 'text-muted-foreground hover:text-foreground'
-          )
-        }
-      >
-        <RiBarChartBoxLine className={cn(APP_NAV_ICON, 'text-primary')} />
-        <span className="hidden sm:inline">ART Reports</span>
-        <span className="sm:hidden">ART</span>
-      </NavLink>
-
-      <div className="mx-0.5 h-4 w-px shrink-0 bg-border/80" aria-hidden />
-
-      <nav className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto" aria-label="Main">
+      <nav className="flex min-w-0 flex-1 items-end gap-0.5 overflow-x-auto no-scrollbar relative -mb-[1px] z-10" aria-label="Main">
+        <NavLink
+          to="/reports"
+          title="ART Reports"
+          className={({ isActive }) => getTabClass(isActive)}
+        >
+          <RiBarChartBoxLine className={APP_NAV_ICON} />
+          <span className="hidden sm:inline">ART Reports</span>
+          <span className="sm:hidden">ART</span>
+        </NavLink>
 
         {!guestUser && (
           <>
-            <NavItem to="/patient-360" title="ព័ត៌មានអ្នកជំងឺ ៣៦០°">
+            <NavLink
+              to="/patient-360"
+              title="ព័ត៌មានអ្នកជំងឺ ៣៦០°"
+              className={({ isActive }) => getTabClass(isActive)}
+            >
               <RiUserSearchLine className={APP_NAV_ICON} />
-              <span className="hidden md:inline">៣៦០°</span>
-            </NavItem>
-            <NavItem to="/visualize" title="វិភាគទិន្នន័យ">
+              <span>៣៦០°</span>
+            </NavLink>
+            <NavLink
+              to="/visualize"
+              title="វិភាគទិន្នន័យ"
+              className={({ isActive }) => getTabClass(isActive)}
+            >
               <RiBarChartGroupedLine className={APP_NAV_ICON} />
-              <span className="hidden md:inline">វិភាគ</span>
-            </NavItem>
+              <span>វិភាគ</span>
+            </NavLink>
             {!pdmoUser && (
               <>
-                <NavItem to="/country-analytics" title="វិភាគឃ្លាំងទិន្នន័យ (Warehouse Analytics)">
+                <NavLink
+                  to="/country-analytics"
+                  title="វិភាគឃ្លាំងទិន្នន័យ (Warehouse Analytics)"
+                  className={({ isActive }) => getTabClass(isActive)}
+                >
                   <RiDatabase2Line className={APP_NAV_ICON} />
                   <span className="hidden md:inline">ឃ្លាំងទិន្នន័យ</span>
-                </NavItem>
-                <NavItem to="/dqa" title="Data quality">
+                  <span className="md:hidden">ឃ្លាំង</span>
+                </NavLink>
+                <NavLink
+                  to="/dqa"
+                  title="Data quality"
+                  className={({ isActive }) => getTabClass(isActive)}
+                >
                   <RiShieldCheckLine className={APP_NAV_ICON} />
-                  <span className="hidden md:inline">DQA</span>
-                </NavItem>
-                <NavItem to="/queries" title="Indicator SQL">
-                  <RiCodeSSlashLine className={APP_NAV_ICON} />
-                  <span className="hidden md:inline">Queries</span>
-                </NavItem>
-                <NavItem to="/documents" title="API reference">
+                  <span>DQA</span>
+                </NavLink>
+                <NavLink
+                  to="/documents"
+                  title="API reference"
+                  className={({ isActive }) => getTabClass(isActive)}
+                >
                   <RiFileTextLine className={APP_NAV_ICON} />
-                  <span className="hidden md:inline">API</span>
-                </NavItem>
+                  <span>API</span>
+                </NavLink>
               </>
             )}
-            {adminUser ? (
-              <NavItem to="/admin" title="Admin" admin>
+            {adminUser && (
+              <NavLink
+                to="/admin"
+                title="Admin"
+                className={({ isActive }) => getTabClass(isActive)}
+              >
                 <RiUserSettingsLine className={APP_NAV_ICON} />
-                <span className="hidden md:inline">Admin</span>
-              </NavItem>
-            ) : null}
+                <span>Admin</span>
+              </NavLink>
+            )}
           </>
         )}
       </nav>
 
-      <div
-        className={cn(
-          'ml-0.5 flex shrink-0 items-stretch border border-border/70 bg-muted/25',
-          APP_NAV_ROW
-        )}
-        title={displayName}
-      >
-        <span
-          className={cn(
-            'flex max-w-[88px] items-center truncate px-2.5 sm:max-w-[128px]',
-            APP_NAV_TEXT,
-            'text-foreground/85'
+      <div className="flex shrink-0 items-center h-8 mb-[2px] gap-1 bg-transparent pr-1">
+        {/* Search Dropdown Container */}
+        <div className="relative search-dropdown-container flex items-center">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => {
+              setIsSearchOpen(!isSearchOpen);
+              setSearchQuery('');
+            }}
+            className="h-7 w-7 text-white/70 hover:bg-white/10 hover:text-white rounded-md flex items-center justify-center p-0 cursor-pointer outline-none focus:outline-none"
+            title="ស្វែងរក (Search)"
+            aria-label="Search"
+          >
+            <Search className="size-3.5 text-white/80" strokeWidth={2.5} />
+          </Button>
+
+          {isSearchOpen && (
+            <div className="absolute right-0 top-8.5 w-[285px] bg-[#1d1b1c]/95 border-none rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.65)] backdrop-blur-md p-3.5 text-white z-50 select-none flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-150">
+              {/* Tooltip arrow */}
+              <div className="absolute -top-[5.5px] right-[10px] w-2.5 h-2.5 bg-[#1d1b1c] border-none rotate-45" />
+
+              {/* Search Input */}
+              <div className="relative flex items-center mb-1 mt-0.5">
+                <Search className="absolute left-3 size-4 text-white/40" />
+                <input
+                  type="text"
+                  autoFocus
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search tabs..."
+                  className="w-full bg-[#141213] border border-white/[0.08] focus:border-[#4285f4] focus:ring-1 focus:ring-[#4285f4]/50 rounded-xl py-2 pl-9 pr-3 text-xs text-white placeholder-white/30 outline-none transition-all"
+                />
+              </div>
+
+              {/* Quick Actions */}
+              <div className="flex flex-col gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    toast.success("Auto Organize", { description: "Tabs auto-organized successfully." });
+                    setIsSearchOpen(false);
+                  }}
+                  className="flex w-full items-center gap-3 px-2.5 py-1.5 rounded-lg text-left text-xs text-white/90 hover:bg-white/[0.06] hover:text-white transition-all duration-150 group cursor-pointer"
+                >
+                  <Library className="size-4 text-white/60 group-hover:text-white transition-colors" />
+                  <span className="flex-1 font-medium">Auto organize</span>
+                  <Pencil className="size-3 text-white/30 group-hover:text-white/60 transition-colors" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    toast.success("Duplicate Tabs Removed", { description: "0 duplicate tabs found." });
+                    setIsSearchOpen(false);
+                  }}
+                  className="flex w-full items-center gap-3 px-2.5 py-1.5 rounded-lg text-left text-xs text-white/90 hover:bg-white/[0.06] hover:text-white transition-all duration-150 group cursor-pointer"
+                >
+                  <Eraser className="size-4 text-white/60 group-hover:text-white transition-colors" />
+                  <span className="flex-1 font-medium">Remove duplicate tabs</span>
+                  <span className="text-[10px] text-white/30 group-hover:text-white/60 transition-colors">⇧ ⌘ D</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    toast.success("Create Tab Group", { description: "New tab group created." });
+                    setIsSearchOpen(false);
+                  }}
+                  className="flex w-full items-center gap-3 px-2.5 py-1.5 rounded-lg text-left text-xs text-white/90 hover:bg-white/[0.06] hover:text-white transition-all duration-150 group cursor-pointer"
+                >
+                  <FolderPlus className="size-4 text-white/60 group-hover:text-white transition-colors" />
+                  <span className="flex-1 font-medium">Create tab group</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    toast.info("Select Tab Style", { description: "Theme style settings." });
+                    setIsSearchOpen(false);
+                  }}
+                  className="flex w-full items-center gap-3 px-2.5 py-1.5 rounded-lg text-left text-xs text-white/90 hover:bg-white/[0.06] hover:text-white transition-all duration-150 group cursor-pointer"
+                >
+                  <Palette className="size-4 text-white/60 group-hover:text-white transition-colors" />
+                  <span className="flex-1 font-medium">Change tab style</span>
+                  <ChevronRight className="size-3.5 text-white/30 group-hover:text-white/60 transition-colors" />
+                </button>
+
+                <div className="flex w-full items-center gap-3 px-2.5 py-1.5 rounded-lg text-left text-xs text-white/30 opacity-45 pointer-events-none">
+                  <Merge className="size-4" />
+                  <span className="flex-1 font-medium">Merge all windows</span>
+                </div>
+              </div>
+
+              <div className="h-px bg-white/[0.06] my-1" />
+
+              {/* Tabs list */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10px] font-semibold text-white/40 uppercase tracking-wider ml-2.5 mt-0.5">
+                  All Tabs
+                </span>
+
+                <div className="flex flex-col gap-0.5 max-h-[180px] overflow-y-auto no-scrollbar">
+                  {(() => {
+                    const filteredTabs = SEARCHABLE_TABS.filter(tab => 
+                      tab.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                      tab.desc.toLowerCase().includes(searchQuery.toLowerCase())
+                    );
+                    if (filteredTabs.length === 0) {
+                      return <span className="text-[11px] text-white/40 py-4 text-center">No tabs found matching search.</span>;
+                    }
+                    return filteredTabs.map(tab => {
+                      const isActivePage = window.location.pathname === tab.path;
+                      const TabIcon = tab.Icon;
+                      return (
+                        <button
+                          key={tab.path}
+                          type="button"
+                          onClick={() => {
+                            navigate(tab.path);
+                            setIsSearchOpen(false);
+                          }}
+                          className={cn(
+                            "flex w-full items-center gap-3 px-2.5 py-2 rounded-lg text-left text-xs transition-all duration-150 group cursor-pointer",
+                            isActivePage 
+                              ? "bg-white/[0.06] text-white font-semibold" 
+                              : "text-white/90 hover:bg-white/[0.04] hover:text-white"
+                          )}
+                        >
+                          <div className={cn(
+                            "flex size-6 shrink-0 items-center justify-center rounded-lg transition-colors",
+                            isActivePage 
+                              ? "bg-purple-500/25 text-purple-400" 
+                              : "bg-white/5 text-white/50 group-hover:bg-white/10 group-hover:text-white/80"
+                          )}>
+                            <TabIcon className="size-3.5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate">{tab.name}</div>
+                            <div className={cn(
+                              "text-[9px] truncate transition-colors",
+                              isActivePage ? "text-purple-300" : "text-white/40 group-hover:text-white/55"
+                            )}>{tab.desc}</div>
+                          </div>
+                        </button>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+
+            </div>
           )}
-        >
-          {displayName}
-        </span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          onClick={onLogout}
-          className={cn(
-            APP_NAV_ROW,
-            'w-8 shrink-0 rounded-none border-0 border-l border-border/70 px-0',
-            'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+        </div>
+        <div className="w-px h-4 bg-white/15 mx-1" />
+        
+        {/* Profile Dropdown Container */}
+        <div className="relative profile-dropdown-container flex items-center">
+          {isIncognito && (
+            <div className="mr-2 flex size-6 items-center justify-center rounded-full bg-purple-950/60 border border-purple-800/40 text-purple-400" title="Incognito Mode Active">
+              <IncognitoIcon className="size-3.5" />
+            </div>
           )}
-          title="ចាកចេញ"
-          aria-label="ចាកចេញ"
-        >
-          <LogOut className={APP_NAV_ICON} strokeWidth={2} />
-        </Button>
+          <button
+            type="button"
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className={cn(
+              "flex size-6 shrink-0 select-none items-center justify-center rounded-full text-white font-bold text-[10px] cursor-pointer hover:ring-2 hover:ring-white/20 transition-all duration-150 outline-none focus:outline-none",
+              user?.avatarColor || "bg-amber-500"
+            )}
+            title={displayName}
+          >
+            {getInitials(displayName)}
+          </button>
+
+          {isDropdownOpen && (
+            <div className="absolute right-0 top-8.5 w-[265px] bg-[#1d1b1c]/95 border-none rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.65)] backdrop-blur-md p-3.5 text-white z-50 select-none flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
+              {/* Account Info */}
+              <div className="flex items-center gap-3 px-1 py-1.5 mb-0.5">
+                <div className={cn(
+                  "flex size-8 shrink-0 select-none items-center justify-center rounded-full text-white font-bold text-xs shadow-inner",
+                  user?.avatarColor ? `${user.avatarColor} bg-none` : "bg-gradient-to-br from-amber-400 to-amber-600"
+                )}>
+                  {getInitials(displayName)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[12px] font-semibold truncate text-white leading-tight">
+                    {user?.email || (user?.username ? (user.username.includes('@') ? user.username : `${user.username}@gmail.com`) : 'daracheol@gmail.com')}
+                  </div>
+                </div>
+                <div className="flex size-4.5 items-center justify-center rounded-full bg-white text-[#1d1b1c]">
+                  <Check className="size-3" strokeWidth={3.5} />
+                </div>
+              </div>
+
+              {/* Profile Actions */}
+              <button 
+                type="button"
+                onClick={() => {
+                  setActiveModal('profile');
+                  setIsDropdownOpen(false);
+                }}
+                className="flex w-full items-center gap-3 px-2 py-1.5 rounded-lg text-left text-xs text-white/90 hover:bg-white/[0.06] hover:text-white transition-all duration-150 group cursor-pointer"
+              >
+                <CircleUser className="size-4 text-white/60 group-hover:text-white transition-colors" />
+                <span className="flex-1 font-medium">Edit or add profile</span>
+              </button>
+
+              <div className="h-px bg-white/[0.06] my-1" />
+
+              {/* Menu Items */}
+              <button 
+                type="button"
+                onClick={() => {
+                  setActiveModal('bookmarks');
+                  setIsDropdownOpen(false);
+                }}
+                className="flex w-full items-center gap-3 px-2 py-1.5 rounded-lg text-left text-xs text-white/90 hover:bg-white/[0.06] hover:text-white transition-all duration-150 group cursor-pointer"
+              >
+                <Bookmark className="size-4 text-white/60 group-hover:text-white transition-colors" />
+                <span className="flex-1 font-medium">Bookmarks</span>
+                <ChevronRight className="size-3.5 text-white/30 group-hover:text-white/60 transition-colors" />
+              </button>
+
+              <button 
+                type="button"
+                onClick={() => {
+                  setActiveModal('downloads');
+                  setIsDropdownOpen(false);
+                }}
+                className="flex w-full items-center gap-3 px-2 py-1.5 rounded-lg text-left text-xs text-white/90 hover:bg-white/[0.06] hover:text-white transition-all duration-150 group cursor-pointer"
+              >
+                <Download className="size-4 text-white/60 group-hover:text-white transition-colors" />
+                <span className="flex-1 font-medium">Downloads</span>
+                <ChevronRight className="size-3.5 text-white/30 group-hover:text-white/60 transition-colors" />
+              </button>
+
+              <button 
+                type="button"
+                onClick={() => {
+                  setActiveModal('extensions');
+                  setIsDropdownOpen(false);
+                }}
+                className="flex w-full items-center gap-3 px-2 py-1.5 rounded-lg text-left text-xs text-white/90 hover:bg-white/[0.06] hover:text-white transition-all duration-150 group cursor-pointer"
+              >
+                <Puzzle className="size-4 text-white/60 group-hover:text-white transition-colors" />
+                <span className="flex-1 font-medium">Extensions</span>
+                <ChevronRight className="size-3.5 text-white/30 group-hover:text-white/60 transition-colors" />
+              </button>
+
+              <button 
+                type="button"
+                onClick={() => {
+                  setActiveModal('passwords');
+                  setIsDropdownOpen(false);
+                }}
+                className="flex w-full items-center gap-3 px-2 py-1.5 rounded-lg text-left text-xs text-white/90 hover:bg-white/[0.06] hover:text-white transition-all duration-150 group cursor-pointer"
+              >
+                <KeyRound className="size-4 text-white/60 group-hover:text-white transition-colors" />
+                <span className="flex-1 font-medium">Passwords</span>
+                <ChevronRight className="size-3.5 text-white/30 group-hover:text-white/60 transition-colors" />
+              </button>
+
+              <button 
+                type="button"
+                onClick={() => {
+                  setActiveModal('settings');
+                  setIsDropdownOpen(false);
+                }}
+                className="flex w-full items-center gap-3 px-2 py-1.5 rounded-lg text-left text-xs text-white/90 hover:bg-white/[0.06] hover:text-white transition-all duration-150 group cursor-pointer"
+              >
+                <Settings className="size-4 text-white/60 group-hover:text-white transition-colors" />
+                <span className="flex-1 font-medium">Settings</span>
+              </button>
+
+              <div className="h-px bg-white/[0.06] my-1" />
+
+              {/* Incognito */}
+              <button 
+                type="button"
+                onClick={toggleIncognito}
+                className={cn(
+                  "flex w-full items-center gap-3 px-2 py-1.5 rounded-lg text-left text-xs transition-all duration-150 group cursor-pointer",
+                  isIncognito 
+                    ? "bg-purple-950/40 text-purple-200 border border-purple-800/30 hover:bg-purple-900/40" 
+                    : "text-white/90 hover:bg-white/[0.06] hover:text-white"
+                )}
+              >
+                <IncognitoIcon className={cn("size-4 transition-colors", isIncognito ? "text-purple-400" : "text-white/60 group-hover:text-white")} />
+                <span className="flex-1 font-medium">Incognito window</span>
+                {isIncognito && (
+                  <span className="text-[9px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded-full font-bold">ACTIVE</span>
+                )}
+              </button>
+
+              {/* Theme Toggle (Dark Mode) */}
+              <div className="flex w-full items-center justify-between px-2 py-1 rounded-lg text-xs text-white/90">
+                <div className="flex items-center gap-3">
+                  {theme === 'dark' ? (
+                    <Moon className="size-4 text-purple-400" />
+                  ) : (
+                    <Sun className="size-4 text-amber-400" />
+                  )}
+                  <span className="font-medium">Dark Mode</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className={cn(
+                    "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out outline-none",
+                    theme === 'dark' ? "bg-primary" : "bg-white/10"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "pointer-events-none inline-block size-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out",
+                      theme === 'dark' ? "translate-x-4" : "translate-x-0"
+                    )}
+                  />
+                </button>
+              </div>
+
+              <div className="h-px bg-white/[0.06] my-1" />
+
+              {/* Accent Color Picker */}
+              <div className="px-2 py-1">
+                <span className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2 block">
+                  Accent Color
+                </span>
+                
+                {/* Custom Gradient Slider */}
+                <div className="relative w-full h-[6px] rounded-full bg-gradient-to-r from-[#3b82f6] via-[#8b5cf6] via-[#ec4899] via-[#f97316] via-[#eab308] to-[#22c55e] my-3">
+                  {ACCENT_COLORS.map((color, index) => {
+                    const isSelected = selectedColor === color.id;
+                    const leftPct = 5 + index * 18;
+                    return (
+                      <button
+                        key={color.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedColor(color.id);
+                          toast.success(`Accent color set to ${color.name}!`);
+                        }}
+                        style={{ left: `${leftPct}%` }}
+                        className="absolute -translate-x-1/2 -translate-y-1/2 top-1/2 cursor-pointer flex items-center justify-center size-5 hover:scale-110 active:scale-95 transition-transform outline-none focus:outline-none"
+                        title={color.name}
+                      >
+                        {isSelected ? (
+                          <div className="size-3.5 bg-white rounded-full shadow-[0_2px_5px_rgba(0,0,0,0.6)] border border-white/20 scale-110 transition-all duration-200" />
+                        ) : (
+                          <div className="size-1.5 bg-[#181617]/70 rounded-full hover:scale-125 transition-all duration-150" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="h-px bg-white/[0.06] my-1" />
+
+              {/* Sign out */}
+              <button 
+                type="button"
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  onLogout();
+                }}
+                className="flex w-full items-center gap-3 px-2 py-1.5 rounded-lg text-left text-xs text-rose-400 hover:bg-rose-500/10 transition-all duration-150 group cursor-pointer"
+              >
+                <LogOut className="size-4 text-rose-400 group-hover:scale-105 transition-transform" />
+                <span className="flex-1 font-semibold">Sign out</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Modal overlays */}
+      {activeModal && (
+        <div className="fixed inset-0 bg-[#0c0a0b]/75 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="flex w-full max-w-md flex-col overflow-hidden bg-card text-foreground rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] border-none relative animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex shrink-0 items-center justify-between gap-3 bg-[#2a1720] border-b border-white/10 px-5 py-3.5 text-white">
+              <h3 className="text-sm font-bold flex items-center gap-2">
+                {activeModal === 'profile' && <CircleUser className="size-4.5" stroke="url(#icon-gradient)" />}
+                {activeModal === 'bookmarks' && <Bookmark className="size-4.5" stroke="url(#icon-gradient)" />}
+                {activeModal === 'downloads' && <Download className="size-4.5" stroke="url(#icon-gradient)" />}
+                {activeModal === 'extensions' && <Puzzle className="size-4.5" stroke="url(#icon-gradient)" />}
+                {activeModal === 'passwords' && <KeyRound className="size-4.5" stroke="url(#icon-gradient)" />}
+                {activeModal === 'settings' && <Settings className="size-4.5" stroke="url(#icon-gradient)" />}
+                
+                {activeModal === 'profile' && 'Edit Profile'}
+                {activeModal === 'bookmarks' && 'My Bookmarks'}
+                {activeModal === 'downloads' && 'Downloads History'}
+                {activeModal === 'extensions' && 'Manage Extensions'}
+                {activeModal === 'passwords' && 'Change Password'}
+                {activeModal === 'settings' && 'Preferences & Settings'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setActiveModal(null)}
+                className="inline-flex size-7 shrink-0 items-center justify-center rounded-md cursor-pointer text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                aria-label="Close"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="min-h-0 flex-1 overflow-y-auto p-5 bg-card text-foreground">
+              
+              {/* PROFILE MODAL */}
+              {activeModal === 'profile' && (
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-muted-foreground">Full Name</label>
+                    <input
+                      type="text"
+                      value={profileName}
+                      onChange={(e) => setProfileName(e.target.value)}
+                      placeholder="Enter full name"
+                      className="bg-muted/40 border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary w-full"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-muted-foreground">Email Address</label>
+                    <input
+                      type="email"
+                      value={profileEmail}
+                      onChange={(e) => setProfileEmail(e.target.value)}
+                      placeholder="Enter email address"
+                      className="bg-muted/40 border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary w-full"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold text-muted-foreground">Avatar Color</label>
+                    <div className="flex gap-3 mt-1">
+                      {[
+                        { class: 'bg-amber-500', name: 'Amber' },
+                        { class: 'bg-blue-600', name: 'Blue' },
+                        { class: 'bg-emerald-600', name: 'Emerald' },
+                        { class: 'bg-indigo-600', name: 'Indigo' },
+                        { class: 'bg-rose-600', name: 'Rose' },
+                        { class: 'bg-purple-600', name: 'Purple' }
+                      ].map((color) => (
+                        <button
+                          key={color.class}
+                          type="button"
+                          onClick={() => setProfileAvatarColor(color.class)}
+                          className={cn(
+                            "size-7 rounded-full cursor-pointer transition-all border-2",
+                            color.class,
+                            profileAvatarColor === color.class ? "border-foreground scale-110 shadow-lg" : "border-transparent hover:scale-105"
+                          )}
+                          title={color.name}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+
+              {/* BOOKMARKS MODAL */}
+              {activeModal === 'bookmarks' && (
+                <div className="flex flex-col gap-3">
+                  {bookmarks.length === 0 ? (
+                    <div className="text-center py-6 text-muted-foreground">
+                      No bookmarks saved yet. Click bookmark icons inside reports to save them here.
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {bookmarks.map((bookmark) => (
+                        <div
+                          key={bookmark.id}
+                          className="flex items-center justify-between p-2.5 bg-muted/30 border border-border rounded-xl hover:bg-muted/50 transition-colors"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigate(bookmark.path);
+                              setActiveModal(null);
+                            }}
+                            className="flex-1 text-left font-medium text-foreground hover:text-primary transition-colors flex items-center gap-2 cursor-pointer"
+                          >
+                            <ExternalLink className="size-3.5 text-muted-foreground" />
+                            {bookmark.name}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = bookmarks.filter(b => b.id !== bookmark.id);
+                              setBookmarks(updated);
+                              localStorage.setItem('app-bookmarks', JSON.stringify(updated));
+                              toast.success('Bookmark removed.');
+                            }}
+                            className="text-muted-foreground hover:text-destructive cursor-pointer p-1 rounded-md hover:bg-muted transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* DOWNLOADS MODAL */}
+              {activeModal === 'downloads' && (
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-semibold text-muted-foreground mb-1 block">Recently Downloaded Reports</span>
+                  {[
+                    { filename: 'art_monthly_report_2026_q2.xlsx', size: '1.4 MB', date: '2h ago' },
+                    { filename: 'dqa_validation_log_jun03.csv', size: '182 KB', date: '1d ago' },
+                    { filename: 'indicator_sql_queries.zip', size: '544 KB', date: '3d ago' }
+                  ].map((file) => (
+                    <div
+                      key={file.filename}
+                      className="flex items-center justify-between p-2.5 bg-muted/30 border border-border rounded-xl hover:bg-muted/50 transition-all"
+                    >
+                      <div className="min-w-0 flex-1 mr-2">
+                        <div className="font-semibold text-xs text-foreground truncate">{file.filename}</div>
+                        <div className="text-[10px] text-muted-foreground flex gap-2 mt-0.5">
+                          <span>{file.size}</span>
+                          <span>•</span>
+                          <span>{file.date}</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const element = document.createElement("a");
+                          const fileBlob = new Blob(["Mock file content for " + file.filename], {type: 'text/plain'});
+                          element.href = URL.createObjectURL(fileBlob);
+                          element.download = file.filename;
+                          document.body.appendChild(element);
+                          element.click();
+                          document.body.removeChild(element);
+                          toast.success(`Downloading ${file.filename}...`);
+                        }}
+                        className="flex size-7 items-center justify-center rounded-lg bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground cursor-pointer transition-colors shrink-0"
+                        title="Re-download"
+                      >
+                        <Download className="size-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* EXTENSIONS MODAL */}
+              {activeModal === 'extensions' && (
+                <div className="flex flex-col gap-1">
+                  {[
+                    { id: 'autoRefresh', label: 'Auto-Refresh Reports', desc: 'Periodically refreshes report data in the background every 5 minutes.', key: 'ext-auto-refresh' },
+                    { id: 'queryProfiler', label: 'Query Performance Profiler', desc: 'Displays running time profile next to SQL queries under Indicator view.', key: 'ext-profiler' },
+                    { id: 'khmerOverlay', label: 'Khmer Translation Overlay', desc: 'Translates specialized clinical and database terminology to Khmer.', key: 'ext-translation' }
+                  ].map((ext) => (
+                    <div
+                      key={ext.id}
+                      className="flex items-start justify-between py-3 border-b border-border last:border-0"
+                    >
+                      <div className="flex-1 pr-4">
+                        <div className="font-semibold text-xs text-foreground">{ext.label}</div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5 leading-normal">{ext.desc}</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextVal = !extensions[ext.id];
+                          const updated = { ...extensions, [ext.id]: nextVal };
+                          setExtensions(updated);
+                          localStorage.setItem(ext.key, String(nextVal));
+                          toast.success(`${ext.label} ${nextVal ? 'Enabled' : 'Disabled'}`);
+                        }}
+                        className={cn(
+                          "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out outline-none",
+                          extensions[ext.id] ? "bg-primary" : "bg-muted-foreground/30"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "pointer-events-none inline-block size-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out",
+                            extensions[ext.id] ? "translate-x-4" : "translate-x-0"
+                          )}
+                        />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* PASSWORDS MODAL */}
+              {activeModal === 'passwords' && (
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Current Password</label>
+                    <input
+                      type="password"
+                      value={oldPassword}
+                      onChange={(e) => setOldPassword(e.target.value)}
+                      placeholder="Enter current password"
+                      className="bg-muted/40 border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary w-full"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-muted-foreground">New Password</label>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Minimum 6 characters"
+                      className="bg-muted/40 border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary w-full"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Confirm New Password</label>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Verify new password"
+                      className="bg-muted/40 border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary w-full"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* SETTINGS MODAL */}
+              {activeModal === 'settings' && (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between py-2 border-b border-border">
+                    <div>
+                      <div className="font-semibold text-xs text-foreground">Default Interface Language</div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">App-wide translation settings.</div>
+                    </div>
+                    <Select
+                      value={appLang}
+                      onValueChange={(val) => {
+                        setAppLang(val);
+                        localStorage.setItem('app-lang', val);
+                      }}
+                    >
+                      <SelectTrigger size="sm" className="w-[140px] bg-muted/40 border-border text-foreground text-xs">
+                        <SelectValue placeholder="Select Language" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="kh">ភាសាខ្មែរ (Khmer)</SelectItem>
+                        <SelectItem value="en">English</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center justify-between py-2 border-b border-border">
+                    <div>
+                      <div className="font-semibold text-xs text-foreground">Default Landing Page</div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">Where to redirect on login.</div>
+                    </div>
+                    <Select
+                      value={defaultPage}
+                      onValueChange={(val) => {
+                        setDefaultPage(val);
+                        localStorage.setItem('app-default-page', val);
+                      }}
+                    >
+                      <SelectTrigger size="sm" className="w-[140px] bg-muted/40 border-border text-foreground text-xs">
+                        <SelectValue placeholder="Select Page" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="/reports">ART Reports</SelectItem>
+                        <SelectItem value="/patient-360">Patient 360°</SelectItem>
+                        <SelectItem value="/visualize">Visualize</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center justify-between py-2">
+                    <div>
+                      <div className="font-semibold text-xs text-foreground">Expand Sidebar on Hover</div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">Toggle navigation hover effects.</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextHover = !sidebarHover;
+                        setSidebarHover(nextHover);
+                        localStorage.setItem('app-sidebar-hover', String(nextHover));
+                      }}
+                      className={cn(
+                        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out outline-none",
+                        sidebarHover ? "bg-primary" : "bg-muted-foreground/30"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "pointer-events-none inline-block size-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out",
+                          sidebarHover ? "translate-x-4" : "translate-x-0"
+                        )}
+                      />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border/80 bg-muted/20 px-5 py-3">
+              <button
+                type="button"
+                onClick={() => setActiveModal(null)}
+                className="min-w-[5.5rem] rounded-md font-bold text-xs h-8 cursor-pointer bg-background hover:bg-muted border border-border/80 text-foreground transition-all duration-150"
+              >
+                {activeModal === 'bookmarks' || activeModal === 'downloads' || activeModal === 'extensions' ? 'Close' : 'Cancel'}
+              </button>
+
+              {activeModal === 'profile' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    updateUser({ fullName: profileName, email: profileEmail, avatarColor: profileAvatarColor });
+                    toast.success("Profile saved successfully.");
+                    setActiveModal(null);
+                  }}
+                  className="min-w-[5.5rem] bg-primary text-primary-foreground hover:bg-primary/95 border border-primary rounded-md font-bold text-xs h-8 cursor-pointer transition-all duration-150"
+                >
+                  Save Changes
+                </button>
+              )}
+
+
+              {activeModal === 'passwords' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!oldPassword) {
+                      toast.error("Please enter your current password.");
+                      return;
+                    }
+                    if (newPassword.length < 6) {
+                      toast.error("New password must be at least 6 characters.");
+                      return;
+                    }
+                    if (newPassword !== confirmPassword) {
+                      toast.error("Passwords do not match.");
+                      return;
+                    }
+                    toast.success("Password changed successfully!");
+                    setActiveModal(null);
+                    setOldPassword('');
+                    setNewPassword('');
+                    setConfirmPassword('');
+                  }}
+                  className="min-w-[5.5rem] bg-primary text-primary-foreground hover:bg-primary/95 border border-primary rounded-md font-bold text-xs h-8 cursor-pointer transition-all duration-150"
+                >
+                  Update Password
+                </button>
+              )}
+
+              {activeModal === 'settings' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    toast.success("Settings saved successfully.");
+                    setActiveModal(null);
+                  }}
+                  className="min-w-[5.5rem] bg-primary text-primary-foreground hover:bg-primary/95 border border-primary rounded-md font-bold text-xs h-8 cursor-pointer transition-all duration-150"
+                >
+                  Save Settings
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

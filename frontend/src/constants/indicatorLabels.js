@@ -32,6 +32,7 @@ export const INDICATOR_LABEL_BY_NAME = {
   '11.5. TPT Complete': '11.5. បញ្ចប់ TPT',
   '(old) 11.4. TPT Start': '(old) 11.4. ចាប់ផ្តើម TPT — វិធីចាស់',
   '(old) 11.5. TPT Complete': '(old) 11.5. បញ្ចប់ TPT — វិធីចាស់',
+  '11.5.1. Started ART > 6 months': '11.5.1. ចំនួនអ្នកជំងឺដែលបានចាប់ផ្តើមព្យាបាល ART > ៦ ខែ (Number of patients who started ART > 6 months)',
   '11.6. Eligible for VL test': '11.6. សមស្របតេស្ត VL',
   '11.7. VL tested in 12M': '11.7. VL ក្នុង ១២ ខែ',
   '11.8. VL suppression': '11.8. VL បង្ក្រាប',
@@ -71,6 +72,7 @@ export const INDICATOR_ID_BY_NAME = {
   '11.5. TPT Complete': '11.5_tpt_complete',
   '(old) 11.4. TPT Start': '11.4_tpt_start_old',
   '(old) 11.5. TPT Complete': '11.5_tpt_complete_old',
+  '11.5.1. Started ART > 6 months': '11.5.1_started_art_over_6m',
   '11.6. Eligible for VL test': '11.6_eligible_vl_test',
   '11.7. VL tested in 12M': '11.7_vl_tested_12m',
   '11.8. VL suppression': '11.8_vl_suppression',
@@ -105,6 +107,7 @@ export const VISUALIZE_PRESETS = {
   vl: {
     label: 'VL / EAC',
     ids: [
+      '11.5.1_started_art_over_6m',
       '11.6_eligible_vl_test',
       '11.7_vl_tested_12m',
       '11.8_vl_suppression',
@@ -132,6 +135,7 @@ export const VISUALIZE_PRESETS = {
       '11.5_tpt_complete',
       '11.4_tpt_start_old',
       '11.5_tpt_complete_old',
+      '11.5.1_started_art_over_6m',
       '11.6_eligible_vl_test',
       '11.7_vl_tested_12m',
       '11.8_vl_suppression'

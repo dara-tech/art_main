@@ -94,7 +94,6 @@ export const DEFAULT_CHART_SETTINGS = {
   showGrid: true,
   showBarLabels: false,
   showLegend: false,
-  /** true = tooltip lists every series at the same period; false = only the hovered bar/line */
   tooltipShared: true,
   showTrendLine: false,
   colorPalette: 'default',
@@ -106,7 +105,17 @@ export const DEFAULT_CHART_SETTINGS = {
   lineStrokeWidth: 2,
   yTicks: 5,
   chartFontSize: 11,
-  chartFontWeight: 'medium'
+  chartFontWeight: 'medium',
+  /** max number of indicators/series shown on chart (1-12) */
+  maxChartSeries: 6,
+  // Table options
+  tableTitle: '',
+  tableSubtitle: '',
+  displayDensity: 'normal',
+  tableFontSize: 'normal',
+  digitSeparator: 'space',
+  fixColumnHeaders: false,
+  fixRowHeaders: false
 };
 
 export function getPaletteColors(paletteId = 'default') {
@@ -186,7 +195,7 @@ export function linearTrendValues(values = []) {
 }
 
 export function trendLineDataKey(seriesId) {
-  return `__trend_${seriesId}`;
+  return `__trend_${String(seriesId).replace(/[^a-zA-Z0-9]/g, '_')}`;
 }
 
 /** Adds per-series regression keys for Recharts overlay lines. */
@@ -205,15 +214,23 @@ export function withTrendLineOverlay(data = [], series = [], enabled = false) {
   });
 }
 
-export function maxFromChartData(data = [], series = []) {
+export function maxFromChartData(data = [], series = [], isStacked = false) {
   let max = 0;
   for (const row of data) {
     if (row?.total != null && series.length === 0) {
       max = Math.max(max, Number(row.total) || 0);
       continue;
     }
-    for (const s of series) {
-      max = Math.max(max, Number(row[s.dataKey]) || 0);
+    if (isStacked) {
+      let sum = 0;
+      for (const s of series) {
+        sum += Number(row[s.dataKey]) || 0;
+      }
+      max = Math.max(max, sum);
+    } else {
+      for (const s of series) {
+        max = Math.max(max, Number(row[s.dataKey]) || 0);
+      }
     }
     if (row?.male014 != null) {
       const stackA = (Number(row.male014) || 0) + (Number(row.female014) || 0);
@@ -224,8 +241,8 @@ export function maxFromChartData(data = [], series = []) {
   return max;
 }
 
-export function resolveYAxisDomain(data, series, settings = DEFAULT_CHART_SETTINGS) {
-  const maxVal = maxFromChartData(data, series);
+export function resolveYAxisDomain(data, series, settings = DEFAULT_CHART_SETTINGS, isStacked = false) {
+  const maxVal = maxFromChartData(data, series, isStacked);
   const min = settings.yFromZero !== false ? 0 : 'auto';
   if (settings.yMaxMode === 'manual') {
     const manual = Number(settings.yMaxManual);

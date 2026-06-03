@@ -55,7 +55,8 @@ export default function VisualizeToolbar({
   onChartIndicatorIdsChange,
   chartSettings,
   onChartSettingsChange,
-  catalog = []
+  catalog = [],
+  indicatorIds = []
 }) {
   const canRun =
     indicatorCount > 0 &&
@@ -177,6 +178,7 @@ export default function VisualizeToolbar({
           shortLabel={`${VIZ_KH.indicatorsShort} (${indicatorCountFix})`}
           onClick={onOpenIndicators}
           title={VIZ_KH.pickIndicators}
+          showLabel
         />
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
@@ -255,6 +257,11 @@ export default function VisualizeToolbar({
             onChartSettingsChange={onChartSettingsChange}
             catalog={catalog}
             scopeMode={scopeMode}
+            sites={sites}
+            siteCode={siteCode}
+            compareSiteCodes={compareSiteCodes}
+            indicatorIds={indicatorIds}
+            periodKeys={periodKeys}
           />
         </Patient360NavRow>
       ) : null}

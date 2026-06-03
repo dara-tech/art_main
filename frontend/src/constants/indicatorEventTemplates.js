@@ -58,6 +58,7 @@ export const ART_EVENT_GROUPS = [
     id: 'vl_eac',
     labelKh: 'VL / EAC',
     indicatorIds: [
+      '11.5.1_started_art_over_6m',
       '11.6_eligible_vl_test',
       '11.7_vl_tested_12m',
       '11.8_vl_suppression',

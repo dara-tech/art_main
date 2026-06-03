@@ -169,13 +169,13 @@ function buildDetailPageItems(currentPage, totalPages) {
 
 function dqaCellClassName(col, { isIssueCol, isHighlight, hasIssue }) {
   return cn(
-    'border-r border-border/50 px-2 py-1.5 align-top last:border-r-0',
+    'border-r border-border/20 px-2 py-1.5 align-top last:border-r-0',
     col === 'issue_type' && 'min-w-36 max-w-52 whitespace-normal',
     col === 'clinicid' && 'min-w-24',
     col !== 'issue_type' && col !== 'clinicid' && 'whitespace-nowrap',
-    isIssueCol && 'bg-amber-100/60',
-    isHighlight && !isIssueCol && 'bg-amber-200/45',
-    hasIssue && (isIssueCol || isHighlight) && 'bg-amber-50/80'
+    isIssueCol && 'bg-amber-500/[0.06]',
+    isHighlight && !isIssueCol && 'bg-amber-500/[0.03]',
+    hasIssue && (isIssueCol || isHighlight) && 'bg-amber-500/[0.02]'
   );
 }
 
@@ -439,8 +439,8 @@ export default function DqaPage({ onLogout }) {
                     ) : null}
                     <div className="min-h-0 flex-1 overflow-auto">
                     <table className={cn('w-full min-w-[640px] border-collapse text-left', P360_TABLE_TEXT)}>
-                      <thead className="sticky top-0 z-10 border-b border-border/80 bg-muted">
-                        <tr>
+                      <thead className="sticky top-0 z-10 border-b border-border/20 bg-muted/95 backdrop-blur-md">
+                        <tr className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                           <th className="w-12 px-3 py-2 font-semibold">{DQA_KH.table.number}</th>
                           <th className="px-3 py-2 font-semibold">{DQA_KH.table.check}</th>
                           <th className="w-24 px-3 py-2 text-right font-semibold">{DQA_KH.table.issues}</th>
@@ -455,7 +455,7 @@ export default function DqaPage({ onLogout }) {
                           const hasRun = row != null;
                           const hasIssues = hasRun && count > 0;
                           return (
-                            <tr key={script.id} className="border-b border-border/40 hover:bg-muted/25">
+                            <tr key={script.id} className="border-b border-border/20 hover:bg-muted/20 transition-colors duration-150">
                               <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
                                 {script.checkNumber || '—'}
                               </td>
@@ -678,15 +678,15 @@ export default function DqaPage({ onLogout }) {
                     </p>
                     <div className="overflow-auto border border-border/80">
                       <table className="w-full min-w-max border-separate border-spacing-0 text-left text-[11px]">
-                        <thead className="sticky top-0 z-10 border-b border-border/80 bg-muted/50">
-                          <tr>
+                        <thead className="sticky top-0 z-10 border-b border-border/20 bg-muted/95 backdrop-blur-md">
+                          <tr className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                             {detailColumns.map((col) => (
                               <th
                                 key={col}
                                 className={cn(
-                                  'border-r border-border/50 px-2 py-1.5 font-semibold last:border-r-0',
+                                  'border-r border-border/20 px-2 py-1.5 font-semibold last:border-r-0',
                                   col === 'issue_type' &&
-                                    'min-w-36 max-w-52 whitespace-normal bg-amber-100/90 text-amber-950',
+                                    'min-w-36 max-w-52 whitespace-normal bg-amber-500/[0.08] text-amber-950',
                                   col === 'clinicid' && 'min-w-24 whitespace-nowrap',
                                   col !== 'issue_type' && col !== 'clinicid' && 'whitespace-nowrap'
                                 )}
@@ -704,8 +704,8 @@ export default function DqaPage({ onLogout }) {
                               <tr
                                 key={idx}
                                 className={cn(
-                                  'border-b border-border/40',
-                                  hasIssue ? 'bg-amber-50/30 hover:bg-amber-50/50' : 'hover:bg-muted/10'
+                                  'border-b border-border/20',
+                                  hasIssue ? 'bg-amber-500/[0.02] hover:bg-amber-500/[0.04]' : 'hover:bg-muted/20 transition-colors duration-150'
                                 )}
                               >
                                 {detailColumns.map((col) => {

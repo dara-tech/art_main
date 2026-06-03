@@ -166,22 +166,23 @@ export default function SiteSelectModal({
             aria-modal="true"
             aria-labelledby="site-select-modal-title"
           >
-          <div className="flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden bg-card shadow-2xl shadow-black/15">
-            <div className="flex items-center justify-between border-b border-border/80 bg-muted/35 px-6 py-4">
+          <div className="flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden bg-card shadow-2xl shadow-black/15 border-none rounded-2xl">
+            <div className="flex items-center justify-between bg-[#2a1720] border-b border-white/10 px-6 py-3.5 text-white">
               <div>
-                <div id="site-select-modal-title" className="text-lg font-semibold text-foreground">
+                <div id="site-select-modal-title" className="text-base font-semibold text-white">
                   {facilityOnly ? mt.titleFacility : mt.titleSite}
                 </div>
-                <div className="mt-0.5 text-xs text-muted-foreground">
+                <div className="mt-0.5 text-xs text-white/70">
                   {facilityOnly ? mt.hintFacility : mt.hintSite}
                 </div>
               </div>
               <button
                 type="button"
-                className="inline-flex h-9 w-9 items-center justify-center border border-border/80 bg-background/80 hover:bg-muted"
                 onClick={() => setOpen(false)}
+                className="inline-flex size-7 shrink-0 items-center justify-center rounded-md cursor-pointer text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                aria-label="Close"
               >
-                <RiCloseLine className="size-5" />
+                <RiCloseLine className="size-4.5" />
               </button>
             </div>
             <div className="border-b border-border/80 px-6 py-4">

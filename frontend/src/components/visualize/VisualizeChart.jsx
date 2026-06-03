@@ -32,6 +32,7 @@ import {
 import {
   applySeriesColors,
   DEFAULT_CHART_SETTINGS,
+  linearTrendValues,
   resolveChartTypography,
   resolveSeriesColor,
   resolveXAxisLayout,
@@ -120,16 +121,16 @@ function fmtNum(n) {
 
 function pickClickedPayload(activePayload) {
   return activePayload?.find(
-    (p) => p?.value != null && !String(p.dataKey || '').startsWith('__trend_')
+    (p) => p?.value != null && !String(p.dataKey || '').startsWith('__trend_') && p.dataKey !== 'trend'
   );
 }
 
 function MultiTrendTooltip({ active, payload, label, shared = true, typography }) {
   if (!active || !payload?.length) return null;
-  let rows = payload.filter((e) => !String(e.dataKey || '').startsWith('__trend_'));
+  let rows = payload.filter((e) => !String(e.dataKey || '').startsWith('__trend_') && e.dataKey !== 'trend');
   if (!shared && rows.length > 1) {
     rows = rows.filter((e) => e?.active !== false).slice(0, 1);
-    if (!rows.length) rows = [payload.find((e) => !String(e.dataKey || '').startsWith('__trend_'))].filter(Boolean);
+    if (!rows.length) rows = [payload.find((e) => !String(e.dataKey || '').startsWith('__trend_') && e.dataKey !== 'trend')].filter(Boolean);
   }
   if (!rows.length) return null;
   const title =
@@ -141,8 +142,8 @@ function MultiTrendTooltip({ active, payload, label, shared = true, typography }
   return (
     <VizTooltipBox title={title} typography={typography}>
       {rows.map((entry) => (
-        <p key={entry.dataKey} className="tabular-nums" style={{ color: entry.color }}>
-          {entry.name}: {fmtNum(entry.value)}
+        <p key={entry.dataKey} className="tabular-nums" style={{ color: entry.color || entry.payload?.color }}>
+          {entry.payload?.category || entry.name}: {fmtNum(entry.value)}
         </p>
       ))}
       <p className="mt-1 border-t border-border/50 pt-1 text-muted-foreground">
@@ -300,6 +301,49 @@ function MultiTrendChart({
   xDataKey = 'period',
   onPointClick
 }) {
+  const [hiddenKeys, setHiddenKeys] = useState(new Set());
+
+  const handleToggleKey = useCallback((key) => {
+    const keyStr = String(key);
+    setHiddenKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(keyStr)) {
+        next.delete(keyStr);
+        if (!keyStr.endsWith('-trend')) {
+          next.delete(`${keyStr}-trend`);
+        }
+      } else {
+        next.add(keyStr);
+        if (!keyStr.endsWith('-trend')) {
+          next.add(`${keyStr}-trend`);
+        }
+      }
+      return next;
+    });
+  }, []);
+
+  const isSinglePeriod = data.length === 1;
+
+  const chartType = normalizeChartType(variant || chartSettings.chartType);
+  const showTrendLine = chartSettings.showTrendLine === true;
+
+  const transformedData = useMemo(() => {
+    if (!isSinglePeriod || !data.length) return null;
+    const row = data[0];
+    const activeSeries = series.filter((s) => !hiddenKeys.has(String(s.id)));
+    const rawValues = activeSeries.map((s) => Number(row[s.dataKey]) || 0);
+    const trendValues = linearTrendValues(rawValues);
+    return activeSeries.map((s, index) => ({
+      category: s.label,
+      value: Number(row[s.dataKey]) || 0,
+      trend: trendValues[index],
+      color: s.color,
+      id: s.id,
+      dataKey: s.dataKey,
+      period: row.period
+    }));
+  }, [isSinglePeriod, data, series, hiddenKeys]);
+
   if (!data.length || !series.length) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center">
@@ -308,13 +352,13 @@ function MultiTrendChart({
     );
   }
 
-  const chartType = normalizeChartType(variant);
-  const typography = resolveChartTypography(chartSettings);
-  const showTrendLine = Boolean(chartSettings.showTrendLine) && supportsTrendLine(chartType);
-  const chartData = withTrendLineOverlay(data, series, showTrendLine);
+  const visibleSeries = series.filter((s) => !hiddenKeys.has(String(s.id)));
+  const chartData = isSinglePeriod ? transformedData : withTrendLineOverlay(data, series, showTrendLine);
+  const chartXKey = isSinglePeriod ? 'category' : xDataKey;
+
   const legendItems = [
     ...series.map((s) => ({ key: s.id, label: s.label, color: s.color })),
-    ...(showTrendLine
+    ...(showTrendLine && !isSinglePeriod
       ? series.map((s) => ({
           key: `${s.id}-trend`,
           label: `${s.label} (${VIZ_KH.chartTrendLine})`,
@@ -323,9 +367,16 @@ function MultiTrendChart({
         }))
       : [])
   ];
-  const yDomain = resolveYAxisDomain(chartData, series, chartSettings);
-  const showLabels = chartSettings.showBarLabels || series.length === 1;
-  const denseX = xDataKey === 'xLabel';
+
+  const yDomain = resolveYAxisDomain(
+    chartData,
+    isSinglePeriod ? [{ dataKey: 'value' }] : visibleSeries,
+    chartSettings,
+    !isSinglePeriod && chartType === 'stacked'
+  );
+  const typography = resolveChartTypography(chartSettings);
+  const showLabels = chartSettings.showBarLabels || (isSinglePeriod ? true : visibleSeries.length === 1);
+  const denseX = chartXKey === 'xLabel';
   const xLayout = resolveXAxisLayout(denseX, chartSettings, chartData.length);
   const barMaxSize = Number(chartSettings.barMaxSize) || 40;
   const barRadius = Number(chartSettings.barRadius) || 0;
@@ -338,7 +389,7 @@ function MultiTrendChart({
     : { fill: 'oklch(0.5 0.13 46 / 0.12)', stroke: 'oklch(0.5 0.13 46 / 0.25)', strokeWidth: 1 };
 
   if (chartType === 'pie') {
-    const { slices: rawSlices, periodLabel } = buildPieSlicesFromTrendData(chartData, series, xDataKey);
+    const { slices: rawSlices, periodLabel } = buildPieSlicesFromTrendData(chartData, series, chartXKey);
     if (!rawSlices.length) {
       return (
         <div className="flex min-h-0 flex-1 items-center justify-center">
@@ -346,13 +397,14 @@ function MultiTrendChart({
         </div>
       );
     }
-    const { slices, total, showOnChartLabels } = preparePieDisplay(rawSlices);
-    const pieLegend = slices.map((s) => ({
+    const visibleSlices = rawSlices.filter((s) => !hiddenKeys.has(String(s.id)));
+    const { slices, total, showOnChartLabels } = preparePieDisplay(visibleSlices);
+    const pieLegend = rawSlices.map((s) => ({
       key: s.id,
       label: pieLegendLabel(s, total),
       color: s.color
     }));
-    const useLegend = chartSettings.showLegend !== false || !showOnChartLabels || slices.length > 8;
+    const useLegend = chartSettings.showLegend !== false || !showOnChartLabels || rawSlices.length > 8;
     const lastRow = chartData[chartData.length - 1];
     const handlePieClick = (slice) => {
       if (!onPointClick || !slice || !lastRow) return;
@@ -420,7 +472,13 @@ function MultiTrendChart({
           </ChartResponsive>
         </VizChartPlot>
         {useLegend ? (
-          <VizLegend items={pieLegend} typography={typography} scrollable={pieLegend.length > 6} />
+          <VizLegend
+            items={pieLegend}
+            typography={typography}
+            scrollable={pieLegend.length > 6}
+            activeKeys={new Set(rawSlices.map((s) => String(s.id)).filter((id) => !hiddenKeys.has(id)))}
+            onToggle={handleToggleKey}
+          />
         ) : null}
       </>
     );
@@ -430,18 +488,29 @@ function MultiTrendChart({
     if (!onPointClick) return;
     const payload = pickClickedPayload(state?.activePayload);
     if (!payload?.payload) return;
-    const s = series.find((x) => x.dataKey === payload.dataKey);
-    if (!s) return;
-    onPointClick({
-      row: payload.payload,
-      seriesId: s.id,
-      seriesLabel: s.label,
-      value: payload.value
-    });
+
+    if (isSinglePeriod) {
+      const entry = payload.payload;
+      onPointClick({
+        row: data[0],
+        seriesId: entry.id,
+        seriesLabel: entry.category,
+        value: entry.value
+      });
+    } else {
+      const s = series.find((x) => x.dataKey === payload.dataKey);
+      if (!s) return;
+      onPointClick({
+        row: payload.payload,
+        seriesId: s.id,
+        seriesLabel: s.label,
+        value: payload.value
+      });
+    }
   };
 
   const isHorizontal = chartType === 'horizontal';
-  const showPeriodStrip = !isHorizontal && chartData.length > 0;
+  const showPeriodStrip = !isHorizontal && chartData.length > 0 && !isSinglePeriod;
   const chartBottomMargin = showPeriodStrip ? 12 : xLayout.bottom + 16;
   const yAxisWidth = 52;
   const useComposed = showTrendLine || chartType === 'area';
@@ -478,7 +547,7 @@ function MultiTrendChart({
           <XAxis type="number" tick={typography.tick} allowDecimals={false} axisLine={false} tickLine={false} />
           <YAxis
             type="category"
-            dataKey={xDataKey}
+            dataKey={chartXKey}
             width={denseX ? 200 : 88}
             tick={{ ...typography.tick, fontSize: typography.periodDenseSize }}
             axisLine={false}
@@ -489,7 +558,7 @@ function MultiTrendChart({
       ) : showPeriodStrip ? (
         <>
           <XAxis
-            dataKey={xDataKey}
+            dataKey={chartXKey}
             interval={0}
             height={8}
             tick={false}
@@ -501,7 +570,7 @@ function MultiTrendChart({
       ) : (
         <>
           <XAxis
-            {...categoryXAxisProps({ xDataKey, xLayout, showPeriodAxisTitle: false, typography })}
+            {...categoryXAxisProps({ xDataKey: chartXKey, xLayout, showPeriodAxisTitle: false, typography })}
           />
           <YAxis {...yAxisProps(yDomain, chartSettings)} />
         </>
@@ -513,36 +582,94 @@ function MultiTrendChart({
           <MultiTrendTooltip {...props} shared={tooltipShared} typography={typography} />
         )}
       />
-      {renderTrendSeries({
-        chartType,
-        series,
-        lineCurve,
-        lineStrokeWidth,
-        barMaxSize,
-        barRadius,
-        showLabels,
-        stackId,
-        typography,
-        onPointClick
-      })}
-      {showTrendLine
-        ? series.map((s) => (
-            <Line
-              key={`${s.id}-trend`}
-              type="linear"
-              dataKey={trendLineDataKey(s.id)}
-              name={`${s.label} (${VIZ_KH.chartTrendLine})`}
-              stroke={s.color}
-              strokeWidth={2}
-              strokeDasharray="6 4"
-              strokeOpacity={0.85}
-              dot={false}
-              activeDot={{ r: 4 }}
-              legendType="line"
-              connectNulls
-            />
-          ))
-        : null}
+      {isSinglePeriod ? (
+        chartType === 'line' ? (
+          <Line
+            type={lineCurve}
+            dataKey="value"
+            stroke="#0ea5e9"
+            strokeWidth={lineStrokeWidth}
+            dot={{ r: 4, fill: '#0ea5e9' }}
+            activeDot={{ r: 6 }}
+          />
+        ) : chartType === 'area' ? (
+          <Area
+            type={lineCurve}
+            dataKey="value"
+            stroke="#0ea5e9"
+            fill="#0ea5e9"
+            fillOpacity={0.22}
+            strokeWidth={lineStrokeWidth}
+            dot={{ r: 3, fill: '#0ea5e9' }}
+            activeDot={{ r: 5 }}
+          />
+        ) : (
+          <Bar
+            dataKey="value"
+            radius={barRadius}
+            maxBarSize={barMaxSize}
+          >
+            {transformedData.map((entry) => (
+              <Cell key={entry.id} fill={entry.color} />
+            ))}
+            {showLabels ? (
+              <LabelList
+                dataKey="value"
+                position={isHorizontal ? 'right' : 'top'}
+                style={typography?.labelList}
+                formatter={fmtNum}
+              />
+            ) : null}
+          </Bar>
+        )
+      ) : (
+        renderTrendSeries({
+          chartType,
+          series: visibleSeries,
+          lineCurve,
+          lineStrokeWidth,
+          barMaxSize,
+          barRadius,
+          showLabels,
+          stackId,
+          typography,
+          onPointClick
+        })
+      )}
+      {showTrendLine ? (
+        isSinglePeriod ? (
+          <Line
+            type="linear"
+            dataKey="trend"
+            name={VIZ_KH.chartTrendLine}
+            stroke="#64748b"
+            strokeWidth={2}
+            strokeDasharray="6 4"
+            strokeOpacity={0.85}
+            dot={false}
+            activeDot={false}
+          />
+        ) : (
+          series
+            .filter((s) => !hiddenKeys.has(String(s.id)) && !hiddenKeys.has(`${String(s.id)}-trend`))
+            .map((s) => (
+              <Line
+                key={`${s.id}-trend`}
+                type="linear"
+                dataKey={trendLineDataKey(s.id)}
+                name={`${s.label} (${VIZ_KH.chartTrendLine})`}
+                stroke={s.color}
+                strokeWidth={2}
+                strokeDasharray="6 4"
+                strokeOpacity={0.85}
+                dot={false}
+                activeDot={{ r: 4 }}
+                legendType="line"
+                connectNulls
+              />
+            ))
+        )
+      ) : null}
     </ChartRoot>
   );
 
@@ -555,14 +682,21 @@ function MultiTrendChart({
         {showPeriodStrip ? (
           <VizPeriodAxis
             rows={chartData}
-            xDataKey={xDataKey}
+            xDataKey={chartXKey}
             yAxisWidth={yAxisWidth}
             dense={denseX}
             typography={typography}
           />
         ) : null}
       </div>
-      {chartSettings.showLegend ? <VizLegend items={legendItems} typography={typography} /> : null}
+      {chartSettings.showLegend ? (
+        <VizLegend
+          items={legendItems}
+          typography={typography}
+          activeKeys={new Set(legendItems.map((item) => String(item.key)).filter((k) => !hiddenKeys.has(k)))}
+          onToggle={handleToggleKey}
+        />
+      ) : null}
     </>
   );
 }
@@ -576,6 +710,18 @@ function SnapshotCompareGrouped({
   chartSettings = DEFAULT_CHART_SETTINGS,
   onRowClick
 }) {
+  const [hiddenKeys, setHiddenKeys] = useState(new Set());
+
+  const handleToggleKey = useCallback((key) => {
+    const keyStr = String(key);
+    setHiddenKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(keyStr)) next.delete(keyStr);
+      else next.add(keyStr);
+      return next;
+    });
+  }, []);
+
   if (!grouped.length) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center">
@@ -586,21 +732,30 @@ function SnapshotCompareGrouped({
 
   const typography = resolveChartTypography(chartSettings);
   const textStyle = { fontSize: typography.fontSize, fontWeight: typography.fontWeight };
-  const facilityOrder = grouped.map((g) => g.facilityCode);
   const legendItems = grouped.map((g, i) => ({
     key: g.facilityCode,
     label: g.facilityLabel,
     color: resolveSeriesColor(g.facilityCode, i, chartSettings)
   }));
 
+  const visibleGrouped = grouped.filter((g) => !hiddenKeys.has(String(g.facilityCode)));
+
   return (
     <VizChartShell
       title={VIZ_KH.chartSnapshotCompareGrouped.replace('{period}', periodLabel)}
-      legend={<VizLegend items={legendItems} typography={typography} />}
+      legend={
+        <VizLegend
+          items={legendItems}
+          typography={typography}
+          activeKeys={new Set(legendItems.map((item) => String(item.key)).filter((k) => !hiddenKeys.has(k)))}
+          onToggle={handleToggleKey}
+        />
+      }
     >
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-1 py-2">
-        {grouped.map((group, gi) => {
-          const color = resolveSeriesColor(group.facilityCode, gi, chartSettings);
+        {visibleGrouped.map((group) => {
+          const origIdx = grouped.findIndex((g) => g.facilityCode === group.facilityCode);
+          const color = resolveSeriesColor(group.facilityCode, origIdx >= 0 ? origIdx : 0, chartSettings);
           return (
             <section key={group.facilityCode} className="border border-border/70 bg-muted/5 px-2 py-2">
               <h4 className="mb-2 truncate text-foreground" style={textStyle}>
@@ -662,6 +817,18 @@ function SnapshotChart({
   layout = 'byIndicator',
   onBarClick
 }) {
+  const [hiddenKeys, setHiddenKeys] = useState(new Set());
+
+  const handleToggleKey = useCallback((key) => {
+    const keyStr = String(key);
+    setHiddenKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(keyStr)) next.delete(keyStr);
+      else next.add(keyStr);
+      return next;
+    });
+  }, []);
+
   if (!data.length) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center">
@@ -672,24 +839,30 @@ function SnapshotChart({
 
   const typography = resolveChartTypography(chartSettings);
   const chartData = [...data].reverse();
+
+  const visibleData = chartData.filter((d) => {
+    const id = layout === 'compareFacilities' ? d.facilityCode : (d.indicatorId || d.name);
+    return !hiddenKeys.has(String(id));
+  });
+
   const rowH = 28;
-  const chartH = Math.max(120, chartData.length * rowH + 24);
+  const chartH = Math.max(120, visibleData.length * rowH + 24);
   const labelW = layout === 'compareFacilities' ? 220 : 200;
   const facilityOrder =
     layout === 'compareFacilities'
       ? [...new Set(chartData.map((d) => d.facilityCode).filter(Boolean))]
       : [];
 
-  const colorForEntry = (entry, i) => {
-    const id =
-      layout === 'compareFacilities' && entry.facilityCode
-        ? entry.facilityCode
-        : entry.indicatorId || entry.name || String(i);
-    const idx =
-      layout === 'compareFacilities' && entry.facilityCode
-        ? facilityOrder.indexOf(entry.facilityCode)
-        : i;
-    return resolveSeriesColor(id, idx >= 0 ? idx : i, chartSettings);
+  const colorForEntry = (entry) => {
+    if (layout === 'compareFacilities') {
+      const code = entry.facilityCode;
+      const idx = facilityOrder.indexOf(code);
+      return resolveSeriesColor(code, idx >= 0 ? idx : 0, chartSettings);
+    } else {
+      const id = entry.indicatorId || entry.name;
+      const idx = chartData.findIndex((d) => (d.indicatorId || d.name) === id);
+      return resolveSeriesColor(id, idx >= 0 ? idx : 0, chartSettings);
+    }
   };
 
   const legendItems =
@@ -711,13 +884,22 @@ function SnapshotChart({
   return (
     <VizChartShell
       title={VIZ_KH.chartSnapshotHint.replace('{period}', periodLabel)}
-      legend={chartSettings.showLegend ? <VizLegend items={legendItems} typography={typography} /> : null}
+      legend={
+        chartSettings.showLegend ? (
+          <VizLegend
+            items={legendItems}
+            typography={typography}
+            activeKeys={new Set(legendItems.map((item) => String(item.key)).filter((k) => !hiddenKeys.has(k)))}
+            onToggle={handleToggleKey}
+          />
+        ) : null
+      }
     >
       <VizChartPlot className={cn('overflow-y-auto', onBarClick && 'cursor-pointer')}>
         <div style={{ height: chartH, minHeight: '100%' }}>
           <ChartResponsive width="100%" height={chartH}>
             <BarChart
-              data={chartData}
+              data={visibleData}
               layout="vertical"
               margin={{ top: 8, right: 48, left: 4, bottom: 8 }}
               barCategoryGap={layout === 'compareFacilities' ? 6 : 4}
@@ -746,9 +928,12 @@ function SnapshotChart({
                 cursor={{ fill: 'oklch(0.5 0.13 46 / 0.06)' }}
               />
               <Bar dataKey="total" radius={0} maxBarSize={22}>
-                {chartData.map((entry, i) => (
-                  <Cell key={i} fill={colorForEntry(entry, i)} />
-                ))}
+                {visibleData.map((entry) => {
+                  const cellKey = entry.facilityCode || entry.indicatorId || entry.name;
+                  return (
+                    <Cell key={cellKey} fill={colorForEntry(entry)} />
+                  );
+                })}
                 <LabelList
                   dataKey="total"
                   position="right"
@@ -772,6 +957,18 @@ const DEMO_LEGEND = [
 ];
 
 function DemographicsChart({ data, title, chartSettings = DEFAULT_CHART_SETTINGS }) {
+  const [hiddenKeys, setHiddenKeys] = useState(new Set());
+
+  const handleToggleKey = useCallback((key) => {
+    const keyStr = String(key);
+    setHiddenKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(keyStr)) next.delete(keyStr);
+      else next.add(keyStr);
+      return next;
+    });
+  }, []);
+
   if (!data.length) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center">
@@ -786,7 +983,16 @@ function DemographicsChart({ data, title, chartSettings = DEFAULT_CHART_SETTINGS
   return (
     <VizChartShell
       title={title}
-      legend={chartSettings.showLegend ? <VizLegend items={DEMO_LEGEND} typography={typography} /> : null}
+      legend={
+        chartSettings.showLegend ? (
+          <VizLegend
+            items={DEMO_LEGEND}
+            typography={typography}
+            activeKeys={new Set(DEMO_LEGEND.map((item) => String(item.key)).filter((k) => !hiddenKeys.has(k)))}
+            onToggle={handleToggleKey}
+          />
+        ) : null
+      }
     >
       <p
         className="mb-1 shrink-0 text-muted-foreground"
@@ -824,10 +1030,18 @@ function DemographicsChart({ data, title, chartSettings = DEFAULT_CHART_SETTINGS
                 />
               )}
             />
-            <Bar dataKey="male014" name={VIZ_KH.male014} fill={DEMO_MALE} stackId="a" radius={0} />
-            <Bar dataKey="female014" name={VIZ_KH.female014} fill={DEMO_FEMALE} stackId="a" radius={0} />
-            <Bar dataKey="maleOver14" name={VIZ_KH.maleOver14} fill={DEMO_MALE} stackId="b" radius={0} />
-            <Bar dataKey="femaleOver14" name={VIZ_KH.femaleOver14} fill={DEMO_FEMALE} stackId="b" radius={0} />
+            {!hiddenKeys.has('male014') && (
+              <Bar dataKey="male014" name={VIZ_KH.male014} fill={DEMO_MALE} stackId="a" radius={0} />
+            )}
+            {!hiddenKeys.has('female014') && (
+              <Bar dataKey="female014" name={VIZ_KH.female014} fill={DEMO_FEMALE} stackId="a" radius={0} />
+            )}
+            {!hiddenKeys.has('maleOver14') && (
+              <Bar dataKey="maleOver14" name={VIZ_KH.maleOver14} fill={DEMO_MALE} stackId="b" radius={0} />
+            )}
+            {!hiddenKeys.has('femaleOver14') && (
+              <Bar dataKey="femaleOver14" name={VIZ_KH.femaleOver14} fill={DEMO_FEMALE} stackId="b" radius={0} />
+            )}
           </BarChart>
         </ChartResponsive>
       </VizChartPlot>

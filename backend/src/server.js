@@ -76,3 +76,5 @@ start().catch((error) => {
 });
 
 module.exports = app;
+
+// Trigger nodemon restart to load new SQL indicator files

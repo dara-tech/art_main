@@ -298,31 +298,33 @@ export default function VisualizeChartDetailModal({
       onClick={onClose}
     >
       <div
-        className="flex h-[min(88vh,42rem)] w-full max-w-5xl flex-col overflow-hidden bg-card shadow-2xl shadow-black/15"
+        className="flex h-[min(88vh,42rem)] w-full max-w-5xl flex-col overflow-hidden bg-card shadow-2xl shadow-black/15 border-none rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex shrink-0 items-start gap-3 border-b border-border/80 bg-muted/35 px-5 py-3">
-          <RiInformationLine className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
-          <div className="min-w-0 flex-1">
-            <h2 id="viz-chart-detail-title" className="text-base font-semibold leading-tight text-foreground">
-              {VIZ_KH.chartDetailTitle}
-            </h2>
-            <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-muted-foreground" title={detail.title}>
-              {detail.title}
-            </p>
+        <div className="flex shrink-0 items-center justify-between gap-3 bg-[#2a1720] border-b border-white/10 px-5 py-3.5 text-white">
+          <div className="flex min-w-0 items-start gap-2.5">
+            <RiInformationLine className="mt-0.5 size-5 shrink-0" fill="url(#icon-gradient)" aria-hidden />
+            <div className="min-w-0">
+              <h2 id="viz-chart-detail-title" className="text-base font-semibold leading-tight text-white">
+                {VIZ_KH.chartDetailTitle}
+              </h2>
+              <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-white/70" title={detail.title}>
+                {detail.title}
+              </p>
+            </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-4">
             <div className="text-right">
-              <p className={cn('text-[10px] text-muted-foreground', P360_TABLE_TEXT)}>{VIZ_KH.total}</p>
-              <p className="text-xl font-semibold tabular-nums leading-none text-primary">{totalValue}</p>
+              <p className={cn('text-[10px] text-white/60', P360_TABLE_TEXT)}>{VIZ_KH.total}</p>
+              <p className="text-xl font-bold tabular-nums leading-none text-white">{totalValue}</p>
             </div>
             <button
               type="button"
-              className="inline-flex h-9 w-9 items-center justify-center border border-border/80 bg-background/80 hover:bg-muted"
               onClick={onClose}
+              className="inline-flex size-7 shrink-0 items-center justify-center rounded-md cursor-pointer text-white/70 hover:text-white hover:bg-white/10 transition-colors"
               aria-label={VIZ_KH.chartDetailClose}
             >
-              <RiCloseLine className="size-5" />
+              <RiCloseLine className="size-4.5" />
             </button>
           </div>
         </div>

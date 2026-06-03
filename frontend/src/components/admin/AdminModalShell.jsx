@@ -22,28 +22,28 @@ export default function AdminModalShell({
     >
       <Shell
         className={cn(
-          'flex max-h-[min(88vh,42rem)] w-full flex-col overflow-hidden bg-card shadow-2xl shadow-black/15',
+          'flex max-h-[min(88vh,42rem)] w-full flex-col overflow-hidden bg-card shadow-2xl shadow-black/15 border-none rounded-2xl',
           wide ? 'max-w-2xl' : 'max-w-xl'
         )}
         onClick={(e) => e.stopPropagation()}
         onSubmit={asForm ? onSubmit : undefined}
       >
-        <div className="flex shrink-0 items-start gap-3 border-b border-border/80 bg-muted/35 px-5 py-3">
+        <div className="flex shrink-0 items-center justify-between gap-3 bg-[#2a1720] border-b border-white/10 px-5 py-3.5 text-white">
           <div className="min-w-0 flex-1">
-            <h2 className="text-base font-semibold leading-tight text-foreground">{title}</h2>
+            <h2 className="text-base font-semibold leading-tight text-white">{title}</h2>
             {description ? (
-              <p className={cn('mt-0.5 text-xs leading-snug text-muted-foreground', P360_TABLE_TEXT)}>
+              <p className={cn('mt-0.5 text-xs leading-snug text-white/70', P360_TABLE_TEXT)}>
                 {description}
               </p>
             ) : null}
           </div>
           <button
             type="button"
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center border border-border/80 bg-background/80 hover:bg-muted"
+            className="inline-flex size-7 shrink-0 items-center justify-center rounded-md cursor-pointer text-white/70 hover:text-white hover:bg-white/10 transition-colors"
             onClick={onClose}
             aria-label="Close"
           >
-            <RiCloseLine className="size-5" />
+            <RiCloseLine className="size-4.5" />
           </button>
         </div>
 

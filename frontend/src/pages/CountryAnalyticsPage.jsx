@@ -313,15 +313,15 @@ export default function CountryAnalyticsPage({ onLogout }) {
       const ind = String(row.indicator).toLowerCase();
       const total = Number(row.Male_0_14 || 0) + Number(row.Female_0_14 || 0) + Number(row.Male_over_14 || 0) + Number(row.Female_over_14 || 0);
 
-      if (ind.includes('10. active art patients in this quarter')) {
+      if (ind.includes('active art patients') && (ind.includes('this quarter') || ind.includes('end of this quarter'))) {
         stats.activeArt = total;
       } else if (ind.includes('5. newly initiated')) {
         stats.newlyInitiated = total;
       } else if (ind.includes('8. number of patients started tpt in this quarter')) {
         stats.tptStart = total;
-      } else if (ind.includes('10.7. vl tested in 12m')) {
+      } else if (ind.includes('vl tested in 12m')) {
         stats.vlTested = total;
-      } else if (ind.includes('10.8. vl suppression')) {
+      } else if (ind.includes('vl suppression')) {
         stats.vlSuppressed = total;
       }
     });
@@ -665,18 +665,18 @@ export default function CountryAnalyticsPage({ onLogout }) {
                     ) : (
                       <table className="w-full border-collapse text-[11px]">
                         <thead>
-                          <tr className="border-b bg-muted/40 text-left font-bold text-foreground">
+                          <tr className="border-b border-border/20 bg-muted/50 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider text-left">
                             <th className="p-2.5 w-8"></th>
                             <th className="p-2.5 min-w-[280px]">សូចនាករ (Indicator Name)</th>
                             <th className="p-2.5 text-right">ប្រុស ០-១៤</th>
                             <th className="p-2.5 text-right">ស្រី ០-១៤</th>
                             <th className="p-2.5 text-right">ប្រុស &gt;១៤</th>
                             <th className="p-2.5 text-right">ស្រី &gt;១៤</th>
-                            <th className="p-2.5 text-right font-black">សរុប (Total)</th>
+                            <th className="p-2.5 text-right">សរុប (Total)</th>
                             <th className="p-2.5 text-right pr-4">មន្ទីរពេទ្យ (Sites)</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y">
+                        <tbody className="divide-y divide-border/20">
                           {filteredRows.map((row, idx) => {
                             const isExpanded = expandedIndicators.has(row.indicator);
                             const grandTotal = Number(row.Male_0_14 || 0) + Number(row.Female_0_14 || 0) + Number(row.Male_over_14 || 0) + Number(row.Female_over_14 || 0);
@@ -688,7 +688,7 @@ export default function CountryAnalyticsPage({ onLogout }) {
                               <Fragment key={`${row.indicator}-${idx}`}>
                                 <tr
                                   onClick={() => toggleRow(row.indicator)}
-                                  className="hover:bg-muted/15 transition-all cursor-pointer group"
+                                  className="hover:bg-muted/20 transition-colors duration-150 cursor-pointer group"
                                 >
                                   <td className="p-2.5 text-center">
                                     {isExpanded ? (
@@ -745,7 +745,7 @@ export default function CountryAnalyticsPage({ onLogout }) {
                                           <div className="border rounded-none overflow-hidden bg-background shadow-inner">
                                             <table className="w-full text-[10px] border-collapse">
                                               <thead>
-                                                <tr className="border-b bg-muted/20 text-left font-bold text-muted-foreground">
+                                                <tr className="border-b border-border/20 bg-muted/30 text-[9px] font-semibold text-muted-foreground uppercase tracking-wider text-left">
                                                   <th className="p-2 pl-3">Province</th>
                                                   <th className="p-2 text-right">Male 0-14</th>
                                                   <th className="p-2 text-right">Female 0-14</th>
@@ -761,7 +761,7 @@ export default function CountryAnalyticsPage({ onLogout }) {
                                                   const provTotal = Number(prov.Male_0_14 || 0) + Number(prov.Female_0_14 || 0) + Number(prov.Male_over_14 || 0) + Number(prov.Female_over_14 || 0);
                                                   const pct = grandTotal > 0 ? (provTotal / grandTotal) * 100 : 0;
                                                   return (
-                                                    <tr key={`${prov.province_id}-${pIdx}`} className="hover:bg-muted/5 transition-colors">
+                                                    <tr key={`${prov.province_id}-${pIdx}`} className="hover:bg-muted/20 transition-colors duration-150">
                                                       <td className="p-2 pl-3 font-semibold text-foreground">{prov.province_name || `Province ${prov.province_id}`}</td>
                                                       <td className="p-2 text-right tabular-nums">{formatVal(prov.Male_0_14)}</td>
                                                       <td className="p-2 text-right tabular-nums">{formatVal(prov.Female_0_14)}</td>
