@@ -4,6 +4,9 @@ const patient360Api = {
   getDictionary: async () =>
     (await api.get('/apiv1/patient-360/dictionary')).data,
 
+  getDrugOptions: async (siteCode) =>
+    (await api.get('/apiv1/patient-360/drugs', { params: { siteCode } })).data?.drugs || [],
+
   listPatients: async (
     siteCode,
     { page = 1, limit = 25, program, q, sex, province, patientStatus, sortBy, sortDir } = {}
@@ -28,10 +31,12 @@ const patient360Api = {
       })
     ).data,
 
+  listVisits: async (siteCode, params) =>
+    (await api.get('/apiv1/patient-360/visits', { params: { siteCode, ...params } })).data,
+
   search: async (siteCode, q, limit = 15) =>
     (await api.get('/apiv1/patient-360/search', { params: { siteCode, q, limit } })).data,
 
-  /** tab: summary | visits | labs | drugs | history | care | status | timeline | full */
   getProfile: async (siteCode, clinicId, { tab = 'summary', program, programs } = {}) =>
     (
       await api.get('/apiv1/patient-360', {
@@ -43,7 +48,22 @@ const patient360Api = {
           programs: Array.isArray(programs) ? programs.join(',') : programs
         }
       })
-    ).data
+    ).data,
+
+  createAdultRegistration: async (siteCode, payload) =>
+    (await api.post('/apiv1/patient-360/registration', { ...payload, siteCode })).data,
+
+  updateAdultRegistration: async (siteCode, clinicId, payload) =>
+    (await api.put(`/apiv1/patient-360/registration/${clinicId}`, { ...payload, siteCode })).data,
+
+  createAdultVisit: async (siteCode, payload) =>
+    (await api.post('/apiv1/patient-360/visits', { ...payload, siteCode })).data,
+
+  updateAdultVisit: async (siteCode, vid, payload) =>
+    (await api.put(`/apiv1/patient-360/visits/${vid}`, { ...payload, siteCode })).data,
+
+  getProvinces: async (siteCode) =>
+    (await api.get('/apiv1/patient-360/provinces', { params: { siteCode } })).data?.provinces || []
 };
 
 export default patient360Api;

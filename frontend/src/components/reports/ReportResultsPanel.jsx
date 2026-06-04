@@ -23,13 +23,37 @@ export default function ReportResultsPanel({
   formatValue,
   onAdultChildCellClick,
   onInfantCellClick,
-  onPnttCellClick
+  onPnttCellClick,
+  dataSource,
+  useAnalyticsSetting
 }) {
   const [showQueryMs, setShowQueryMs] = useState(false);
   const [showEacIndicators, setShowEacIndicators] = useState(false);
   const [sectionLoadElapsedMs, setSectionLoadElapsedMs] = useState(0);
   const isSectionReport = reportType === 'infants' || reportType === 'pntt';
   const sectionReportLoading = Boolean(loading && isSectionReport);
+
+  const [enabledReportIndicators, setEnabledReportIndicators] = useState(() => {
+    try {
+      const stored = localStorage.getItem('app-enabled-report-indicators');
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    const handleConfigChange = () => {
+      try {
+        const stored = localStorage.getItem('app-enabled-report-indicators');
+        setEnabledReportIndicators(stored ? JSON.parse(stored) : []);
+      } catch (e) {
+        setEnabledReportIndicators([]);
+      }
+    };
+    window.addEventListener('app-enabled-report-indicators-changed', handleConfigChange);
+    return () => window.removeEventListener('app-enabled-report-indicators-changed', handleConfigChange);
+  }, []);
 
   useEffect(() => {
     if (!sectionReportLoading) {
@@ -140,6 +164,11 @@ export default function ReportResultsPanel({
                     const visibleRows = adultChildRows.filter((item) => {
                       const label = String(item.indicator || '');
                       if (label.startsWith('10.4.1') || label.startsWith('11.4.1')) return false;
+                      
+                      if (enabledReportIndicators && enabledReportIndicators.length > 0) {
+                        if (!enabledReportIndicators.includes(item.rawIndicator)) return false;
+                      }
+
                       if (showEacIndicators) return true;
                       return !['11.9.', '11.10.', '11.11.', '11.12.', '11.13.', '11.14.'].some(prefix => label.startsWith(prefix));
                     });

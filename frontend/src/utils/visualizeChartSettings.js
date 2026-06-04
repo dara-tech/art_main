@@ -107,7 +107,12 @@ export const DEFAULT_CHART_SETTINGS = {
   chartFontSize: 11,
   chartFontWeight: 'medium',
   /** max number of indicators/series shown on chart (1-12) */
-  maxChartSeries: 6,
+  get maxChartSeries() {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return Number(localStorage.getItem('app-max-chart-series')) || 6;
+    }
+    return 6;
+  },
   // Table options
   tableTitle: '',
   tableSubtitle: '',

@@ -153,7 +153,8 @@ router.post('/run', authenticateToken, async (req, res) => {
     if (ctx.error) return res.status(ctx.status).json({ success: false, message: ctx.error });
     const payload = await visualizeService.runBatch(ctx, {
       periods: req.body?.periods,
-      indicatorIds: req.body?.indicatorIds
+      indicatorIds: req.body?.indicatorIds,
+      useAnalytics: req.body?.useAnalytics
     });
     res.json(payload);
   } catch (error) {
@@ -177,7 +178,11 @@ router.post('/run/stream', authenticateToken, async (req, res) => {
 
     await visualizeService.runBatchStream(
       ctx,
-      { periods: req.body?.periods, indicatorIds: req.body?.indicatorIds },
+      {
+        periods: req.body?.periods,
+        indicatorIds: req.body?.indicatorIds,
+        useAnalytics: req.body?.useAnalytics
+      },
       write
     );
     res.end();

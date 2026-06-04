@@ -44,7 +44,10 @@ export const Patient360NavBar = forwardRef(function Patient360NavBar(
     <nav
       ref={mergeRefs(navRef, forwardedRef)}
       className={cn(p360FixedShellClass, className)}
-      style={{ top: 'var(--app-topbar-h)' }}
+      style={{
+        top: 'var(--app-topbar-h)',
+        left: 'var(--sidebar-w, 0px)'
+      }}
       aria-label={ariaLabel}
       data-p360-rows={rowCount}
       data-p360-variant="fixed"

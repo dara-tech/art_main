@@ -141,65 +141,67 @@ export default function DocumentPage({ onLogout }) {
       : '(set VITE_API_URL in frontend .env)';
 
   return (
-    <AppPageShell>
-      <Card className="rounded-none border-border py-0 shadow-sm gap-0 overflow-visible ring-1 ring-[#e0dbd3] dark:ring-stone-600">
-        <CardHeader className="border-b border-[#e0dbd3] px-4 pb-3 pt-4 dark:border-stone-600">
-          <CardTitle>Backend API</CardTitle>
-          <CardDescription className="mt-1">
-            Routes mounted in <code className="text-[11px]">server.js</code>. API base:{' '}
-            <code className="text-[11px]">{baseHint}</code>
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse border-x border-b border-[#e0dbd3] text-xs dark:border-stone-600">
-              <thead>
-                <tr className="sticky top-0 z-10 border-b border-[#e0dbd3] bg-[#f9f7f2] text-left dark:border-stone-600 dark:bg-[#2a2826]">
-                  <th className="whitespace-nowrap border-r border-[#e0dbd3] bg-[#f9f7f2] px-3 py-2.5 font-semibold text-foreground dark:border-stone-600 dark:bg-[#2a2826]">
-                    Method
-                  </th>
-                  <th className="min-w-[200px] border-r border-[#e0dbd3] bg-[#f9f7f2] px-3 py-2.5 font-semibold text-foreground dark:border-stone-600 dark:bg-[#2a2826]">
-                    Path
-                  </th>
-                  <th className="whitespace-nowrap border-r border-[#e0dbd3] bg-[#f9f7f2] px-3 py-2.5 font-semibold text-foreground dark:border-stone-600 dark:bg-[#2a2826]">
-                    Auth
-                  </th>
-                  <th className="border-r border-[#e0dbd3] bg-[#f9f7f2] px-3 py-2.5 font-semibold text-foreground dark:border-stone-600 dark:bg-[#2a2826]">
-                    Description
-                  </th>
-                  <th className="min-w-[180px] bg-[#f9f7f2] px-3 py-2.5 font-semibold text-foreground dark:bg-[#2a2826]">
-                    Notes
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {BACKEND_API_ROUTES.map((row) => (
-                  <tr
-                    key={`${row.method}-${row.path}`}
-                    className="border-b border-[#e0dbd3] bg-background hover:bg-[#faf9f6] dark:border-stone-600 dark:hover:bg-stone-900/30"
-                  >
-                    <td className="whitespace-nowrap border-r border-[#e0dbd3] px-3 py-2 font-mono text-[11px] dark:border-stone-600">
-                      {row.method}
-                    </td>
-                    <td className="border-r border-[#e0dbd3] px-3 py-2 font-mono text-[11px] text-foreground dark:border-stone-600">
-                      {row.path}
-                    </td>
-                    <td className="whitespace-nowrap border-r border-[#e0dbd3] px-3 py-2 dark:border-stone-600">
-                      {row.auth ? (
-                        <span className="text-amber-800 dark:text-amber-200">Bearer</span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="border-r border-[#e0dbd3] px-3 py-2 text-foreground dark:border-stone-600">{row.description}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{row.notes}</td>
+    <AppPageShell wide className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col !p-0">
+      <div className="p-4 md:p-5">
+        <Card className="rounded-none border-border py-0 shadow-sm gap-0 overflow-visible ring-1 ring-[#e0dbd3] dark:ring-stone-600">
+          <CardHeader className="border-b border-[#e0dbd3] px-4 pb-3 pt-4 dark:border-stone-600">
+            <CardTitle>Backend API</CardTitle>
+            <CardDescription className="mt-1">
+              Routes mounted in <code className="text-[11px]">server.js</code>. API base:{' '}
+              <code className="text-[11px]">{baseHint}</code>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse border-x border-b border-[#e0dbd3] text-xs dark:border-stone-600">
+                <thead>
+                  <tr className="sticky top-0 z-10 border-b border-[#e0dbd3] bg-[#f9f7f2] text-left dark:border-stone-600 dark:bg-[#2a2826]">
+                    <th className="whitespace-nowrap border-r border-[#e0dbd3] bg-[#f9f7f2] px-3 py-2.5 font-semibold text-foreground dark:border-stone-600 dark:bg-[#2a2826]">
+                      Method
+                    </th>
+                    <th className="min-w-[200px] border-r border-[#e0dbd3] bg-[#f9f7f2] px-3 py-2.5 font-semibold text-foreground dark:border-stone-600 dark:bg-[#2a2826]">
+                      Path
+                    </th>
+                    <th className="whitespace-nowrap border-r border-[#e0dbd3] bg-[#f9f7f2] px-3 py-2.5 font-semibold text-foreground dark:border-stone-600 dark:bg-[#2a2826]">
+                      Auth
+                    </th>
+                    <th className="border-r border-[#e0dbd3] bg-[#f9f7f2] px-3 py-2.5 font-semibold text-foreground dark:border-stone-600 dark:bg-[#2a2826]">
+                      Description
+                    </th>
+                    <th className="min-w-[180px] bg-[#f9f7f2] px-3 py-2.5 font-semibold text-foreground dark:bg-[#2a2826]">
+                      Notes
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+                </thead>
+                <tbody>
+                  {BACKEND_API_ROUTES.map((row) => (
+                    <tr
+                      key={`${row.method}-${row.path}`}
+                      className="border-b border-[#e0dbd3] bg-background hover:bg-[#faf9f6] dark:border-stone-600 dark:hover:bg-stone-900/30"
+                    >
+                      <td className="whitespace-nowrap border-r border-[#e0dbd3] px-3 py-2 font-mono text-[11px] dark:border-stone-600">
+                        {row.method}
+                      </td>
+                      <td className="border-r border-[#e0dbd3] px-3 py-2 font-mono text-[11px] text-foreground dark:border-stone-600">
+                        {row.path}
+                      </td>
+                      <td className="whitespace-nowrap border-r border-[#e0dbd3] px-3 py-2 dark:border-stone-600">
+                        {row.auth ? (
+                          <span className="text-amber-800 dark:text-amber-200">Bearer</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="border-r border-[#e0dbd3] px-3 py-2 text-foreground dark:border-stone-600">{row.description}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{row.notes}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </AppPageShell>
   );
 }

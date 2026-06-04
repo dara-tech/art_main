@@ -218,6 +218,18 @@ export default function VisualizePage() {
   ]);
 
   useEffect(() => {
+    const handleConfigChange = () => {
+      const globalMax = Number(localStorage.getItem('app-max-chart-series')) || 6;
+      setChartSettings(prev => ({
+        ...prev,
+        maxChartSeries: globalMax
+      }));
+    };
+    window.addEventListener('app-max-chart-series-changed', handleConfigChange);
+    return () => window.removeEventListener('app-max-chart-series-changed', handleConfigChange);
+  }, []);
+
+  useEffect(() => {
     const list = listIndicatorsFromResults(results, catalog);
     if (!list.length) {
       setChartIndicatorIds([]);
@@ -296,6 +308,7 @@ export default function VisualizePage() {
       (scopeMode === 'compare' ? compareSiteCodes.length : 1);
     setProgress({ completed: 0, total: estTotal });
     const acc = [];
+    const useAnalytics = localStorage.getItem('app-use-analytics') === 'true';
     try {
       await visualizeApi.streamRun(
         {
@@ -304,7 +317,8 @@ export default function VisualizePage() {
           siteLevel,
           compareSiteCodes: scopeMode === 'compare' ? compareSiteCodes : undefined,
           indicatorIds,
-          periods
+          periods,
+          useAnalytics
         },
         {
           onStart: (p) => setProgress({ completed: 0, total: Number(p.total) || 0 }),

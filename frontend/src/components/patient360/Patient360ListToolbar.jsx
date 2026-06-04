@@ -47,11 +47,11 @@ export default function Patient360ListToolbar({
   totalPages,
   onOpenColumnConfig,
   onOpenFilter,
-  activeFilterCount = 0
+  activeFilterCount = 0,
+  tabs
 }) {
   return (
     <Patient360NavBar ariaLabel={P360_KH.pageTitle} rowCount={P360_LIST_NAV_ROWS}>
-
       <Patient360NavRow tone="filters" className="gap-3">
         <SiteSelectModal
           sites={sites}
@@ -112,16 +112,20 @@ export default function Patient360ListToolbar({
 
       <Patient360NavRow tone="muted" className="justify-between gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
-          {programFilters.map((f) => (
-            <button
-              key={f.id || 'all'}
-              type="button"
-              onClick={() => onProgramFilterChange(f.id)}
-              className={appNavItemClass(programFilter === f.id)}
-            >
-              {f.label}
-            </button>
-          ))}
+          {tabs ? (
+            tabs
+          ) : (
+            programFilters?.map((f) => (
+              <button
+                key={f.id || 'all'}
+                type="button"
+                onClick={() => onProgramFilterChange(f.id)}
+                className={appNavItemClass(programFilter === f.id)}
+              >
+                {f.label}
+              </button>
+            ))
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <span className={cn('hidden truncate sm:inline', APP_NAV_MUTED)} role="status">

@@ -5,6 +5,7 @@ const { SECTION_DEFS: INFANT_SECTION_DEFS } = require('./infantReportService');
 const pnttReportService = require('./pnttReportService');
 const { runPool } = require('../utils/asyncPool');
 const { resolveFacilityCodesByHierarchy, provinceIdFromCode, isFacilitySite } = require('../utils/reportAggregation');
+const { sequelize } = require('../config/database');
 
 const VISUALIZE_CONCURRENCY = Number(process.env.VISUALIZE_CONCURRENCY || 2);
 /** 0 = no cap on periods per run */
@@ -426,7 +427,86 @@ function validateRunInput({ siteCode, periods, indicatorIds, facilityMultiplier 
   return { siteCode: site, periods: periodList, indicatorIds: idList, totalRuns };
 }
 
-async function runArt(siteCode, indicatorId, period) {
+async function tryQueryAnalytics(siteCode, indicatorId, period) {
+  try {
+    const label = period.key;
+    let type = 'quarter';
+    if (label.includes('-Q')) type = 'quarter';
+    else if (label.match(/^\d{4}-\d{2}$/)) type = 'month';
+    else if (label.match(/^\d{4}$/)) type = 'year';
+
+    const conditions = ['indicator = :indicatorId', 'period_label = :label', 'period_type = :type'];
+    const replacements = { indicatorId, label, type };
+
+    if (siteCode && siteCode !== 'all' && siteCode !== 'country') {
+      if (String(siteCode).startsWith('province:')) {
+        conditions.push('province_id = :provinceId');
+        replacements.provinceId = siteCode.replace('province:', '');
+      } else if (siteCode.length <= 2 || (siteCode.length === 4 && siteCode.endsWith('00'))) {
+        const digits = String(siteCode).replace(/\D/g, '');
+        const prefix = digits.slice(0, 2);
+        conditions.push('province_id = :provinceId');
+        replacements.provinceId = prefix;
+      } else {
+        conditions.push('site_code = :siteCode');
+        replacements.siteCode = siteCode;
+      }
+    }
+
+    const sql = `
+      SELECT
+        SUM(male_0_14) AS Male_0_14,
+        SUM(female_0_14) AS Female_0_14,
+        SUM(male_over_14) AS Male_over_14,
+        SUM(female_over_14) AS Female_over_14,
+        SUM(male_0_14 + female_0_14 + male_over_14 + female_over_14) AS TOTAL,
+        COUNT(DISTINCT site_code) AS site_count
+      FROM analytics_indicator_summary
+      WHERE ${conditions.join(' AND ')}
+    `;
+
+    const rows = await sequelize.query(sql, { replacements, type: sequelize.QueryTypes.SELECT });
+    const row = rows[0];
+    if (row && row.site_count > 0) {
+      return {
+        Indicator: indicatorId,
+        Male_0_14: Number(row.Male_0_14) || 0,
+        Female_0_14: Number(row.Female_0_14) || 0,
+        Male_over_14: Number(row.Male_over_14) || 0,
+        Female_over_14: Number(row.Female_over_14) || 0,
+        TOTAL: Number(row.TOTAL) || 0
+      };
+    }
+  } catch (err) {
+    console.warn(`[Analytics query fallback]: ${err.message}`);
+  }
+  return null;
+}
+
+async function runArt(siteCode, indicatorId, period, options = {}) {
+  if (options.useAnalytics) {
+    const cached = await tryQueryAnalytics(siteCode, indicatorId, period);
+    if (cached) {
+      const demo = extractDemographics(cached);
+      return {
+        indicator: indicatorId,
+        total: cached.TOTAL,
+        hasBreakdown: demo.hasBreakdown,
+        male014: demo.male014,
+        female014: demo.female014,
+        maleOver14: demo.maleOver14,
+        femaleOver14: demo.femaleOver14,
+        male: demo.maleTotal,
+        female: demo.femaleTotal,
+        age014: demo.age014,
+        age15plus: demo.age15plus,
+        queryMs: 5,
+        raw: cached,
+        isAnalytics: true
+      };
+    }
+  }
+
   const params = queryParamsFromPeriod(period);
   const row = await indicatorsService.executeOne(siteCode, indicatorId, params);
   const demo = extractDemographics(row);
@@ -447,7 +527,7 @@ async function runArt(siteCode, indicatorId, period) {
   };
 }
 
-async function runInfant(siteCode, indicatorId, period) {
+async function runInfant(siteCode, indicatorId, period, options = {}) {
   const { key } = parseIndicatorId(indicatorId);
   const def = INFANT_SECTION_DEFS.find((d) => d.scriptId === key);
   if (!def) throw new Error(`Infant indicator not found: ${key}`);
@@ -473,7 +553,7 @@ async function runInfant(siteCode, indicatorId, period) {
   };
 }
 
-async function runPntt(siteCode, indicatorId, period) {
+async function runPntt(siteCode, indicatorId, period, options = {}) {
   const { key } = parseIndicatorId(indicatorId);
   const def = (pnttReportService.sectionDefs || []).find((d) => d.scriptId === key);
   if (!def) throw new Error(`PNTT indicator not found: ${key}`);
@@ -499,17 +579,17 @@ async function runPntt(siteCode, indicatorId, period) {
   };
 }
 
-async function runOne(siteCode, indicatorId, period) {
+async function runOne(siteCode, indicatorId, period, options = {}) {
   const { program } = parseIndicatorId(indicatorId);
   const startedAt = Date.now();
   const dbSite = siteCode === 'country' ? 'all' : siteCode;
   let payload;
   if (program === PROGRAM.INFANT) {
-    payload = await runInfant(dbSite, indicatorId, period);
+    payload = await runInfant(dbSite, indicatorId, period, options);
   } else if (program === PROGRAM.PNTT) {
-    payload = await runPntt(dbSite, indicatorId, period);
+    payload = await runPntt(dbSite, indicatorId, period, options);
   } else {
-    payload = await runArt(dbSite, indicatorId, period);
+    payload = await runArt(dbSite, indicatorId, period, options);
   }
   return {
     periodKey: period.key,
@@ -545,19 +625,19 @@ async function runOneScoped(exec, period, indicatorId, meta) {
   }
 }
 
-async function runAggregatedRollup(facilityCodes, indicatorId, period, useAll) {
+async function runAggregatedRollup(facilityCodes, indicatorId, period, useAll, options = {}) {
   if (useAll) {
-    return runOne('country', indicatorId, period);
+    return runOne('country', indicatorId, period, options);
   }
   if (!facilityCodes.length) {
     throw new Error('No facilities found for this scope');
   }
   if (facilityCodes.length === 1) {
-    return runOne(facilityCodes[0], indicatorId, period);
+    return runOne(facilityCodes[0], indicatorId, period, options);
   }
   const parts = await runPool(facilityCodes, VISUALIZE_CONCURRENCY, async (fc) => {
     try {
-      return { ok: true, data: await runOne(fc, indicatorId, period) };
+      return { ok: true, data: await runOne(fc, indicatorId, period, options) };
     } catch (error) {
       return { ok: false, error: error?.message || 'Failed' };
     }
@@ -614,7 +694,7 @@ function buildTasks(execScope, periods, indicatorIds) {
   return tasks;
 }
 
-async function executeTask(task, execScope, sites, scopeMeta) {
+async function executeTask(task, execScope, sites, scopeMeta, options = {}) {
   const baseMeta = {
     scopeMode: scopeMeta.scopeMode,
     siteLevel: scopeMeta.siteLevel,
@@ -626,7 +706,7 @@ async function executeTask(task, execScope, sites, scopeMeta) {
     const facilityCode = task.facilityCode;
     const facilityLabel = facilityLabelFor(sites, facilityCode);
     return runOneScoped(
-      () => runOne(facilityCode, task.indicatorId, task.period),
+      () => runOne(facilityCode, task.indicatorId, task.period, options),
       task.period,
       task.indicatorId,
       { ...baseMeta, facilityCode, facilityLabel, aggregated: false }
@@ -637,7 +717,7 @@ async function executeTask(task, execScope, sites, scopeMeta) {
     const facilityCode = task.compareCode;
     const facilityLabel = task.compareLabel;
     return runOneScoped(
-      () => runAggregatedRollup(task.facilityCodes, task.indicatorId, task.period, false),
+      () => runAggregatedRollup(task.facilityCodes, task.indicatorId, task.period, false, options),
       task.period,
       task.indicatorId,
       { ...baseMeta, facilityCode, facilityLabel, aggregated: true }
@@ -648,7 +728,8 @@ async function executeTask(task, execScope, sites, scopeMeta) {
     task.facilityCodes,
     task.indicatorId,
     task.period,
-    task.useAll
+    task.useAll,
+    options
   );
   return {
     ok: true,
@@ -672,7 +753,7 @@ async function runBatch(ctx, input) {
   const tasks = buildTasks(execScope, periods, indicatorIds);
   const startedAt = Date.now();
   const results = await runPool(tasks, VISUALIZE_CONCURRENCY, async (task) => {
-    const out = await executeTask(task, execScope, ctx.sites, scopeMeta);
+    const out = await executeTask(task, execScope, ctx.sites, scopeMeta, { useAnalytics: input.useAnalytics });
     if (out.ok) return out;
     return out;
   });
@@ -716,7 +797,7 @@ async function runBatchStream(ctx, input, write) {
 
   await runPool(tasks, VISUALIZE_CONCURRENCY, async (task) => {
     try {
-      const out = await executeTask(task, execScope, ctx.sites, scopeMeta);
+      const out = await executeTask(task, execScope, ctx.sites, scopeMeta, { useAnalytics: input.useAnalytics });
       completed += 1;
       write({ type: 'result', completed, total: totalRuns, data: out.data });
     } catch (error) {

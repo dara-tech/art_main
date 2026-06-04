@@ -552,10 +552,11 @@ async function loadAdult(siteCode, clinicId, parts = null, opts = {}) {
     jobs.push(
       selectSite(
         siteCode,
-        `SELECT ClinicID, DafirstVisit, DaBirth, Sex, DaART, Artnum, LClinicID, TypeofReturn, TPT, TPTdrug, DaStartTPT, DaEndTPT,
-                VcctID, Vcctcode, DaHIV, PclinicID, SiteName, TbPast, TypeTB, Tbtreat, ResultTB, ResultTreat, DaResultTreat,
-                ARVTreatHis, Education, Referred, Orefferred, Allergy, Daonset, Datreat, Nationality, Diabete, Hyper, Anemia
-         FROM tblaimain WHERE ClinicID = ${cid} LIMIT 1`
+        `SELECT a.ClinicID, a.DafirstVisit, a.DaBirth, a.Sex, a.DaART, a.Artnum, a.LClinicID, a.TypeofReturn, a.TPT, a.TPTdrug, a.DaStartTPT, a.DaEndTPT,
+                a.VcctID, a.Vcctcode, a.DaHIV, a.PclinicID, a.SiteName, a.TbPast, a.TypeTB, a.Tbtreat, a.ResultTB, a.ResultTreat, a.DaResultTreat,
+                a.ARVTreatHis, a.Education, a.Referred, a.Orefferred, a.Allergy, a.Daonset, a.Datreat, a.Nationality, a.Diabete, a.Hyper, a.Anemia,
+                (SELECT Province FROM tblaumain WHERE ClinicID = a.ClinicID ORDER BY Daupdate DESC LIMIT 1) AS Province
+         FROM tblaimain a WHERE a.ClinicID = ${cid} LIMIT 1`
       ).then(([registration]) => {
         block.registration = registration
           ? {
@@ -622,7 +623,7 @@ async function loadAdult(siteCode, clinicId, parts = null, opts = {}) {
     jobs.push(
       selectSite(
         siteCode,
-        `SELECT d.DrugName, d.Dose, d.Status, d.Da, d.Reason, v.DatVisit
+        `SELECT d.Vid, d.DrugName, d.Dose, d.Status, d.Da, d.Reason, v.DatVisit
          FROM tblavmain v
          INNER JOIN tblavtbdrug d ON d.Vid = v.Vid AND d.site_code = v.site_code
          WHERE v.ClinicID = ${cid}
@@ -637,7 +638,7 @@ async function loadAdult(siteCode, clinicId, parts = null, opts = {}) {
     jobs.push(
       selectSite(
         siteCode,
-        `SELECT d.DrugName, d.Dose, d.Status, d.Da, d.Reason, v.DatVisit, v.ARTnum
+        `SELECT d.Vid, d.DrugName, d.Dose, d.Status, d.Da, d.Reason, v.DatVisit, v.ARTnum
          FROM tblavmain v
          INNER JOIN tblavarvdrug d ON d.Vid = v.Vid AND d.site_code = v.site_code
          WHERE v.ClinicID = ${cid}
@@ -652,7 +653,7 @@ async function loadAdult(siteCode, clinicId, parts = null, opts = {}) {
     jobs.push(
       selectSite(
         siteCode,
-        `SELECT d.DrugName, d.Dose, d.Status, d.Da, d.Reason, v.DatVisit
+        `SELECT d.Vid, d.DrugName, d.Dose, d.Status, d.Da, d.Reason, v.DatVisit
          FROM tblavmain v
          INNER JOIN tblavtptdrug d ON d.Vid = v.Vid AND d.site_code = v.site_code
          WHERE v.ClinicID = ${cid} AND d.DrugName != 'B6'
@@ -714,7 +715,7 @@ async function loadAdult(siteCode, clinicId, parts = null, opts = {}) {
     jobs.push(
       selectSite(
         siteCode,
-        `SELECT d.DrugName, d.Dose, d.Status, d.Da, v.DatVisit
+        `SELECT d.Vid, d.DrugName, d.Dose, d.Status, d.Da, v.DatVisit
          FROM tblavmain v INNER JOIN tblavoidrug d ON d.Vid = v.Vid AND d.site_code = v.site_code
          WHERE v.ClinicID = ${cid} ORDER BY d.Da DESC LIMIT ${lim(LIMITS.drugs)}`
       ).then((rows) => {
@@ -1921,10 +1922,134 @@ async function getPatient360(siteCode, clinicId, options = {}) {
   });
 }
 
+
+async function listVisits(siteCode, options = {}) {
+  const { page = 1, limit = 25, program = 'adult', q = '', sortBy = 'visitDate', sortDir = 'desc' } = options;
+  const offset = (Math.max(1, Number(page)) - 1) * Number(limit);
+  const size = Math.max(1, Math.min(100, Number(limit)));
+
+  const searchParam = String(q || '').trim().replace(/'/g, "''");
+  let searchClause = '1=1';
+  if (searchParam) {
+    if (program === 'adult') searchClause = `(CAST(v.ClinicID AS CHAR) LIKE '%${searchParam}%' OR v.ARTnum LIKE '%${searchParam}%')`;
+    else if (program === 'child') searchClause = `(CAST(v.ClinicID AS CHAR) LIKE '%${searchParam}%' OR v.ARTnum LIKE '%${searchParam}%')`;
+    else if (program === 'infant') searchClause = `(CAST(v.ClinicID AS CHAR) LIKE '%${searchParam}%')`;
+  }
+
+  let countSql = '';
+  let dataSql = '';
+
+  const sortCol = sortBy === 'clinicId' ? 'v.ClinicID' : sortBy === 'nextAppt' ? 'v.DaApp' : 'v.DatVisit';
+  const order = sortDir.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+
+  if (program === 'adult') {
+    countSql = `SELECT COUNT(*) AS c FROM tblavmain v WHERE ${searchClause}`;
+    dataSql = `
+      SELECT v.Vid AS vid, 'adult' AS program, CAST(v.ClinicID AS CHAR) AS clinicId,
+             m.Sex AS sex, v.ARTnum AS artNumber, v.DatVisit AS visitDate,
+             v.TypeVisit AS visitType, v.DaApp AS nextAppt
+      FROM tblavmain v
+      LEFT JOIN tblaimain m ON m.ClinicID = v.ClinicID
+      WHERE ${searchClause}
+      ORDER BY ${sortCol} ${order}
+      LIMIT ${size} OFFSET ${offset}
+    `;
+  } else if (program === 'child') {
+    countSql = `SELECT COUNT(*) AS c FROM tblcvmain v WHERE ${searchClause}`;
+    dataSql = `
+      SELECT v.Vid AS vid, 'child' AS program, CAST(v.ClinicID AS CHAR) AS clinicId,
+             c.Sex AS sex, v.ARTnum AS artNumber, v.DatVisit AS visitDate,
+             v.TypeVisit AS visitType, v.DaApp AS nextAppt
+      FROM tblcvmain v
+      LEFT JOIN tblcimain c ON c.ClinicID = v.ClinicID
+      WHERE ${searchClause}
+      ORDER BY ${sortCol} ${order}
+      LIMIT ${size} OFFSET ${offset}
+    `;
+  } else if (program === 'infant') {
+    countSql = `SELECT COUNT(*) AS c FROM tblevmain v WHERE ${searchClause}`;
+    dataSql = `
+      SELECT v.Vid AS vid, 'infant' AS program, CAST(v.ClinicID AS CHAR) AS clinicId,
+             i.Sex AS sex, i.MArt AS artNumber, v.DatVisit AS visitDate,
+             v.TypeVisit AS visitType, v.DaApp AS nextAppt
+      FROM tblevmain v
+      LEFT JOIN tbleimain i ON i.ClinicID = v.ClinicID
+      WHERE ${searchClause}
+      ORDER BY ${sortCol} ${order}
+      LIMIT ${size} OFFSET ${offset}
+    `;
+  } else {
+    return { visits: [], pagination: { totalCount: 0, totalPages: 0, currentPage: 1, pageSize: size } };
+  }
+
+  const { siteDatabaseManager } = require('../config/siteDatabase');
+  const conn = await siteDatabaseManager.getSiteConnection(siteCode);
+  
+  const countRows = await conn.query(countSql, { type: conn.QueryTypes.SELECT });
+  const totalCount = Number(countRows[0]?.c || 0);
+  const totalPages = Math.ceil(totalCount / size);
+
+  const rawRows = await conn.query(dataSql, { type: conn.QueryTypes.SELECT });
+  
+  const { decodeValue } = require('./patient360Decode');
+  const visits = rawRows.map(r => ({
+    ...r,
+    sexLabel: decodeValue('Sex', r.sex) || r.sex,
+    visitTypeLabel: decodeValue('TypeVisit', r.visitType) || r.visitType
+  }));
+
+  return {
+    visits,
+    pagination: {
+      totalCount,
+      totalPages,
+      currentPage: Number(page),
+      pageSize: size
+    }
+  };
+}
+
+async function getDrugOptions(siteCode) {
+  const sql = `
+    SELECT DISTINCT DrugName FROM (
+      SELECT DrugName FROM tbldrug
+      UNION
+      SELECT DrugName FROM tbldrugtreat
+      UNION
+      SELECT DrugName FROM tblavarvdrug
+      UNION
+      SELECT DrugName FROM tblavoidrug
+      UNION
+      SELECT DrugName FROM tblavtbdrug
+      UNION
+      SELECT DrugName FROM tblavtptdrug
+      UNION
+      SELECT DrugName FROM tblcvarvdrug
+      UNION
+      SELECT DrugName FROM tblcvoidrug
+      UNION
+      SELECT DrugName FROM tblcvtbdrug
+    ) AS AllDrugs
+    WHERE DrugName IS NOT NULL AND TRIM(DrugName) != ''
+    ORDER BY DrugName
+  `;
+  const rows = await selectSite(siteCode, sql);
+  return rows.map(r => r.DrugName);
+}
+
+async function getProvinces(siteCode) {
+  const rows = await selectSite(siteCode, 'SELECT province_en, province_kh FROM tblprovince ORDER BY province_kh');
+  return rows;
+}
+
 module.exports = {
   getPatient360,
-  listPatients,
   searchPatients,
+  countListPatientsFast,
+  listPatients,
+  getDrugOptions,
+  getProvinces,
+  listVisits,
   validateSiteCode,
   validateClinicId,
   LIMITS,

@@ -36,7 +36,6 @@ import {
 
 const PROGRAM_FILTERS = [
   { id: '', label: P360_KH.list.allPrograms },
-  { id: 'vcct', label: P360_KH.programs.vcct },
   { id: 'adult', label: P360_KH.programs.adult },
   { id: 'child', label: P360_KH.programs.child },
   { id: 'infant', label: P360_KH.programs.infant }
@@ -215,11 +214,7 @@ export default function Patient360Page() {
       }}
       programFilter={programFilter}
       onProgramFilterChange={(program) => {
-        if (program === 'vcct') {
-          navigate('/vcct');
-        } else {
-          setListFilters((f) => ({ ...f, program }));
-        }
+        setListFilters((f) => ({ ...f, program }));
       }}
       programFilters={PROGRAM_FILTERS}
       listPending={listPending}

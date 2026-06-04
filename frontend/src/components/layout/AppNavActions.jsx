@@ -33,7 +33,8 @@ import {
   FolderPlus,
   Palette,
   Merge,
-  Zap
+  Zap,
+  Sliders
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
@@ -144,6 +145,36 @@ const ACCENT_COLORS = [
   },
 ];
 
+const ALL_REPORT_INDICATORS = [
+  { id: '1. Active ART patients in previous quarter', name: '1. Active ART patients' },
+  { id: '2. Active Pre-ART patients in previous quarter', name: '2. Active Pre-ART patients' },
+  { id: '3. Newly Enrolled', name: '3. Newly Enrolled' },
+  { id: '4. Re-tested positive', name: '4. Re-tested positive' },
+  { id: '5. Newly Initiated', name: '5. Newly Initiated' },
+  { id: '5.1.1. New ART started: Same day', name: '5.1.1. Same day' },
+  { id: '5.1.2. New ART started: 1-7 days', name: '5.1.2. 1-7 days' },
+  { id: '5.1.3. New ART started: >7 days', name: '5.1.3. >7 days' },
+  { id: '5.2. New ART started with TLD', name: '5.2. Started with TLD' },
+  { id: '5.3. New ART patients who are pregnant', name: '5.3. Pregnant patients' },
+  { id: '6. Transfer-in patients', name: '6. Transfer-in' },
+  { id: '7. Lost and Return', name: '7. Lost and Return' },
+  { id: '8. Number of patients started TPT in this quarter', name: '8. Started TPT' },
+  { id: '9.1. Dead', name: '9.1. Dead' },
+  { id: '9.2. Lost to follow up (LTFU)', name: '9.2. LTFU' },
+  { id: '9.3. Transfer-out', name: '9.3. Transfer-out' },
+  { id: '10. Active Pre-ART patients at end of this quarter', name: '10. Active Pre-ART' },
+  { id: '11. Active ART patients at end of this quarter', name: '11. Active ART' },
+  { id: '11.1. Eligible MMD', name: '11.1. Eligible MMD' },
+  { id: '11.2. MMD', name: '11.2. MMD' },
+  { id: '11.3. TLD', name: '11.3. TLD' },
+  { id: '11.4. TPT Start', name: '11.4. TPT Start' },
+  { id: '11.5. TPT Complete', name: '11.5. TPT Complete' },
+  { id: '11.5.1. Started ART > 6 months', name: '11.5.1. Started ART > 6M' },
+  { id: '11.6. Eligible for VL test', name: '11.6. Eligible for VL test' },
+  { id: '11.7. VL tested in 12M', name: '11.7. VL tested in 12M' },
+  { id: '11.8. VL suppression', name: '11.8. VL suppression' }
+];
+
 const SEARCHABLE_TABS = [
   { name: 'ART Reports Summary', path: '/reports', desc: 'Main reports and aggregate summaries', Icon: RiBarChartBoxLine },
   { name: 'Patient 360° Search', path: '/patient-360', desc: 'Comprehensive patient view', Icon: RiUserSearchLine },
@@ -154,7 +185,7 @@ const SEARCHABLE_TABS = [
   { name: 'Admin Management', path: '/admin', desc: 'User roles and sites registry', Icon: RiUserSettingsLine }
 ];
 
-export default function AppNavActions({ onLogout }) {
+export default function AppNavActions({ onLogout, hideNav }) {
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
   const displayName = user?.fullName || user?.name || user?.username || 'User';
@@ -211,12 +242,46 @@ export default function AppNavActions({ onLogout }) {
   const [appLang, setAppLang] = useState(localStorage.getItem('app-lang') || 'kh');
   const [defaultPage, setDefaultPage] = useState(localStorage.getItem('app-default-page') || '/reports');
   const [sidebarHover, setSidebarHover] = useState(localStorage.getItem('app-sidebar-hover') === 'true');
+  const [useAnalytics, setUseAnalytics] = useState(() => {
+    return localStorage.getItem('app-use-analytics') === 'true';
+  });
+  const [layoutStyle, setLayoutStyle] = useState(() => {
+    return localStorage.getItem('app-layout-style') || 'navbar';
+  });
+  const [maxChartSeries, setMaxChartSeries] = useState(() => {
+    return Number(localStorage.getItem('app-max-chart-series')) || 6;
+  });
+  const [maxReportIndicators, setMaxReportIndicators] = useState(() => {
+    return localStorage.getItem('app-max-report-indicators') || 'All';
+  });
+  const [enabledReportIndicators, setEnabledReportIndicators] = useState(() => {
+    try {
+      const stored = localStorage.getItem('app-enabled-report-indicators');
+      return stored ? JSON.parse(stored) : ALL_REPORT_INDICATORS.map(ind => ind.id);
+    } catch (e) {
+      return ALL_REPORT_INDICATORS.map(ind => ind.id);
+    }
+  });
 
   useEffect(() => {
     if (activeModal === 'profile' && user) {
       setProfileName(user.fullName || user.name || '');
       setProfileEmail(user.email || (user.username?.includes('@') ? user.username : 'daracheol@gmail.com'));
       setProfileAvatarColor(user.avatarColor || 'bg-amber-500');
+    }
+    if (activeModal === 'reportConfig') {
+      setMaxChartSeries(Number(localStorage.getItem('app-max-chart-series')) || 6);
+      setMaxReportIndicators(localStorage.getItem('app-max-report-indicators') || 'All');
+      try {
+        const stored = localStorage.getItem('app-enabled-report-indicators');
+        setEnabledReportIndicators(stored ? JSON.parse(stored) : ALL_REPORT_INDICATORS.map(ind => ind.id));
+      } catch (e) {
+        setEnabledReportIndicators(ALL_REPORT_INDICATORS.map(ind => ind.id));
+      }
+    }
+    if (activeModal === 'settings') {
+      setLayoutStyle(localStorage.getItem('app-layout-style') || 'navbar');
+      setUseAnalytics(localStorage.getItem('app-use-analytics') === 'true');
     }
   }, [activeModal, user]);
 
@@ -241,6 +306,7 @@ export default function AppNavActions({ onLogout }) {
     document.documentElement.style.setProperty('--sidebar-primary', primaryVal);
     document.documentElement.style.setProperty('--gradient-end', gradientEndVal);
     localStorage.setItem('app-accent-color', selectedColor);
+    window.dispatchEvent(new Event('app-accent-color-changed'));
   }, [selectedColor, theme]);
 
   useEffect(() => {
@@ -312,83 +378,88 @@ export default function AppNavActions({ onLogout }) {
       style={{ backgroundColor: headerBg }}
       aria-label="Global"
     >
-      <div className="flex shrink-0 items-center h-8 mb-[2px] mr-2">
-        <span className="bg-teal-600 text-white text-[10px] font-black px-2 py-0.5 rounded tracking-wider select-none">
-          ART
-        </span>
-      </div>
+      {!hideNav && (
+        <div className="flex shrink-0 items-center h-8 mb-[2px] mr-2">
+          <span className="bg-teal-600 text-white text-[10px] font-black px-2 py-0.5 rounded tracking-wider select-none">
+            ART
+          </span>
+        </div>
+      )}
 
-      <nav className="flex min-w-0 flex-1 items-end gap-0.5 overflow-x-auto no-scrollbar relative -mb-[1px] z-10" aria-label="Main">
-        <NavLink
-          to="/reports"
-          title="ART Reports"
-          className={({ isActive }) => getTabClass(isActive)}
-        >
-          <RiBarChartBoxLine className={APP_NAV_ICON} />
-          <span className="hidden sm:inline">ART Reports</span>
-          <span className="sm:hidden">ART</span>
-        </NavLink>
+      {!hideNav && (
+        <nav className="flex min-w-0 flex-1 items-end gap-0.5 overflow-x-auto no-scrollbar relative -mb-[1px] z-10" aria-label="Main">
+          <NavLink
+            to="/reports"
+            title="ART Reports"
+            className={({ isActive }) => getTabClass(isActive)}
+          >
+            <RiBarChartBoxLine className={APP_NAV_ICON} />
+            <span className="hidden sm:inline">ART Reports</span>
+            <span className="sm:hidden">ART</span>
+          </NavLink>
 
-        {!guestUser && (
-          <>
-            <NavLink
-              to="/patient-360"
-              title="ព័ត៌មានអ្នកជំងឺ ៣៦០°"
-              className={({ isActive }) => getTabClass(isActive)}
-            >
-              <RiUserSearchLine className={APP_NAV_ICON} />
-              <span>៣៦០°</span>
-            </NavLink>
-            <NavLink
-              to="/visualize"
-              title="វិភាគទិន្នន័យ"
-              className={({ isActive }) => getTabClass(isActive)}
-            >
-              <RiBarChartGroupedLine className={APP_NAV_ICON} />
-              <span>វិភាគ</span>
-            </NavLink>
-            {!pdmoUser && (
-              <>
-                <NavLink
-                  to="/country-analytics"
-                  title="វិភាគឃ្លាំងទិន្នន័យ (Warehouse Analytics)"
-                  className={({ isActive }) => getTabClass(isActive)}
-                >
-                  <RiDatabase2Line className={APP_NAV_ICON} />
-                  <span className="hidden md:inline">ឃ្លាំងទិន្នន័យ</span>
-                  <span className="md:hidden">ឃ្លាំង</span>
-                </NavLink>
-                <NavLink
-                  to="/dqa"
-                  title="Data quality"
-                  className={({ isActive }) => getTabClass(isActive)}
-                >
-                  <RiShieldCheckLine className={APP_NAV_ICON} />
-                  <span>DQA</span>
-                </NavLink>
-                <NavLink
-                  to="/documents"
-                  title="API reference"
-                  className={({ isActive }) => getTabClass(isActive)}
-                >
-                  <RiFileTextLine className={APP_NAV_ICON} />
-                  <span>API</span>
-                </NavLink>
-              </>
-            )}
-            {adminUser && (
+          {!guestUser && (
+            <>
               <NavLink
-                to="/admin"
-                title="Admin"
+                to="/patient-360"
+                title="ព័ត៌មានអ្នកជំងឺ ៣៦០°"
                 className={({ isActive }) => getTabClass(isActive)}
               >
-                <RiUserSettingsLine className={APP_NAV_ICON} />
-                <span>Admin</span>
+                <RiUserSearchLine className={APP_NAV_ICON} />
+                <span>៣៦០°</span>
               </NavLink>
-            )}
-          </>
-        )}
-      </nav>
+              <NavLink
+                to="/visualize"
+                title="វិភាគទិន្នន័យ"
+                className={({ isActive }) => getTabClass(isActive)}
+              >
+                <RiBarChartGroupedLine className={APP_NAV_ICON} />
+                <span>វិភាគ</span>
+              </NavLink>
+              {!pdmoUser && (
+                <>
+                  <NavLink
+                    to="/country-analytics"
+                    title="វិភាគឃ្លាំងទិន្នន័យ (Warehouse Analytics)"
+                    className={({ isActive }) => getTabClass(isActive)}
+                  >
+                    <RiDatabase2Line className={APP_NAV_ICON} />
+                    <span className="hidden md:inline">ឃ្លាំងទិន្នន័យ</span>
+                    <span className="md:hidden">ឃ្លាំង</span>
+                  </NavLink>
+                  <NavLink
+                    to="/dqa"
+                    title="Data quality"
+                    className={({ isActive }) => getTabClass(isActive)}
+                  >
+                    <RiShieldCheckLine className={APP_NAV_ICON} />
+                    <span>DQA</span>
+                  </NavLink>
+                  <NavLink
+                    to="/documents"
+                    title="API reference"
+                    className={({ isActive }) => getTabClass(isActive)}
+                  >
+                    <RiFileTextLine className={APP_NAV_ICON} />
+                    <span>API</span>
+                  </NavLink>
+                </>
+              )}
+              {adminUser && (
+                <NavLink
+                  to="/admin"
+                  title="Admin"
+                  className={({ isActive }) => getTabClass(isActive)}
+                >
+                  <RiUserSettingsLine className={APP_NAV_ICON} />
+                  <span>Admin</span>
+                </NavLink>
+              )}
+            </>
+          )}
+        </nav>
+      )}
+      {hideNav && <div className="flex-1" />}
 
       <div className="flex shrink-0 items-center h-8 mb-[2px] gap-1 bg-transparent pr-1">
         {/* Search Dropdown Container */}
@@ -644,6 +715,19 @@ export default function AppNavActions({ onLogout }) {
               <button 
                 type="button"
                 onClick={() => {
+                  setActiveModal('reportConfig');
+                  setIsDropdownOpen(false);
+                }}
+                className="flex w-full items-center gap-3 px-2 py-1.5 rounded-lg text-left text-xs text-white/90 hover:bg-white/[0.06] hover:text-white transition-all duration-150 group cursor-pointer"
+              >
+                <Sliders className="size-4 text-white/60 group-hover:text-white transition-colors" />
+                <span className="flex-1 font-medium">Report Config</span>
+                <ChevronRight className="size-3.5 text-white/30 group-hover:text-white/60 transition-colors" />
+              </button>
+
+              <button 
+                type="button"
+                onClick={() => {
                   setActiveModal('passwords');
                   setIsDropdownOpen(false);
                 }}
@@ -779,6 +863,7 @@ export default function AppNavActions({ onLogout }) {
                 {activeModal === 'bookmarks' && <Bookmark className="size-4.5" stroke="url(#icon-gradient)" />}
                 {activeModal === 'downloads' && <Download className="size-4.5" stroke="url(#icon-gradient)" />}
                 {activeModal === 'extensions' && <Puzzle className="size-4.5" stroke="url(#icon-gradient)" />}
+                {activeModal === 'reportConfig' && <Sliders className="size-4.5" stroke="url(#icon-gradient)" />}
                 {activeModal === 'passwords' && <KeyRound className="size-4.5" stroke="url(#icon-gradient)" />}
                 {activeModal === 'settings' && <Settings className="size-4.5" stroke="url(#icon-gradient)" />}
                 
@@ -786,6 +871,7 @@ export default function AppNavActions({ onLogout }) {
                 {activeModal === 'bookmarks' && 'My Bookmarks'}
                 {activeModal === 'downloads' && 'Downloads History'}
                 {activeModal === 'extensions' && 'Manage Extensions'}
+                {activeModal === 'reportConfig' && 'Report Configuration'}
                 {activeModal === 'passwords' && 'Change Password'}
                 {activeModal === 'settings' && 'Preferences & Settings'}
               </h3>
@@ -1068,7 +1154,30 @@ export default function AppNavActions({ onLogout }) {
                     </Select>
                   </div>
 
-                  <div className="flex items-center justify-between py-2">
+                  <div className="flex items-center justify-between py-2 border-b border-border">
+                    <div>
+                      <div className="font-semibold text-xs text-foreground">Navigation Layout Style</div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">Toggle horizontal topbar nav or vertical left sidebar nav.</div>
+                    </div>
+                    <Select
+                      value={layoutStyle}
+                      onValueChange={(val) => {
+                        setLayoutStyle(val);
+                        localStorage.setItem('app-layout-style', val);
+                        window.dispatchEvent(new Event('app-layout-style-changed'));
+                      }}
+                    >
+                      <SelectTrigger size="sm" className="w-[140px] bg-muted/40 border-border text-foreground text-xs">
+                        <SelectValue placeholder="Select Layout" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="navbar">Top Navbar</SelectItem>
+                        <SelectItem value="sidebar">Left Sidebar</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center justify-between py-2 border-b border-border">
                     <div>
                       <div className="font-semibold text-xs text-foreground">Expand Sidebar on Hover</div>
                       <div className="text-[10px] text-muted-foreground mt-0.5">Toggle navigation hover effects.</div>
@@ -1092,6 +1201,111 @@ export default function AppNavActions({ onLogout }) {
                         )}
                       />
                     </button>
+                  </div>
+
+                  <div className="flex items-center justify-between py-2">
+                    <div>
+                      <div className="font-semibold text-xs text-foreground">Use Analytics Data (វិភាគ)</div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">Speed up load times by querying pre-aggregated warehouse data.</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextVal = !useAnalytics;
+                        setUseAnalytics(nextVal);
+                        localStorage.setItem('app-use-analytics', String(nextVal));
+                        window.dispatchEvent(new Event('app-use-analytics-changed'));
+                      }}
+                      className={cn(
+                        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out outline-none",
+                        useAnalytics ? "bg-primary" : "bg-muted-foreground/30"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "pointer-events-none inline-block size-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out",
+                          useAnalytics ? "translate-x-4" : "translate-x-0"
+                        )}
+                      />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* REPORT CONFIG MODAL */}
+              {activeModal === 'reportConfig' && (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between py-2 border-b border-border pb-3">
+                    <div>
+                      <div className="font-semibold text-xs text-foreground">Max Indicators on Chart</div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">Configure the maximum number of indicators that can be displayed on the visualization chart at once.</div>
+                    </div>
+                    <Select
+                      value={String(maxChartSeries)}
+                      onValueChange={(val) => {
+                        setMaxChartSeries(Number(val));
+                      }}
+                    >
+                      <SelectTrigger size="sm" className="w-[100px] bg-muted/40 border-border text-foreground text-xs">
+                        <SelectValue placeholder="Select limit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
+                          <SelectItem key={num} value={String(num)}>
+                            {num}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-semibold text-xs text-foreground">Select Indicators to Show in Table Report</div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">Toggle exactly which indicators display in the main reports table.</div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEnabledReportIndicators(ALL_REPORT_INDICATORS.map(ind => ind.id))}
+                          className="text-[10px] font-bold text-primary hover:underline cursor-pointer"
+                        >
+                          Select All
+                        </button>
+                        <span className="text-[10px] text-muted-foreground">|</span>
+                        <button
+                          type="button"
+                          onClick={() => setEnabledReportIndicators([])}
+                          className="text-[10px] font-bold text-rose-500 hover:underline cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="max-h-[220px] overflow-y-auto border border-border bg-muted/10 p-2.5 rounded-xl flex flex-col gap-2.5 no-scrollbar">
+                      {ALL_REPORT_INDICATORS.map((indicator) => {
+                        const isChecked = enabledReportIndicators.includes(indicator.id);
+                        return (
+                          <label key={indicator.id} className="flex items-start gap-2.5 text-xs text-foreground/90 cursor-pointer select-none hover:text-foreground transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                if (isChecked) {
+                                  setEnabledReportIndicators(enabledReportIndicators.filter(id => id !== indicator.id));
+                                } else {
+                                  setEnabledReportIndicators([...enabledReportIndicators, indicator.id]);
+                                }
+                              }}
+                              className="mt-0.5 rounded border-border bg-card text-primary focus:ring-primary focus:ring-offset-0 cursor-pointer"
+                            />
+                            <span>{indicator.name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               )}
@@ -1155,12 +1369,31 @@ export default function AppNavActions({ onLogout }) {
                 <button
                   type="button"
                   onClick={() => {
+                    localStorage.setItem('app-use-analytics', String(useAnalytics));
+                    window.dispatchEvent(new Event('app-use-analytics-changed'));
                     toast.success("Settings saved successfully.");
                     setActiveModal(null);
                   }}
                   className="min-w-[5.5rem] bg-primary text-primary-foreground hover:bg-primary/95 border border-primary rounded-md font-bold text-xs h-8 cursor-pointer transition-all duration-150"
                 >
                   Save Settings
+                </button>
+              )}
+
+              {activeModal === 'reportConfig' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    localStorage.setItem('app-max-chart-series', String(maxChartSeries));
+                    localStorage.setItem('app-enabled-report-indicators', JSON.stringify(enabledReportIndicators));
+                    window.dispatchEvent(new Event('app-max-chart-series-changed'));
+                    window.dispatchEvent(new Event('app-enabled-report-indicators-changed'));
+                    toast.success("Report configuration saved successfully.");
+                    setActiveModal(null);
+                  }}
+                  className="min-w-[5.5rem] bg-primary text-primary-foreground hover:bg-primary/95 border border-primary rounded-md font-bold text-xs h-8 cursor-pointer transition-all duration-150"
+                >
+                  Save Config
                 </button>
               )}
             </div>

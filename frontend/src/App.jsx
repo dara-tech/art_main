@@ -9,7 +9,6 @@ import { Patient360LoadingPanel } from './components/patient360/Patient360Loadin
 import LoginPage from './pages/LoginPage.jsx';
 import Patient360Page from './pages/Patient360Page.jsx';
 import VisualizePage from './pages/VisualizePage.jsx';
-import VcctPage from './pages/VcctPage.jsx';
 import ReportHomePage from './pages/ReportHomePage.jsx';
 
 const DocumentPage = lazy(() => import('./pages/DocumentPage.jsx'));
@@ -18,6 +17,9 @@ const DqaPage = lazy(() => import('./pages/DqaPage.jsx'));
 const AdminPage = lazy(() => import('./pages/AdminPage.jsx'));
 const RequireAdmin = lazy(() => import('./components/auth/RequireAdmin.jsx'));
 const CountryAnalyticsPage = lazy(() => import('./pages/CountryAnalyticsPage.jsx'));
+const ClinicalFormsListPage = lazy(() => import('./pages/ClinicalFormsListPage.jsx'));
+const PatientRegistrationPage = lazy(() => import('./pages/PatientRegistrationPage.jsx'));
+const PatientVisitPage = lazy(() => import('./pages/PatientVisitPage.jsx'));
 
 import { isGuest, hasRole } from './utils/authRoles.js';
 
@@ -106,8 +108,13 @@ function App() {
             <Route path="/documents" element={<RequireNotGuestOrPdmo><DocumentPage onLogout={logout} /></RequireNotGuestOrPdmo>} />
             <Route path="/dqa" element={<RequireNotGuestOrPdmo><DqaPage onLogout={logout} /></RequireNotGuestOrPdmo>} />
             <Route path="/patient-360" element={<RequireNotGuest><Patient360Page onLogout={logout} /></RequireNotGuest>} />
+            
+            {/* Clinical Forms Routing */}
+            <Route path="/forms/:program" element={<RequireNotGuest><ClinicalFormsListPage /></RequireNotGuest>} />
+            <Route path="/forms/:program/:clinicId/intake" element={<RequireNotGuest><PatientRegistrationPage /></RequireNotGuest>} />
+            <Route path="/forms/:program/:clinicId/visits" element={<RequireNotGuest><PatientVisitPage /></RequireNotGuest>} />
+
             <Route path="/country-analytics" element={<RequireNotGuestOrPdmo><CountryAnalyticsPage onLogout={logout} /></RequireNotGuestOrPdmo>} />
-            <Route path="/vcct" element={<RequireNotGuest><VcctPage onLogout={logout} /></RequireNotGuest>} />
             <Route path="/visualize" element={<RequireNotGuest><VisualizePage onLogout={logout} /></RequireNotGuest>} />
             <Route path="/event-report" element={<Navigate to="/visualize" replace />} />
             <Route

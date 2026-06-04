@@ -3,6 +3,7 @@ import { RiDownloadLine, RiDraggable, RiSearchLine, RiSettings3Line } from '@rem
 import { AnimatePresence, motion } from 'motion/react';
 import { toast } from 'sonner';
 import { useSites } from '../contexts/SitesContext';
+import { getPeriodByKey, listRecentQuarters } from '../utils/visualizePeriods';
 import { infantReportApi, pnttReportApi, reportingApi } from '../services/reportingApi';
 import { getAnalyticsStatus, getCountryAnalytics, getProvinceAnalytics, getAnalyticsSummary } from '../services/analyticsApi';
 import ReportFilters from '../components/reports/ReportFilters';
@@ -10,6 +11,8 @@ import ReportResultsPanel from '../components/reports/ReportResultsPanel';
 import { filterSitesByUserScope, isFacilitySite, pickDefaultSiteCode } from '../utils/siteSelection';
 import { useAuth } from '../contexts/AuthContext';
 import { downloadCsv, rowsToCsv, safeExportFilename } from '../utils/exportCsv';
+import AppPageShell from '../components/layout/AppPageShell';
+import Patient360Layout from '../components/patient360/Patient360Layout';
 
 const DETAIL_EXPORT_PAGE_SIZE = 500;
 const DETAIL_EXPORT_MAX = 50000;
@@ -93,7 +96,7 @@ export const INDICATOR_LABEL_MAP = {
   '10.3. TLD': '10.3. ចំនួនអ្នកជំងឺកំពុងទទួលការព្យាបាលដោយ TLD (Number of patients received TLD)',
   '10.4. TPT Start': '10.4. ចំនួនអ្នកជំងឺដែលបានចាប់ផ្តើមការបង្ការជំងឺរបេង (Number of patients started TPT)',
   '10.5. TPT Complete': '10.5. ចំនួនអ្នកជំងឺដែលបានបញ្ចប់ការបង្ការជំងឺរបេង (Number of patients completed TPT)',
-  '10.5.1. Started ART > 6 months': '10.5.1. ចំនួនអ្នកជំងឺដែលបានចាប់ផ្តើមព្យាបាល ART > ៦ ខែ (Number of patients who started ART > 6 months)',
+  '10.5.1. Started ART > 6 months': '10.5.1. ចាប់ផ្តើម ART > ៦ ខែ (Started ART > 6 months)',
   '10.6. Eligible for VL test': '10.6. ចំនួនអ្នកជំងឺដែលសមស្របធ្វើតេស្ត Viral Load (Eligible for Viral Load test)',
   '10.7. VL tested in 12M': '10.7. ចំនួនអ្នកជំងឺធ្វើតេស្ត Viral Load ក្នុងរយៈពេល ១២ ខែចុងក្រោយ (Receive VL test in last 12 months)',
   '10.8. VL suppression': '10.8. ចំនួនអ្នកជំងឺដែលមានលទ្ធផល VL ចុងក្រោយតិចជាង 1000 copies (Last VL is suppressed)',
@@ -103,7 +106,7 @@ export const INDICATOR_LABEL_MAP = {
   '11.3. TLD': '11.3. ចំនួនអ្នកជំងឺកំពុងទទួលការព្យាបាលដោយ TLD (Number of patients received TLD)',
   '11.4. TPT Start': '11.4. ចំនួនអ្នកជំងឺដែលបានចាប់ផ្តើមការបង្ការជំងឺរបេង (Number of patients started TPT)',
   '11.5. TPT Complete': '11.5. ចំនួនអ្នកជំងឺដែលបានបញ្ចប់ការបង្ការជំងឺរបេង (Number of patients completed TPT)',
-  '11.5.1. Started ART > 6 months': '11.5.1. ចំនួនអ្នកជំងឺដែលបានចាប់ផ្តើមព្យាបាល ART > ៦ ខែ (Number of patients who started ART > 6 months)',
+  '11.5.1. Started ART > 6 months': '11.5.1. ចាប់ផ្តើម ART > ៦ ខែ (Started ART > 6 months)',
   '(old) 11.4. TPT Start': '(old) 11.4. ចំនួនអ្នកជំងឺដែលបានចាប់ផ្តើមការបង្ការជំងឺរបេង — វិធីចាស់ (Number of patients started TPT — legacy logic)',
   '(old) 11.5. TPT Complete': '(old) 11.5. ចំនួនអ្នកជំងឺដែលបានបញ្ចប់ការបង្ការជំងឺរបេង — វិធីចាស់ (Number of patients completed TPT — legacy logic)',
   '11.6. Eligible for VL test': '11.6. ចំនួនអ្នកជំងឺដែលសមស្របធ្វើតេស្ត Viral Load (Eligible for Viral Load test)',
@@ -272,15 +275,24 @@ export default function ReportHomePage({ onLogout }) {
   const [sites, setSites] = useState([]);
   const [siteCode, setSiteCode] = useState('');
   const [reportType, setReportType] = useState('adult-child');
-  const [periodType, setPeriodType] = useState('quarter');
-  const [selectedDate, setSelectedDate] = useState(fmt(now));
-  const [selectedMonth, setSelectedMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
-  const [selectedQuarter, setSelectedQuarter] = useState(String(Math.floor(now.getMonth() / 3) + 1));
-  const [selectedYear, setSelectedYear] = useState(String(now.getFullYear()));
+  const [selectedPeriodKey, setSelectedPeriodKey] = useState(() => {
+    const q = listRecentQuarters(1)[0];
+    return q ? q.key : `${new Date().getFullYear()}-Q1`;
+  });
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState([]);
   const [runTimeMs, setRunTimeMs] = useState(null);
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
+  const [dataSource, setDataSource] = useState(null);
+  const [useAnalyticsSetting, setUseAnalyticsSetting] = useState(() => localStorage.getItem('app-use-analytics') === 'true');
+
+  useEffect(() => {
+    const handleSettingChange = () => {
+      setUseAnalyticsSetting(localStorage.getItem('app-use-analytics') === 'true');
+    };
+    window.addEventListener('app-use-analytics-changed', handleSettingChange);
+    return () => window.removeEventListener('app-use-analytics-changed', handleSettingChange);
+  }, []);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailTitle, setDetailTitle] = useState('');
@@ -424,10 +436,24 @@ export default function ReportHomePage({ onLogout }) {
     }
     return [...new Set(candidates.filter(Boolean))];
   };
-  const currentPeriod = useMemo(
-    () => buildPeriod(periodType, selectedDate, selectedMonth, selectedQuarter, selectedYear),
-    [periodType, selectedDate, selectedMonth, selectedQuarter, selectedYear]
-  );
+  const currentPeriod = useMemo(() => {
+    const p = getPeriodByKey(selectedPeriodKey);
+    if (!p) {
+      return {
+        startDate: '2026-01-01',
+        endDate: '2026-03-31',
+        previousEndDate: '2025-12-31',
+        kind: 'quarter',
+        year: 2026,
+        quarter: 1,
+        periodLabel: '2026-Q1'
+      };
+    }
+    return {
+      ...p,
+      periodLabel: p.key
+    };
+  }, [selectedPeriodKey]);
   const isAdultChild = reportType === 'adult-child';
   const previewRows = Array.isArray(rows) ? rows.slice(0, 120) : [];
   const availableYears = useMemo(() => {
@@ -979,6 +1005,7 @@ export default function ReportHomePage({ onLogout }) {
     setRows([]);
     setRunTimeMs(null);
     setProgress({ completed: 0, total: 0 });
+    setDataSource(null);
     const startedAt = performance.now();
     try {
       const sumObjectNumericFields = (target, source) => {
@@ -1064,14 +1091,14 @@ export default function ReportHomePage({ onLogout }) {
       const aggregateFacilityCodes = getAggregateFacilityCodes(effectiveSiteCode);
       let success = false;
       if (reportType === 'adult-child') {
-        // Try to load from pre-aggregated analytics warehouse first (if not daily)
-        if (periodType !== 'day') {
+        // Try to load from pre-aggregated analytics warehouse first (if not daily and analytics toggle is enabled)
+        if (currentPeriod.kind !== 'day' && useAnalyticsSetting) {
           try {
             const apiPeriod = {
-              periodType: periodType === 'year' ? 'year' : periodType === 'quarter' ? 'quarter' : 'month',
-              year: selectedYear,
-              quarter: selectedQuarter,
-              month: selectedMonth
+              periodType: currentPeriod.kind === 'year' ? 'year' : currentPeriod.kind === 'quarter' ? 'quarter' : 'month',
+              year: String(currentPeriod.year),
+              quarter: String(currentPeriod.quarter || '1'),
+              month: currentPeriod.kind === 'month' ? `${currentPeriod.year}-${String(currentPeriod.month).padStart(2, '0')}` : undefined
             };
             const status = await getAnalyticsStatus(apiPeriod);
             if (status && status.hasData) {
@@ -1131,6 +1158,7 @@ export default function ReportHomePage({ onLogout }) {
                 setRunTimeMs(Math.round(performance.now() - startedAt));
                 setProgress({ completed: finalRows.length, total: finalRows.length });
                 toast.success('⚡ បានទាញយកពីឃ្លាំងទិន្នន័យ (Loaded from Warehouse)');
+                setDataSource('warehouse');
                 success = true;
               }
             }
@@ -1356,7 +1384,11 @@ export default function ReportHomePage({ onLogout }) {
         }
         setRunTimeMs((prev) => prev ?? Math.round(performance.now() - startedAt));
       }
-      if (!success) {
+      if (success) {
+        if (!dataSource) {
+          setDataSource('live');
+        }
+      } else {
         setRows([]);
         toast.error('No data found for selected site level and period');
       }
@@ -1368,30 +1400,22 @@ export default function ReportHomePage({ onLogout }) {
   };
 
   return (
-    <div className="mx-auto bg-card px-3 py-3 sm:px-5 sm:py-4 lg:max-w-[300mm]">
-      <div className="space-y-4">
-        <ReportFilters
-          sites={sites}
-          siteCode={siteCode}
-          setSiteCode={setSiteCode}
-          reportType={reportType}
-          setReportType={setReportType}
-          periodType={periodType}
-          setPeriodType={setPeriodType}
-          selectedDate={selectedDate}
-          setSelectedDate={setSelectedDate}
-          selectedMonth={selectedMonth}
-          setSelectedMonth={setSelectedMonth}
-          selectedQuarter={selectedQuarter}
-          setSelectedQuarter={setSelectedQuarter}
-          selectedYear={selectedYear}
-          setSelectedYear={setSelectedYear}
-          availableYears={availableYears}
-          canRun={canRun}
-          loading={loading}
-          runReport={runReport}
-          onLogout={onLogout}
-        />
+    <>
+      <ReportFilters
+        sites={sites}
+        siteCode={siteCode}
+        setSiteCode={setSiteCode}
+        reportType={reportType}
+        setReportType={setReportType}
+        selectedPeriodKey={selectedPeriodKey}
+        setSelectedPeriodKey={setSelectedPeriodKey}
+        canRun={canRun}
+        loading={loading}
+        runReport={runReport}
+      />
+      <Patient360Layout lockViewport>
+        <AppPageShell wide className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col !p-0">
+          <div className="space-y-4 p-4 md:p-5">
         <ReportResultsPanel
           reportHeaderMeta={reportHeaderMeta}
           currentPeriod={currentPeriod}
@@ -1408,6 +1432,8 @@ export default function ReportHomePage({ onLogout }) {
           onAdultChildCellClick={handleAdultChildCellClick}
           onInfantCellClick={handleInfantCellClick}
           onPnttCellClick={handlePnttCellClick}
+          dataSource={dataSource}
+          useAnalyticsSetting={useAnalyticsSetting}
         />
         <AnimatePresence>
           {detailOpen && (
@@ -1732,6 +1758,8 @@ export default function ReportHomePage({ onLogout }) {
           )}
         </AnimatePresence>
       </div>
-    </div>
+    </AppPageShell>
+  </Patient360Layout>
+</>
   );
 }

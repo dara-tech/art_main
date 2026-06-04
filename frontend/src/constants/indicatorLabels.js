@@ -32,7 +32,7 @@ export const INDICATOR_LABEL_BY_NAME = {
   '11.5. TPT Complete': '11.5. បញ្ចប់ TPT',
   '(old) 11.4. TPT Start': '(old) 11.4. ចាប់ផ្តើម TPT — វិធីចាស់',
   '(old) 11.5. TPT Complete': '(old) 11.5. បញ្ចប់ TPT — វិធីចាស់',
-  '11.5.1. Started ART > 6 months': '11.5.1. ចំនួនអ្នកជំងឺដែលបានចាប់ផ្តើមព្យាបាល ART > ៦ ខែ (Number of patients who started ART > 6 months)',
+  '11.5.1. Started ART > 6 months': '11.5.1. ចាប់ផ្តើម ART > ៦ ខែ (Started ART > 6 months)',
   '11.6. Eligible for VL test': '11.6. សមស្របតេស្ត VL',
   '11.7. VL tested in 12M': '11.7. VL ក្នុង ១២ ខែ',
   '11.8. VL suppression': '11.8. VL បង្ក្រាប',
