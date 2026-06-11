@@ -427,16 +427,7 @@ export default function DqaPage({ onLogout }) {
                   </div>
                 ) : !loadingMeta && !error ? (
                   <div className="flex min-h-0 flex-1 flex-col">
-                    {summary.length === 0 && !loadingSummary ? (
-                      <p
-                        className={cn(
-                          'shrink-0 border-b border-border/80 bg-muted/20 px-4 py-2 text-muted-foreground',
-                          P360_TABLE_TEXT
-                        )}
-                      >
-                        {DQA_KH.emptyHint}
-                      </p>
-                    ) : null}
+
                     <div className="min-h-0 flex-1 overflow-auto">
                     <table className={cn('w-full min-w-[640px] border-collapse text-left', P360_TABLE_TEXT)}>
                       <thead className="sticky top-0 z-10 border-b border-border/20 bg-muted/95 backdrop-blur-md">

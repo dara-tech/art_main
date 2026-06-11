@@ -33,4 +33,15 @@ function getAggregateSequelize() {
   return aggregateSequelize;
 }
 
-module.exports = { getAggregateSequelize };
+async function resetAggregateSequelize() {
+  if (aggregateSequelize) {
+    try {
+      await aggregateSequelize.close();
+    } catch (err) {
+      console.error('Failed to close aggregate connection:', err);
+    }
+    aggregateSequelize = null;
+  }
+}
+
+module.exports = { getAggregateSequelize, resetAggregateSequelize };

@@ -362,7 +362,7 @@ export default function AppNavActions({ onLogout, hideNav }) {
 
   const getTabClass = (isActive) => {
     return cn(
-      'inline-flex shrink-0 items-center justify-center gap-1.5 h-8 px-4 text-[11px] font-medium transition-all relative rounded-t-[6px] select-none border-t border-l border-r outline-none focus:outline-none focus:ring-0',
+      'inline-flex shrink-0 items-center justify-center gap-1.5 h-8 px-4 text-[11px] font-medium transition-all relative rounded-t-[10px] select-none border-t border-l border-r outline-none focus:outline-none focus:ring-0',
       isActive
         ? 'bg-card text-foreground border-border/80 z-10 -mb-[1px]'
         : 'bg-transparent text-white/70 border-transparent hover:bg-white/10 hover:text-white border-b-transparent'

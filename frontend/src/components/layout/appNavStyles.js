@@ -8,11 +8,11 @@ export const APP_NAV_MUTED = 'text-[11px] font-medium leading-none text-muted-fo
 
 export const appNavItemClass = (active, disabled = false) =>
   cn(
-    'inline-flex shrink-0 items-center justify-center gap-1 rounded-none border px-2.5 transition-colors',
+    'inline-flex shrink-0 items-center justify-center gap-1 rounded-none border-b-2 px-2.5 transition-colors',
     APP_NAV_ROW,
     APP_NAV_TEXT,
     active
-      ? 'border-primary/40 bg-primary/10 text-foreground shadow-none'
+      ? 'border-primary bg-primary/10 text-foreground shadow-none'
       : 'border-transparent text-muted-foreground hover:border-border/70 hover:bg-muted/55 hover:text-foreground',
     disabled && 'pointer-events-none opacity-40'
   );
@@ -43,7 +43,7 @@ export const P360_TABLE_HEAD_TEXT = P360_TABLE_TEXT;
 /** Detail section tabs — same border on every tab; active = tint only */
 export const p360TabClass = (active, disabled = false) =>
   cn(
-    'inline-flex shrink-0 items-center justify-center gap-1 rounded-none border border-border/80 px-2.5 transition-colors',
+    'inline-flex shrink-0 items-center justify-center gap-1 rounded-none border-b border-border/80 px-2.5 transition-colors',
     APP_NAV_ROW,
     P360_TABLE_TEXT,
     active

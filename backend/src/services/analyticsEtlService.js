@@ -9,7 +9,7 @@
  *          It never modifies tblpatient, tblart, tblstatus, or any existing table.
  */
 
-const { sequelize } = require('../config/database');
+const { getWarehouseSequelize } = require('../config/warehouseDatabase');
 const indicatorsService = require('./indicatorsService');
 const { siteDatabaseManager } = require('../config/siteDatabase');
 const { runPool } = require('../utils/asyncPool');
@@ -40,7 +40,7 @@ function getEtlProgress() {
  * Uses CREATE TABLE IF NOT EXISTS — 100% safe to run multiple times.
  */
 async function ensureAnalyticsTables() {
-  await sequelize.query(`
+  await getWarehouseSequelize().query(`
     CREATE TABLE IF NOT EXISTS analytics_indicator_summary (
       id              BIGINT AUTO_INCREMENT PRIMARY KEY,
       period_type     VARCHAR(10)   NOT NULL COMMENT 'quarter | month | year | day',
@@ -67,7 +67,7 @@ async function ensureAnalyticsTables() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Pre-aggregated indicator warehouse — populated by ETL only'
   `);
 
-  await sequelize.query(`
+  await getWarehouseSequelize().query(`
     CREATE TABLE IF NOT EXISTS analytics_etl_log (
       id            INT AUTO_INCREMENT PRIMARY KEY,
       period_label  VARCHAR(20)   NOT NULL,
@@ -128,7 +128,7 @@ function buildPeriod(periodType, year, quarter, month) {
 // ─── ETL log helpers ──────────────────────────────────────────────────────────
 
 async function createEtlLog({ periodLabel, periodType, startDate, endDate, triggeredBy }) {
-  const [result] = await sequelize.query(
+  const [result] = await getWarehouseSequelize().query(
     `INSERT INTO analytics_etl_log
        (period_label, period_type, start_date, end_date, status, triggered_by)
      VALUES (:periodLabel, :periodType, :startDate, :endDate, 'running', :triggeredBy)`,
@@ -138,7 +138,7 @@ async function createEtlLog({ periodLabel, periodType, startDate, endDate, trigg
 }
 
 async function updateEtlLog(id, { status, siteCount, rowCount, durationMs, errorMsg }) {
-  await sequelize.query(
+  await getWarehouseSequelize().query(
     `UPDATE analytics_etl_log
      SET status = :status,
          site_count = :siteCount,
@@ -167,7 +167,7 @@ async function updateEtlLog(id, { status, siteCount, rowCount, durationMs, error
  * Uses INSERT ... ON DUPLICATE KEY UPDATE — never overwrites clinical data.
  */
 async function upsertSummaryRow({ periodType, periodLabel, startDate, endDate, provinceId, provinceName, siteCode, siteName, indicator, male014, female014, maleOver14, femaleOver14 }) {
-  await sequelize.query(
+  await getWarehouseSequelize().query(
     `INSERT INTO analytics_indicator_summary
        (period_type, period_label, start_date, end_date,
         province_id, province_name, site_code, site_name,
@@ -630,7 +630,7 @@ async function querySummary({ periodLabel, periodType, provinceId, siteCode } = 
     ORDER BY province_name, site_name, indicator
   `;
 
-  const rows = await sequelize.query(sql, { replacements, type: sequelize.QueryTypes.SELECT });
+  const rows = await getWarehouseSequelize().query(sql, { replacements, type: getWarehouseSequelize().QueryTypes.SELECT });
   if (periodType === 'year') {
     return aggregateQuartersForYear(rows, periodLabel, ['site_code', 'Indicator']);
   }
@@ -681,7 +681,7 @@ async function queryCountryRollup({ periodLabel, periodType } = {}) {
     ORDER BY indicator
   `;
 
-  const rows = await sequelize.query(sql, { replacements, type: sequelize.QueryTypes.SELECT });
+  const rows = await getWarehouseSequelize().query(sql, { replacements, type: getWarehouseSequelize().QueryTypes.SELECT });
   if (periodType === 'year') {
     return aggregateQuartersForYear(rows, periodLabel, ['indicator']);
   }
@@ -732,7 +732,7 @@ async function queryProvinceRollup({ periodLabel, periodType } = {}) {
     ORDER BY province_name, indicator
   `;
 
-  const rows = await sequelize.query(sql, { replacements, type: sequelize.QueryTypes.SELECT });
+  const rows = await getWarehouseSequelize().query(sql, { replacements, type: getWarehouseSequelize().QueryTypes.SELECT });
   if (periodType === 'year') {
     return aggregateQuartersForYear(rows, periodLabel, ['province_id', 'indicator']);
   }
@@ -744,9 +744,9 @@ async function queryProvinceRollup({ periodLabel, periodType } = {}) {
  */
 async function getEtlHistory({ limit = 20 } = {}) {
   await ensureAnalyticsTables();
-  return sequelize.query(
+  return getWarehouseSequelize().query(
     `SELECT * FROM analytics_etl_log ORDER BY started_at DESC LIMIT :limit`,
-    { replacements: { limit }, type: sequelize.QueryTypes.SELECT }
+    { replacements: { limit }, type: getWarehouseSequelize().QueryTypes.SELECT }
   );
 }
 
@@ -758,7 +758,7 @@ async function getLastRefreshed(periodLabel) {
   let rows;
   if (/^\d{4}$/.test(String(periodLabel))) {
     const year = periodLabel;
-    rows = await sequelize.query(
+    rows = await getWarehouseSequelize().query(
       `SELECT finished_at FROM analytics_etl_log
        WHERE period_label IN (:q1, :q2, :q3, :q4) AND status = 'success'
        ORDER BY finished_at DESC LIMIT 1`,
@@ -769,15 +769,15 @@ async function getLastRefreshed(periodLabel) {
           q3: `${year}-Q3`,
           q4: `${year}-Q4`
         },
-        type: sequelize.QueryTypes.SELECT
+        type: getWarehouseSequelize().QueryTypes.SELECT
       }
     );
   } else {
-    rows = await sequelize.query(
+    rows = await getWarehouseSequelize().query(
       `SELECT finished_at FROM analytics_etl_log
        WHERE period_label = :periodLabel AND status = 'success'
        ORDER BY finished_at DESC LIMIT 1`,
-      { replacements: { periodLabel }, type: sequelize.QueryTypes.SELECT }
+      { replacements: { periodLabel }, type: getWarehouseSequelize().QueryTypes.SELECT }
     );
   }
   return rows[0]?.finished_at || null;
@@ -785,7 +785,7 @@ async function getLastRefreshed(periodLabel) {
 
 async function clearPeriodAnalytics({ periodLabel, periodType }) {
   await ensureAnalyticsTables();
-  await sequelize.query(
+  await getWarehouseSequelize().query(
     `DELETE FROM analytics_indicator_summary WHERE period_label = :periodLabel AND period_type = :periodType`,
     { replacements: { periodLabel, periodType } }
   );
@@ -793,7 +793,7 @@ async function clearPeriodAnalytics({ periodLabel, periodType }) {
 
 async function truncateAnalyticsTable() {
   await ensureAnalyticsTables();
-  await sequelize.query(`TRUNCATE TABLE analytics_indicator_summary`);
+  await getWarehouseSequelize().query(`TRUNCATE TABLE analytics_indicator_summary`);
 }
 
 module.exports = {

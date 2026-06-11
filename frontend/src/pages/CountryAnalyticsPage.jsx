@@ -12,7 +12,8 @@ import {
   RiCheckboxCircleLine,
   RiCloseCircleLine,
   RiHistoryLine,
-  RiDeleteBinLine
+  RiDeleteBinLine,
+  RiSettings3Line
 } from '@remixicon/react';
 import { AnimatePresence, motion } from 'motion/react';
 import { toast } from 'sonner';
@@ -36,6 +37,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import Patient360Layout from '../components/patient360/Patient360Layout';
 import AppPageShell from '../components/layout/AppPageShell';
 import QuarterSelectModal from '../components/visualize/QuarterSelectModal';
+import DatabaseConnectionModal from '../components/database/DatabaseConnectionModal';
 import { getPeriodByKey, listRecentQuarters } from '../utils/visualizePeriods';
 import { Patient360NavBar, Patient360NavRow } from '../components/patient360/Patient360NavBar';
 import { VizToolbarBtn } from '../components/visualize/visualizeToolbarUi';
@@ -79,6 +81,9 @@ export default function CountryAnalyticsPage({ onLogout }) {
   const [cleanModalOpen, setCleanModalOpen] = useState(false);
   const [cleanAllOption, setCleanAllOption] = useState(false);
   const [clearing, setClearing] = useState(false);
+
+  // Settings Modal state
+  const [connectionModalOpen, setConnectionModalOpen] = useState(false);
 
   // Search & Expand state
   const [searchQuery, setSearchQuery] = useState('');
@@ -436,6 +441,19 @@ export default function CountryAnalyticsPage({ onLogout }) {
           onClick={() => {
             setCleanAllOption(false);
             setCleanModalOpen(true);
+          }}
+        />
+
+        <Separator orientation="vertical" className="h-4" />
+
+        {/* Setting Button to set connection database */}
+        <VizToolbarBtn
+          icon={RiSettings3Line}
+          iconClassName="text-slate-500 hover:text-slate-600"
+          label="ការកំណត់ទិន្នន័យ (Database Settings)"
+          shortLabel="កំណត់ DB"
+          onClick={() => {
+            setConnectionModalOpen(true);
           }}
         />
 
@@ -919,6 +937,11 @@ export default function CountryAnalyticsPage({ onLogout }) {
           </div>
         </div>
       )}
+
+      <DatabaseConnectionModal
+        open={connectionModalOpen}
+        onClose={() => setConnectionModalOpen(false)}
+      />
     </>
   );
 }

@@ -145,7 +145,7 @@ export default function DocumentPage({ onLogout }) {
       <div className="p-4 md:p-5">
         <Card className="rounded-none border-border py-0 shadow-sm gap-0 overflow-visible ring-1 ring-[#e0dbd3] dark:ring-stone-600">
           <CardHeader className="border-b border-[#e0dbd3] px-4 pb-3 pt-4 dark:border-stone-600">
-            <CardTitle>Backend API</CardTitle>
+            <CardTitle>API Documentations</CardTitle>
             <CardDescription className="mt-1">
               Routes mounted in <code className="text-[11px]">server.js</code>. API base:{' '}
               <code className="text-[11px]">{baseHint}</code>
