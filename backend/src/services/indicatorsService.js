@@ -86,9 +86,14 @@ class IndicatorsService {
     return sql || null;
   }
 
-  async executeAll(siteCode, params) {
+  async executeAll(siteCode, params, indicatorsToRun = []) {
     const startedAt = Date.now();
-    const ids = Array.from(this.queries.keys()).sort();
+    let ids = Array.from(this.queries.keys()).sort();
+    
+    if (Array.isArray(indicatorsToRun) && indicatorsToRun.length > 0) {
+      ids = ids.filter(id => indicatorsToRun.includes(id));
+    }
+    
     const data = await runPool(ids, INDICATOR_CONCURRENCY, async (id) => {
       try {
         return await this.executeOne(siteCode, id, params);

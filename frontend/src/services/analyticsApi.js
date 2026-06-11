@@ -68,15 +68,18 @@ export async function getEtlHistory({ limit = 20 } = {}) {
  * Trigger ETL refresh.
  * - If `periods` array is supplied (e.g. ['2025-Q1','2025-Q2','2025-Y']),
  *   the server runs multi-period ETL sequentially. Year keys are auto-expanded
- *   to Q1-Q4 by the backend.
- * - Otherwise falls back to single-period using periodType/year/quarter/month.
- * Server responds immediately; ETL runs in background.
- * Poll /status to check completion.
+ * Fetch list of all available indicators from the system
  */
-export async function triggerAnalyticsRefresh({ periodType, year, quarter, month, periods } = {}) {
-  const payload = periods && periods.length > 0
-    ? { periods }
-    : { periodType, year, quarter, month };
+export async function getIndicatorReference() {
+  const { data } = await api.get('/apiv1/indicators-optimized/query-reference');
+  return data;
+}
+
+/**
+ * Trigger ETL refresh
+ * payload can include periodType, year, quarter, month, periods (array), indicators (array)
+ */
+export async function triggerAnalyticsRefresh(payload) {
   const { data } = await api.post(`${BASE}/refresh`, payload);
   return data;
 }
@@ -86,8 +89,8 @@ export async function triggerAnalyticsRefresh({ periodType, year, quarter, month
  * If clearAll is true, truncates the table.
  * Otherwise, clears the specified period.
  */
-export async function clearAnalyticsData({ periodType, year, quarter, month, clearAll } = {}) {
-  const { data } = await api.post(`${BASE}/clear`, { periodType, year, quarter, month, clearAll });
+export async function clearAnalyticsData({ periodType, year, quarter, month, clearAll, indicator } = {}) {
+  const { data } = await api.post(`${BASE}/clear`, { periodType, year, quarter, month, clearAll, indicator });
   return data;
 }
 

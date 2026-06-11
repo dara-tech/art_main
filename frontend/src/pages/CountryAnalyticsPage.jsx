@@ -13,7 +13,8 @@ import {
   RiCloseCircleLine,
   RiHistoryLine,
   RiDeleteBinLine,
-  RiSettings3Line
+  RiSettings3Line,
+  RiAlertLine
 } from '@remixicon/react';
 import { AnimatePresence, motion } from 'motion/react';
 import { toast } from 'sonner';
@@ -25,7 +26,8 @@ import {
   getProvinceAnalytics,
   getEtlHistory,
   triggerAnalyticsRefresh,
-  clearAnalyticsData
+  clearAnalyticsData,
+  getIndicatorReference
 } from '../services/analyticsApi';
 import { downloadCsv, rowsToCsv } from '../utils/exportCsv';
 import { Button } from '@/components/ui/button';
@@ -79,11 +81,55 @@ export default function CountryAnalyticsPage({ onLogout }) {
 
   // Clean Warehouse state
   const [cleanModalOpen, setCleanModalOpen] = useState(false);
-  const [cleanAllOption, setCleanAllOption] = useState(false);
+  const [cleanOption, setCleanOption] = useState('period'); // 'period', 'indicator', 'all'
+  const [cleanIndicator, setCleanIndicator] = useState('');
   const [clearing, setClearing] = useState(false);
 
   // Settings Modal state
   const [connectionModalOpen, setConnectionModalOpen] = useState(false);
+
+  // Missing indicators state
+  const [checkingMissing, setCheckingMissing] = useState(false);
+  const [missingIndicatorsModalOpen, setMissingIndicatorsModalOpen] = useState(false);
+  const [missingIndicatorsList, setMissingIndicatorsList] = useState([]);
+
+  const handleCheckMissingIndicators = async () => {
+    setCheckingMissing(true);
+    try {
+      const res = await getIndicatorReference();
+      if (!res.success) throw new Error('Failed to load indicators');
+      const missing = [];
+      res.data.forEach(d => {
+        const id = d.indicatorId;
+        const sql = d.aggregateSql || '';
+        
+        // Extract the exact 'Indicator' label string used in the SQL query
+        const match = sql.match(/['"]([^'"]+)['"]\s+AS\s+Indicator/i);
+        const expectedLabel = match ? match[1].trim() : id.trim();
+        
+        // Check if the label OR the raw ID exists in the loaded warehouse data
+        const isPresent = countryRows.some(r => {
+          const rInd = String(r.indicator).trim();
+          return rInd === expectedLabel || rInd === id;
+        });
+        
+        if (!isPresent) {
+          missing.push(id);
+        }
+      });
+      
+      if (missing.length === 0) {
+        toast.success('All indicators are already present in the analytics warehouse for this period!');
+      } else {
+        setMissingIndicatorsList(missing);
+        setMissingIndicatorsModalOpen(true);
+      }
+    } catch (e) {
+      toast.error('Failed to check missing indicators: ' + e.message);
+    } finally {
+      setCheckingMissing(false);
+    }
+  };
 
   // Search & Expand state
   const [searchQuery, setSearchQuery] = useState('');
@@ -223,18 +269,34 @@ export default function CountryAnalyticsPage({ onLogout }) {
   const handleClearAnalytics = async () => {
     setClearing(true);
     try {
-      const res = await clearAnalyticsData({
+      const payload = {
         ...currentPeriod,
-        clearAll: cleanAllOption
-      });
+        clearAll: cleanOption === 'all'
+      };
+      if (cleanOption === 'indicator') {
+        if (!cleanIndicator) {
+          toast.error('Please select an indicator to clean.');
+          setClearing(false);
+          return;
+        }
+        payload.indicator = cleanIndicator;
+      }
+      
+      const res = await clearAnalyticsData(payload);
       if (res.success) {
         toast.success(res.message || 'Analytics warehouse data cleared successfully.');
         
         // If we cleared the current period or everything, reset loaded tables on screen
-        if (cleanAllOption || currentPeriod.periodLabel === lastLoadedPeriod) {
-          setCountryRows([]);
-          setProvinceRows([]);
-          setLastLoadedPeriod(null);
+        if (cleanOption === 'all' || currentPeriod.periodLabel === lastLoadedPeriod) {
+          if (cleanOption === 'indicator') {
+            // Only remove the specific indicator from the UI instead of clearing all
+            setCountryRows(prev => prev.filter(r => r.indicator !== cleanIndicator));
+            setProvinceRows(prev => prev.filter(r => r.indicator !== cleanIndicator));
+          } else {
+            setCountryRows([]);
+            setProvinceRows([]);
+            setLastLoadedPeriod(null);
+          }
         }
         
         // Update the warehouse status instantly
@@ -439,7 +501,7 @@ export default function CountryAnalyticsPage({ onLogout }) {
           shortLabel="សម្អាត"
           disabled={loading || statusLoading || warehouseStatus.etlRunning}
           onClick={() => {
-            setCleanAllOption(false);
+            setCleanOption('period');
             setCleanModalOpen(true);
           }}
         />
@@ -455,6 +517,17 @@ export default function CountryAnalyticsPage({ onLogout }) {
           onClick={() => {
             setConnectionModalOpen(true);
           }}
+        />
+
+        {/* Check Missing Indicators Button */}
+        <VizToolbarBtn
+          icon={checkingMissing ? RiLoader4Line : RiAlertLine}
+          iconClassName={checkingMissing ? TOOLBAR_ICON.brand : "text-orange-500 hover:text-orange-600"}
+          label="ពិនិត្យសូចនាករដែលខ្វះ (Check Missing Indicators)"
+          shortLabel="ខ្វះ"
+          disabled={loading || statusLoading || checkingMissing || !warehouseStatus.hasData}
+          onClick={handleCheckMissingIndicators}
+          className={checkingMissing ? '[&_svg]:animate-spin' : undefined}
         />
 
         {/* Status indicator on the right */}
@@ -861,8 +934,8 @@ export default function CountryAnalyticsPage({ onLogout }) {
                   <input
                     type="radio"
                     name="cleanOption"
-                    checked={!cleanAllOption}
-                    onChange={() => setCleanAllOption(false)}
+                    checked={cleanOption === 'period'}
+                    onChange={() => setCleanOption('period')}
                     disabled={clearing}
                     className="size-4 accent-primary"
                   />
@@ -876,12 +949,44 @@ export default function CountryAnalyticsPage({ onLogout }) {
 
                 <Separator className="my-2" />
 
+                <label className="flex items-start gap-3 cursor-pointer font-semibold text-foreground py-1">
+                  <input
+                    type="radio"
+                    name="cleanOption"
+                    checked={cleanOption === 'indicator'}
+                    onChange={() => setCleanOption('indicator')}
+                    disabled={clearing}
+                    className="size-4 accent-primary mt-1"
+                  />
+                  <div className="flex-1">
+                    <div>សម្អាតសូចនាករជាក់លាក់ (Clean Specific Indicator)</div>
+                    <div className="text-[10px] text-muted-foreground font-normal mt-0.5 mb-2">
+                      លុបទិន្នន័យតែមួយសូចនាករដែលជ្រើសរើសសម្រាប់រយៈពេល <strong>{currentPeriod.periodLabel}</strong>។
+                    </div>
+                    {cleanOption === 'indicator' && (
+                      <select
+                        className="w-full border p-1.5 text-[11px]"
+                        value={cleanIndicator}
+                        onChange={(e) => setCleanIndicator(e.target.value)}
+                        disabled={clearing}
+                      >
+                        <option value="">ជ្រើសរើសសូចនាករ (Select indicator)...</option>
+                        {countryRows.map(r => (
+                          <option key={r.indicator} value={r.indicator}>{r.indicator}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                </label>
+
+                <Separator className="my-2" />
+
                 <label className="flex items-center gap-3 cursor-pointer font-semibold text-foreground py-1">
                   <input
                     type="radio"
                     name="cleanOption"
-                    checked={cleanAllOption}
-                    onChange={() => setCleanAllOption(true)}
+                    checked={cleanOption === 'all'}
+                    onChange={() => setCleanOption('all')}
                     disabled={clearing}
                     className="size-4 accent-destructive"
                   />
@@ -894,7 +999,7 @@ export default function CountryAnalyticsPage({ onLogout }) {
                 </label>
               </div>
 
-              {cleanAllOption && (
+              {cleanOption === 'all' && (
                 <div className="p-2.5 bg-rose-50 border border-rose-100 text-rose-800 text-[10px] leading-snug">
                   <strong>⚠️ ព្រមាន (Warning):</strong> ជម្រើសនេះនឹងលុបគ្រប់ត្រីមាស និងគ្រប់ខែទាំងអស់ពីឃ្លាំងទិន្នន័យ។
                 </div>
@@ -915,7 +1020,7 @@ export default function CountryAnalyticsPage({ onLogout }) {
               </Button>
               <Button
                 type="button"
-                variant={cleanAllOption ? 'destructive' : 'default'}
+                variant={cleanOption === 'all' ? 'destructive' : 'default'}
                 size="sm"
                 onClick={handleClearAnalytics}
                 disabled={clearing}
@@ -932,6 +1037,76 @@ export default function CountryAnalyticsPage({ onLogout }) {
                     យល់ព្រមសម្អាត (Confirm)
                   </>
                 )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Missing Indicators Modal */}
+      {missingIndicatorsModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 p-4 animate-in fade-in duration-200" role="dialog" aria-modal="true">
+          <div className="flex max-h-[min(88vh,42rem)] w-full max-w-md flex-col overflow-hidden bg-card shadow-2xl border" onClick={(e) => e.stopPropagation()}>
+            <div className="flex shrink-0 items-start gap-3 border-b border-orange-200/50 bg-orange-50/50 px-5 py-3">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-sm font-bold text-orange-700 flex items-center gap-2">
+                  <RiAlertLine className="size-4" />
+                  សូចនាករដែលខ្វះ (Missing Indicators)
+                </h2>
+              </div>
+              <button
+                type="button"
+                className="inline-flex h-7 w-7 shrink-0 items-center justify-center border border-border/80 bg-background/80 hover:bg-muted text-muted-foreground hover:text-foreground"
+                onClick={() => setMissingIndicatorsModalOpen(false)}
+                aria-label="Close"
+              >
+                <RiCloseCircleLine className="size-4" />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 space-y-4 text-[12px] leading-relaxed">
+              <p className="text-muted-foreground">
+                សូចនាករចំនួន <strong className="text-foreground">{missingIndicatorsList.length}</strong> មិនទាន់មានទិន្នន័យក្នុងឃ្លាំងសម្រាប់រយៈពេល <strong>{currentPeriod.periodLabel}</strong> នេះទេ៖
+              </p>
+              <div className="flex flex-wrap gap-2 p-3 bg-muted/20 border border-border/50 max-h-48 overflow-y-auto">
+                {missingIndicatorsList.map(id => (
+                  <Badge key={id} variant="secondary" className="font-mono text-[10px] rounded-none border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100">
+                    {id}
+                  </Badge>
+                ))}
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-2">
+                តើអ្នកចង់ធ្វើសមកាលកម្មទាញយកទិន្នន័យសម្រាប់តែសូចនាករដែលខ្វះទាំងនេះមែនទេ?
+                <br />
+                <span className="opacity-80">(Do you want to sync these missing indicators now?)</span>
+              </p>
+            </div>
+
+            <div className="flex shrink-0 justify-end gap-2 border-t border-border/80 bg-muted/20 px-5 py-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setMissingIndicatorsModalOpen(false)}
+                className="text-[11px] h-8 rounded-none px-3 font-medium"
+              >
+                បោះបង់ (Cancel)
+              </Button>
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                onClick={() => {
+                  setMissingIndicatorsModalOpen(false);
+                  toast.info('កំពុងទាញយកទិន្នន័យ... (Starting sync)');
+                  triggerAnalyticsRefresh({ ...currentPeriod, indicators: missingIndicatorsList })
+                    .then(() => fetchWarehouseStatus())
+                    .catch(err => toast.error('បរាជ័យ (Failed): ' + err.message));
+                }}
+                className="text-[11px] h-8 rounded-none px-3 font-semibold gap-1 bg-orange-600 hover:bg-orange-700 text-white"
+              >
+                <RiRefreshLine className="size-3.5" />
+                សមកាលកម្ម (Sync Missing)
               </Button>
             </div>
           </div>

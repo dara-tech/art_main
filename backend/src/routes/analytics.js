@@ -170,6 +170,7 @@ router.post('/refresh', authenticateToken, async (req, res) => {
 
   const body = req.body || req.query;
   const periods = Array.isArray(body.periods) ? body.periods : null;
+  const indicators = Array.isArray(body.indicators) ? body.indicators : [];
 
   if (periods && periods.length > 0) {
     // ── Multi-period batch sync ──────────────────────────────────────
@@ -180,7 +181,7 @@ router.post('/refresh', authenticateToken, async (req, res) => {
     });
 
     etlRunning = true;
-    runEtlMulti({ periodKeys: periods, triggeredBy: 'manual' })
+    runEtlMulti({ periodKeys: periods, triggeredBy: 'manual', indicators })
       .then((result) => {
         console.log(`[Analytics] Multi ETL completed: ${result.totalRows} rows across ${result.results.length} periods`);
       })
@@ -208,7 +209,7 @@ router.post('/refresh', authenticateToken, async (req, res) => {
       });
 
       etlRunning = true;
-      runEtlMulti({ periodKeys: quarterKeys, triggeredBy: 'manual' })
+      runEtlMulti({ periodKeys: quarterKeys, triggeredBy: 'manual', indicators })
         .then((result) => {
           console.log(`[Analytics] Year ETL (${year}) completed: ${result.totalRows} rows across ${result.results.length} quarters`);
         })
@@ -229,7 +230,7 @@ router.post('/refresh', authenticateToken, async (req, res) => {
       });
 
       etlRunning = true;
-      runEtl({ periodType, year, quarter, month, triggeredBy: 'manual' })
+      runEtl({ periodType, year, quarter, month, triggeredBy: 'manual', indicators })
         .then((result) => {
           console.log(`[Analytics] ETL completed: ${result.rowCount} rows for ${result.periodLabel}`);
         })
@@ -258,12 +259,18 @@ router.post('/clear', authenticateToken, async (req, res) => {
       });
     } else {
       const { periodLabel, periodType } = parsePeriodQuery(req.body || req.query);
-      await clearPeriodAnalytics({ periodLabel, periodType });
+      const { indicator } = req.body || req.query || {};
+      
+      await clearPeriodAnalytics({ periodLabel, periodType, indicator });
+      
       return res.json({
         success: true,
-        message: `Successfully cleared analytics data for ${periodLabel}.`,
+        message: indicator 
+          ? `Successfully cleared analytics data for indicator "${indicator}" in ${periodLabel}.`
+          : `Successfully cleared analytics data for ${periodLabel}.`,
         periodLabel,
-        periodType
+        periodType,
+        indicator
       });
     }
   } catch (e) {

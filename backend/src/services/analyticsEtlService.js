@@ -220,7 +220,7 @@ const INDICATOR_DEFAULT_PARAMS = {
  * Run ETL for one facility site and one period.
  * Returns number of rows upserted.
  */
-async function processSite(site, periodParams) {
+async function processSite(site, periodParams, indicatorsToRun = []) {
   const { startDate, endDate, previousEndDate, label, periodType } = periodParams;
   const params = {
     StartDate: startDate,
@@ -231,7 +231,7 @@ async function processSite(site, periodParams) {
 
   let result;
   try {
-    result = await indicatorsService.executeAll(String(site.code), params);
+    result = await indicatorsService.executeAll(String(site.code), params, indicatorsToRun);
   } catch (e) {
     // Site query failed — skip gracefully, don't break the ETL run
     console.warn(`[ETL] Site ${site.code} failed: ${e.message}`);
@@ -281,9 +281,10 @@ async function processSite(site, periodParams) {
  * @param {string|number}            [options.quarter]   required for periodType='quarter'
  * @param {string}                   [options.month]     required for periodType='month' (e.g. '2025-01')
  * @param {'cron'|'manual'|'system'} [options.triggeredBy]
+ * @param {string[]}                 [options.indicators]
  * @returns {Promise<{success, rowCount, siteCount, durationMs, logId}>}
  */
-async function runEtl({ periodType = 'quarter', year, quarter, month, triggeredBy = 'manual' } = {}) {
+async function runEtl({ periodType = 'quarter', year, quarter, month, triggeredBy = 'manual', indicators = [] } = {}) {
   await ensureAnalyticsTables();
 
   // Reload SQL queries from disk so any newly added indicator files are included
@@ -328,7 +329,7 @@ async function runEtl({ periodType = 'quarter', year, quarter, month, triggeredB
     };
 
     const results = await runPool(facilitySites, ETL_CONCURRENCY, async (site) => {
-      const count = await processSite(site, periodParams);
+      const count = await processSite(site, periodParams, indicators);
       etlProgress.completedSites++;
       etlProgress.processedRows += count;
       etlProgress.lastProcessedSite = site.name || site.code;
@@ -377,9 +378,10 @@ async function runEtl({ periodType = 'quarter', year, quarter, month, triggeredB
  * @param {string[]} options.periodKeys   Array of period keys like ['2025-Q1','2025-Q2','2024-Q4']
  *                                        Year keys like '2025-Y' are automatically expanded to Q1-Q4.
  * @param {'cron'|'manual'|'system'} [options.triggeredBy]
+ * @param {string[]}                 [options.indicators]
  * @returns {Promise<{success, totalRows, results}>}
  */
-async function runEtlMulti({ periodKeys = [], triggeredBy = 'manual' } = {}) {
+async function runEtlMulti({ periodKeys = [], triggeredBy = 'manual', indicators = [] } = {}) {
   // Expand year keys into quarter keys
   const expandedKeys = [];
   for (const key of periodKeys) {
@@ -437,7 +439,7 @@ async function runEtlMulti({ periodKeys = [], triggeredBy = 'manual' } = {}) {
     etlProgress.lastProcessedSite = 'Initializing...';
 
     try {
-      const result = await runEtl({ periodType, year, quarter, month, triggeredBy });
+      const result = await runEtl({ periodType, year, quarter, month, triggeredBy, indicators });
       grandTotal += result.rowCount || 0;
       results.push({ key, success: true, rowCount: result.rowCount });
     } catch (e) {
@@ -783,12 +785,19 @@ async function getLastRefreshed(periodLabel) {
   return rows[0]?.finished_at || null;
 }
 
-async function clearPeriodAnalytics({ periodLabel, periodType }) {
+async function clearPeriodAnalytics({ periodLabel, periodType, indicator }) {
   await ensureAnalyticsTables();
-  await getWarehouseSequelize().query(
-    `DELETE FROM analytics_indicator_summary WHERE period_label = :periodLabel AND period_type = :periodType`,
-    { replacements: { periodLabel, periodType } }
-  );
+  if (indicator) {
+    await getWarehouseSequelize().query(
+      `DELETE FROM analytics_indicator_summary WHERE period_label = :periodLabel AND period_type = :periodType AND indicator = :indicator`,
+      { replacements: { periodLabel, periodType, indicator } }
+    );
+  } else {
+    await getWarehouseSequelize().query(
+      `DELETE FROM analytics_indicator_summary WHERE period_label = :periodLabel AND period_type = :periodType`,
+      { replacements: { periodLabel, periodType } }
+    );
+  }
 }
 
 async function truncateAnalyticsTable() {
