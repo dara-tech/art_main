@@ -65,6 +65,15 @@ export async function getEtlHistory({ limit = 20 } = {}) {
 }
 
 /**
+ * Get all facility sites and their sync status for a given period.
+ */
+export async function getSitesSyncStatus({ periodType, year, quarter, month } = {}) {
+  const qs = buildQuery({ periodType, year, quarter, month });
+  const { data } = await api.get(`${BASE}/sites-status${qs}`);
+  return data;
+}
+
+/**
  * Trigger ETL refresh.
  * - If `periods` array is supplied (e.g. ['2025-Q1','2025-Q2','2025-Y']),
  *   the server runs multi-period ETL sequentially. Year keys are auto-expanded

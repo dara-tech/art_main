@@ -282,9 +282,10 @@ async function processSite(site, periodParams, indicatorsToRun = []) {
  * @param {string}                   [options.month]     required for periodType='month' (e.g. '2025-01')
  * @param {'cron'|'manual'|'system'} [options.triggeredBy]
  * @param {string[]}                 [options.indicators]
+ * @param {string[]}                 [options.siteCodes]
  * @returns {Promise<{success, rowCount, siteCount, durationMs, logId}>}
  */
-async function runEtl({ periodType = 'quarter', year, quarter, month, triggeredBy = 'manual', indicators = [] } = {}) {
+async function runEtl({ periodType = 'quarter', year, quarter, month, triggeredBy = 'manual', indicators = [], siteCodes = [] } = {}) {
   await ensureAnalyticsTables();
 
   // Reload SQL queries from disk so any newly added indicator files are included
@@ -307,12 +308,16 @@ async function runEtl({ periodType = 'quarter', year, quarter, month, triggeredB
   let errorMsg = null;
 
   try {
-    const allSites = await siteDatabaseManager.getAllSitesForManagement();
+    const allSites = await siteDatabaseManager.getAllSitesForManagement({ bypassCache: true });
     // Only process leaf/facility sites (code length >= 4 digits typically)
-    const facilitySites = allSites.filter((s) => {
+    let facilitySites = allSites.filter((s) => {
       const digits = String(s.code || '').replace(/\D/g, '');
       return digits.length >= 4;
     });
+
+    if (Array.isArray(siteCodes) && siteCodes.length > 0) {
+      facilitySites = facilitySites.filter((s) => siteCodes.includes(String(s.code)));
+    }
 
     console.log(`[ETL] Starting ETL for ${label} — ${facilitySites.length} facility sites`);
 
@@ -379,9 +384,10 @@ async function runEtl({ periodType = 'quarter', year, quarter, month, triggeredB
  *                                        Year keys like '2025-Y' are automatically expanded to Q1-Q4.
  * @param {'cron'|'manual'|'system'} [options.triggeredBy]
  * @param {string[]}                 [options.indicators]
+ * @param {string[]}                 [options.siteCodes]
  * @returns {Promise<{success, totalRows, results}>}
  */
-async function runEtlMulti({ periodKeys = [], triggeredBy = 'manual', indicators = [] } = {}) {
+async function runEtlMulti({ periodKeys = [], triggeredBy = 'manual', indicators = [], siteCodes = [] } = {}) {
   // Expand year keys into quarter keys
   const expandedKeys = [];
   for (const key of periodKeys) {
@@ -439,7 +445,7 @@ async function runEtlMulti({ periodKeys = [], triggeredBy = 'manual', indicators
     etlProgress.lastProcessedSite = 'Initializing...';
 
     try {
-      const result = await runEtl({ periodType, year, quarter, month, triggeredBy, indicators });
+      const result = await runEtl({ periodType, year, quarter, month, triggeredBy, indicators, siteCodes });
       grandTotal += result.rowCount || 0;
       results.push({ key, success: true, rowCount: result.rowCount });
     } catch (e) {
@@ -785,19 +791,51 @@ async function getLastRefreshed(periodLabel) {
   return rows[0]?.finished_at || null;
 }
 
-async function clearPeriodAnalytics({ periodLabel, periodType, indicator }) {
+/**
+ * Get all facility sites and their sync status in the analytics warehouse for a given period.
+ */
+async function getSitesSyncStatus(periodLabel) {
   await ensureAnalyticsTables();
+  
+  // 1. Get all valid facility sites
+  const allSites = await siteDatabaseManager.getAllSitesForManagement({ bypassCache: true });
+  const facilitySites = allSites.filter((s) => {
+    const digits = String(s.code || '').replace(/\D/g, '');
+    return digits.length >= 4;
+  });
+
+  // 2. Get distinct site_codes that exist in the warehouse for this period
+  const rows = await getWarehouseSequelize().query(
+    `SELECT DISTINCT site_code FROM analytics_indicator_summary WHERE period_label = :periodLabel`,
+    { replacements: { periodLabel }, type: getWarehouseSequelize().QueryTypes.SELECT }
+  );
+  
+  const syncedSiteCodes = new Set(rows.map(r => String(r.site_code)));
+
+  // 3. Return all sites with their sync status
+  return facilitySites.map(s => ({
+    code: s.code,
+    name: s.name,
+    province: s.province,
+    isSynced: syncedSiteCodes.has(String(s.code))
+  }));
+}
+
+async function clearPeriodAnalytics({ periodLabel, periodType, indicator, siteCode }) {
+  await ensureAnalyticsTables();
+  let sql = `DELETE FROM analytics_indicator_summary WHERE period_label = :periodLabel AND period_type = :periodType`;
+  const replacements = { periodLabel, periodType };
+  
   if (indicator) {
-    await getWarehouseSequelize().query(
-      `DELETE FROM analytics_indicator_summary WHERE period_label = :periodLabel AND period_type = :periodType AND indicator = :indicator`,
-      { replacements: { periodLabel, periodType, indicator } }
-    );
-  } else {
-    await getWarehouseSequelize().query(
-      `DELETE FROM analytics_indicator_summary WHERE period_label = :periodLabel AND period_type = :periodType`,
-      { replacements: { periodLabel, periodType } }
-    );
+    sql += ` AND indicator = :indicator`;
+    replacements.indicator = indicator;
   }
+  if (siteCode) {
+    sql += ` AND site_code = :siteCode`;
+    replacements.siteCode = siteCode;
+  }
+  
+  await getWarehouseSequelize().query(sql, { replacements });
 }
 
 async function truncateAnalyticsTable() {
@@ -814,6 +852,7 @@ module.exports = {
   queryProvinceRollup,
   getEtlHistory,
   getLastRefreshed,
+  getSitesSyncStatus,
   getEtlProgress,
   clearPeriodAnalytics,
   truncateAnalyticsTable

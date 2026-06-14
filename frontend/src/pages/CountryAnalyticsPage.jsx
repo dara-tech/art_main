@@ -27,7 +27,8 @@ import {
   getEtlHistory,
   triggerAnalyticsRefresh,
   clearAnalyticsData,
-  getIndicatorReference
+  getIndicatorReference,
+  getSitesSyncStatus
 } from '../services/analyticsApi';
 import { downloadCsv, rowsToCsv } from '../utils/exportCsv';
 import { Button } from '@/components/ui/button';
@@ -128,6 +129,71 @@ export default function CountryAnalyticsPage({ onLogout }) {
       toast.error('Failed to check missing indicators: ' + e.message);
     } finally {
       setCheckingMissing(false);
+    }
+  };
+
+  // Manage sites state
+  const [managingSites, setManagingSites] = useState(false);
+  const [manageSitesModalOpen, setManageSitesModalOpen] = useState(false);
+  const [sitesList, setSitesList] = useState([]);
+  const [siteActionLoading, setSiteActionLoading] = useState(null); // 'sync-1234' or 'clear-1234'
+
+  const handleOpenManageSites = async () => {
+    setManagingSites(true);
+    try {
+      const res = await getSitesSyncStatus(currentPeriod);
+      if (!res.success) throw new Error('Failed to load sites status');
+      setSitesList(res.data || []);
+      setManageSitesModalOpen(true);
+    } catch (e) {
+      toast.error('Failed to load sites status: ' + e.message);
+    } finally {
+      setManagingSites(false);
+    }
+  };
+
+  const handleSyncSite = async (siteCode) => {
+    setSiteActionLoading(`sync-${siteCode}`);
+    try {
+      const payload = {
+        ...currentPeriod,
+        siteCodes: [siteCode]
+      };
+      const res = await triggerAnalyticsRefresh(payload);
+      if (res.success) {
+        toast.success(`Started sync for site ${siteCode}.`);
+        setWarehouseStatus(prev => ({ ...prev, etlRunning: true }));
+        // Optimistically update the list
+        setSitesList(prev => prev.map(s => s.code === siteCode ? { ...s, isSynced: true } : s));
+      } else {
+        toast.error('Could not initiate targeted warehouse refresh.');
+      }
+    } catch (e) {
+      toast.error(e.response?.data?.error || e.message || 'Targeted refresh failed');
+    } finally {
+      setSiteActionLoading(null);
+    }
+  };
+
+  const handleClearSite = async (siteCode) => {
+    setSiteActionLoading(`clear-${siteCode}`);
+    try {
+      const payload = {
+        ...currentPeriod,
+        siteCode
+      };
+      const res = await clearAnalyticsData(payload);
+      if (res.success) {
+        toast.success(`Cleared analytics data for site ${siteCode}.`);
+        // Update the list
+        setSitesList(prev => prev.map(s => s.code === siteCode ? { ...s, isSynced: false } : s));
+      } else {
+        toast.error('Could not clear site analytics.');
+      }
+    } catch (e) {
+      toast.error(e.response?.data?.error || e.message || 'Clear site failed');
+    } finally {
+      setSiteActionLoading(null);
     }
   };
 
@@ -528,6 +594,17 @@ export default function CountryAnalyticsPage({ onLogout }) {
           disabled={loading || statusLoading || checkingMissing || !warehouseStatus.hasData}
           onClick={handleCheckMissingIndicators}
           className={checkingMissing ? '[&_svg]:animate-spin' : undefined}
+        />
+
+        {/* Manage Sites Button */}
+        <VizToolbarBtn
+          icon={managingSites ? RiLoader4Line : RiDatabase2Line}
+          iconClassName={managingSites ? TOOLBAR_ICON.brand : "text-sky-500 hover:text-sky-600"}
+          label="គ្រប់គ្រងមន្ទីរពេទ្យ (Manage Sites)"
+          shortLabel="មន្ទីរពេទ្យ (Sites)"
+          disabled={loading || statusLoading || managingSites || warehouseStatus.etlRunning}
+          onClick={handleOpenManageSites}
+          className={managingSites ? '[&_svg]:animate-spin' : undefined}
         />
 
         {/* Status indicator on the right */}
@@ -1107,6 +1184,105 @@ export default function CountryAnalyticsPage({ onLogout }) {
               >
                 <RiRefreshLine className="size-3.5" />
                 សមកាលកម្ម (Sync Missing)
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manage Sites Modal */}
+      {manageSitesModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 p-4 animate-in fade-in duration-200" role="dialog" aria-modal="true">
+          <div className="flex max-h-[min(92vh,48rem)] w-full max-w-2xl flex-col overflow-hidden bg-card shadow-2xl border" onClick={(e) => e.stopPropagation()}>
+            <div className="flex shrink-0 items-start gap-3 border-b border-border bg-muted/30 px-5 py-4">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+                  <RiDatabase2Line className="size-5 text-sky-600" />
+                  គ្រប់គ្រងមន្ទីរពេទ្យ (Manage Sites)
+                </h2>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  រយៈពេលវិភាគ: <strong>{currentPeriod.periodLabel}</strong> (Total Sites: {sitesList.length})
+                </p>
+              </div>
+              <button
+                type="button"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center border border-border/80 bg-background/80 hover:bg-muted text-muted-foreground hover:text-foreground"
+                onClick={() => setManageSitesModalOpen(false)}
+                aria-label="Close"
+              >
+                <RiCloseCircleLine className="size-5" />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-0">
+              <table className="w-full text-left text-[11px]">
+                <thead className="sticky top-0 bg-muted/80 backdrop-blur border-b border-border text-muted-foreground font-semibold">
+                  <tr>
+                    <th className="px-4 py-2">Site Code</th>
+                    <th className="px-4 py-2">Site Name</th>
+                    <th className="px-4 py-2">Province</th>
+                    <th className="px-4 py-2 text-center">Status</th>
+                    <th className="px-4 py-2 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {sitesList.map(site => (
+                    <tr key={site.code} className="hover:bg-muted/30">
+                      <td className="px-4 py-2.5 font-mono text-muted-foreground">{site.code}</td>
+                      <td className="px-4 py-2.5 font-medium">{site.name}</td>
+                      <td className="px-4 py-2.5">{site.province}</td>
+                      <td className="px-4 py-2.5 text-center">
+                        {site.isSynced ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                            <RiCheckboxCircleLine className="size-3" />
+                            Synced
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                            <RiAlertLine className="size-3" />
+                            Missing
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        <div className="flex justify-end gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 px-2 text-[10px] rounded border-border"
+                            disabled={siteActionLoading === `sync-${site.code}` || warehouseStatus.etlRunning}
+                            onClick={() => handleSyncSite(site.code)}
+                          >
+                            {siteActionLoading === `sync-${site.code}` ? <RiLoader4Line className="size-3 animate-spin mr-1" /> : <RiRefreshLine className="size-3 mr-1 text-sky-600" />}
+                            Sync
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 px-2 text-[10px] rounded border-border text-destructive hover:text-destructive hover:bg-destructive/10"
+                            disabled={!site.isSynced || siteActionLoading === `clear-${site.code}` || warehouseStatus.etlRunning}
+                            onClick={() => handleClearSite(site.code)}
+                          >
+                            {siteActionLoading === `clear-${site.code}` ? <RiLoader4Line className="size-3 animate-spin mr-1" /> : <RiDeleteBinLine className="size-3 mr-1" />}
+                            Clear
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex shrink-0 justify-end gap-2 border-t border-border bg-muted/20 px-5 py-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setManageSitesModalOpen(false)}
+                className="text-[11px] h-8 rounded-none px-4 font-medium bg-background"
+              >
+                បិទ (Close)
               </Button>
             </div>
           </div>

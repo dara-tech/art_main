@@ -19,6 +19,7 @@ const {
   getLastRefreshed,
   ensureAnalyticsTables,
   getEtlProgress,
+  getSitesSyncStatus,
   clearPeriodAnalytics,
   truncateAnalyticsTable
 } = require('../services/analyticsEtlService');
@@ -66,6 +67,24 @@ router.get('/status', authenticateToken, async (req, res) => {
       etlRunning,
       etlProgress: progress,
       recentHistory: history
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// ─── GET /apiv1/analytics/sites-status ────────────────────────────────────────
+// Get all facility sites and their sync status in analytics warehouse for a given period.
+
+router.get('/sites-status', authenticateToken, async (req, res) => {
+  try {
+    const { periodLabel } = parsePeriodQuery(req.query);
+    const sitesStatus = await getSitesSyncStatus(periodLabel);
+    
+    res.json({
+      success: true,
+      periodLabel,
+      data: sitesStatus
     });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
@@ -171,17 +190,19 @@ router.post('/refresh', authenticateToken, async (req, res) => {
   const body = req.body || req.query;
   const periods = Array.isArray(body.periods) ? body.periods : null;
   const indicators = Array.isArray(body.indicators) ? body.indicators : [];
+  const siteCodes = Array.isArray(body.siteCodes) ? body.siteCodes : (body.siteCode ? [body.siteCode] : []);
 
   if (periods && periods.length > 0) {
     // ── Multi-period batch sync ──────────────────────────────────────
     res.json({
       success: true,
       message: `ETL started for ${periods.length} period(s): ${periods.slice(0, 4).join(', ')}${periods.length > 4 ? '...' : ''}. Check /analytics/status for progress.`,
-      periods
+      periods,
+      siteCodes: siteCodes.length > 0 ? siteCodes : 'all'
     });
 
     etlRunning = true;
-    runEtlMulti({ periodKeys: periods, triggeredBy: 'manual', indicators })
+    runEtlMulti({ periodKeys: periods, triggeredBy: 'manual', indicators, siteCodes })
       .then((result) => {
         console.log(`[Analytics] Multi ETL completed: ${result.totalRows} rows across ${result.results.length} periods`);
       })
@@ -205,11 +226,12 @@ router.post('/refresh', authenticateToken, async (req, res) => {
         success: true,
         message: `Year ${year} expanded to 4 quarters: ${quarterKeys.join(', ')}. ETL started. Check /analytics/status for progress.`,
         periods: quarterKeys,
-        periodType: 'quarter'
+        periodType: 'quarter',
+        siteCodes: siteCodes.length > 0 ? siteCodes : 'all'
       });
 
       etlRunning = true;
-      runEtlMulti({ periodKeys: quarterKeys, triggeredBy: 'manual', indicators })
+      runEtlMulti({ periodKeys: quarterKeys, triggeredBy: 'manual', indicators, siteCodes })
         .then((result) => {
           console.log(`[Analytics] Year ETL (${year}) completed: ${result.totalRows} rows across ${result.results.length} quarters`);
         })
@@ -226,11 +248,12 @@ router.post('/refresh', authenticateToken, async (req, res) => {
         success: true,
         message: `ETL started for ${periodLabel}. Check /analytics/status for progress.`,
         periodLabel,
-        periodType
+        periodType,
+        siteCodes: siteCodes.length > 0 ? siteCodes : 'all'
       });
 
       etlRunning = true;
-      runEtl({ periodType, year, quarter, month, triggeredBy: 'manual', indicators })
+      runEtl({ periodType, year, quarter, month, triggeredBy: 'manual', indicators, siteCodes })
         .then((result) => {
           console.log(`[Analytics] ETL completed: ${result.rowCount} rows for ${result.periodLabel}`);
         })
@@ -259,18 +282,22 @@ router.post('/clear', authenticateToken, async (req, res) => {
       });
     } else {
       const { periodLabel, periodType } = parsePeriodQuery(req.body || req.query);
-      const { indicator } = req.body || req.query || {};
+      const { indicator, siteCode } = req.body || req.query || {};
       
-      await clearPeriodAnalytics({ periodLabel, periodType, indicator });
+      await clearPeriodAnalytics({ periodLabel, periodType, indicator, siteCode });
       
+      let msg = `Successfully cleared analytics data for ${periodLabel}.`;
+      if (indicator && siteCode) msg = `Successfully cleared analytics data for indicator "${indicator}" at site "${siteCode}" in ${periodLabel}.`;
+      else if (indicator) msg = `Successfully cleared analytics data for indicator "${indicator}" in ${periodLabel}.`;
+      else if (siteCode) msg = `Successfully cleared analytics data for site "${siteCode}" in ${periodLabel}.`;
+
       return res.json({
         success: true,
-        message: indicator 
-          ? `Successfully cleared analytics data for indicator "${indicator}" in ${periodLabel}.`
-          : `Successfully cleared analytics data for ${periodLabel}.`,
+        message: msg,
         periodLabel,
         periodType,
-        indicator
+        indicator,
+        siteCode
       });
     }
   } catch (e) {
