@@ -635,7 +635,7 @@ export default function CountryAnalyticsPage({ onLogout }) {
               <VizToolbarBtn
                 icon={RiDownloadCloud2Line}
                 iconClassName={TOOLBAR_ICON.teal}
-                label="Batch Export"
+                label="Export"
                 showLabel={true}
                 disabled={loading}
                 className="pointer-events-none"
@@ -669,7 +669,7 @@ export default function CountryAnalyticsPage({ onLogout }) {
               <VizToolbarBtn
                 icon={warehouseStatus.etlRunning ? RiLoader4Line : RiHistoryLine}
                 iconClassName={warehouseStatus.etlRunning ? TOOLBAR_ICON.brand : TOOLBAR_ICON.blue}
-                label={warehouseStatus.etlRunning ? 'Syncing...' : 'Batch Sync'}
+                label={warehouseStatus.etlRunning ? 'Syncing...' : 'Sync'}
                 showLabel={true}
                 disabled={warehouseStatus.etlRunning || statusLoading}
                 className={warehouseStatus.etlRunning ? '[&_svg]:animate-spin pointer-events-none' : 'pointer-events-none'}
