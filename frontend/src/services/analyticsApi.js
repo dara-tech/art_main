@@ -27,6 +27,23 @@ export async function getAnalyticsStatus({ periodType, year, quarter, month } = 
 }
 
 /**
+ * Get all synced periods from the warehouse.
+ * Returns { success: true, data: ['2025-Q1', '2025-M01', '2025-Y'] }
+ */
+export async function getSyncedPeriods() {
+  const { data } = await api.get(`${BASE}/synced-periods`);
+  if (data?.success && Array.isArray(data.data)) {
+    data.data = data.data.map(label => {
+      if (/^\d{4}$/.test(label)) return `${label}-Y`;
+      const m = label.match(/^(\d{4})-(\d{2})$/);
+      if (m) return `${m[1]}-M${m[2]}`;
+      return label;
+    });
+  }
+  return data;
+}
+
+/**
  * Country-level rollup — all indicators summed across all sites.
  * Returns { data: [...rows], meta: { periodLabel, lastRefreshed } }
  */

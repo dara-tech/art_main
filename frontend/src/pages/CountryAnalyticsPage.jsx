@@ -14,7 +14,8 @@ import {
   RiHistoryLine,
   RiDeleteBinLine,
   RiSettings3Line,
-  RiAlertLine
+  RiAlertLine,
+  RiDownloadCloud2Line
 } from '@remixicon/react';
 import { AnimatePresence, motion } from 'motion/react';
 import { toast } from 'sonner';
@@ -331,6 +332,25 @@ export default function CountryAnalyticsPage({ onLogout }) {
     }
   };
 
+  // Trigger batch ETL for multiple periods
+  const handleBatchSync = async (keys) => {
+    if (warehouseStatus.etlRunning) {
+      toast.warning('Refresh already in progress.');
+      return;
+    }
+    try {
+      const res = await triggerAnalyticsRefresh({ periods: keys });
+      if (res.success) {
+        toast.success(res.message || `Batch sync started for ${keys.length} periods.`);
+        setWarehouseStatus(prev => ({ ...prev, etlRunning: true }));
+      } else {
+        toast.error('Could not initiate batch warehouse refresh.');
+      }
+    } catch (e) {
+      toast.error(e.response?.data?.error || e.message || 'Batch refresh failed');
+    }
+  };
+
   // Clear analytics database data
   const handleClearAnalytics = async () => {
     setClearing(true);
@@ -501,6 +521,58 @@ export default function CountryAnalyticsPage({ onLogout }) {
     downloadCsv(`warehouse-analytics-${currentPeriod.periodLabel}.csv`, csvContent);
   };
 
+  const handleBatchExportCSV = async (keys) => {
+    if (!keys || keys.length === 0) return;
+    
+    toast.info(`កំពុងទាញយកទិន្នន័យសម្រាប់ ${keys.length} ត្រីមាស/ខែ...`);
+    
+    try {
+      let allExportData = [];
+      const emptyPeriods = [];
+      const cols = ['Period', 'Indicator', 'Male_0_14', 'Female_0_14', 'Male_over_14', 'Female_over_14', 'Grand_Total', 'Site_Count'];
+      
+      for (const key of keys) {
+        const period = getPeriodByKey(key);
+        if (!period) continue;
+        
+        const res = await getCountryAnalytics({ periodLabel: period.periodLabel, periodType: period.periodType });
+        if (res?.success && res.data && res.data.length > 0) {
+          const rows = res.data.map(row => {
+            const grandTotal = Number(row.Male_0_14 || 0) + Number(row.Female_0_14 || 0) + Number(row.Male_over_14 || 0) + Number(row.Female_over_14 || 0);
+            return {
+              Period: period.periodLabel,
+              Indicator: getTranslatedLabel(row.indicator),
+              Male_0_14: row.Male_0_14,
+              Female_0_14: row.Female_0_14,
+              Male_over_14: row.Male_over_14,
+              Female_over_14: row.Female_over_14,
+              Grand_Total: grandTotal,
+              Site_Count: row.site_count
+            };
+          });
+          allExportData = allExportData.concat(rows);
+        } else {
+          emptyPeriods.push(period.periodLabel);
+        }
+      }
+      
+      if (allExportData.length === 0) {
+        toast.warning('គ្មានទិន្នន័យសម្រាប់ទាញយកទេ។ សូមប្រាកដថាអ្នកបាន "សមកាលកម្មច្រើន (Batch Sync)" រួចរាល់។');
+        return;
+      }
+      
+      if (emptyPeriods.length > 0) {
+        toast.warning(`មិនមានទិន្នន័យសម្រាប់: ${emptyPeriods.join(', ')} (សូមសមកាលកម្មជាមុនសិន)`);
+      }
+      
+      const csvContent = rowsToCsv(cols, allExportData);
+      downloadCsv(`warehouse-batch-export.csv`, csvContent);
+      toast.success(`ទាញយកជោគជ័យ (${allExportData.length} ជួរ)`);
+    } catch (err) {
+      toast.error('Failed to batch export: ' + err.message);
+    }
+  };
+
   // Styled subnav toolbar (consistent with វិភាគ / VisualizeToolbar.jsx)
   const toolbar = (
     <Patient360NavBar ariaLabel="វិភាគឃ្លាំងទិន្នន័យ" rowCount={1}>
@@ -521,6 +593,7 @@ export default function CountryAnalyticsPage({ onLogout }) {
               setSelectedPeriodKey(keys[keys.length - 1]);
             }
           }}
+          singleSelect={true}
           disabled={loading}
           className="w-40 shrink-0 sm:w-48"
         />
@@ -529,8 +602,8 @@ export default function CountryAnalyticsPage({ onLogout }) {
         <VizToolbarBtn
           icon={loading ? RiLoader4Line : RiDatabase2Line}
           iconClassName={loading ? TOOLBAR_ICON.brand : TOOLBAR_ICON.teal}
-          label={loading ? 'កំពុងទាញ...' : 'ទាញទិន្នន័យ (Run)'}
-          shortLabel={loading ? 'ទាញ...' : 'Run'}
+          label={loading ? 'ទាញ...' : 'Run'}
+          showLabel={true}
           disabled={loading}
           onClick={runAnalytics}
           className={loading ? '[&_svg]:animate-spin' : undefined}
@@ -542,29 +615,75 @@ export default function CountryAnalyticsPage({ onLogout }) {
         <VizToolbarBtn
           icon={RiDownloadLine}
           iconClassName={TOOLBAR_ICON.blue}
-          label="ទាញយក CSV"
-          shortLabel="CSV"
+          label="Export CSV"
+          showLabel={true}
           disabled={loading || countryRows.length === 0}
           onClick={handleExportCSV}
+        />
+
+        {/* Batch Export CSV Button */}
+        <QuarterSelectModal
+          value={[]}
+          onChange={(keys) => {
+            if (keys && keys.length > 0) {
+              handleBatchExportCSV(keys);
+            }
+          }}
+          disabled={loading}
+          customTrigger={
+            <div className={loading ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}>
+              <VizToolbarBtn
+                icon={RiDownloadCloud2Line}
+                iconClassName={TOOLBAR_ICON.teal}
+                label="Batch Export"
+                showLabel={true}
+                disabled={loading}
+                className="pointer-events-none"
+              />
+            </div>
+          }
         />
 
         {/* Refresh Warehouse Button */}
         <VizToolbarBtn
           icon={warehouseStatus.etlRunning ? RiLoader4Line : RiRefreshLine}
           iconClassName={warehouseStatus.etlRunning ? TOOLBAR_ICON.brand : TOOLBAR_ICON.amber}
-          label={warehouseStatus.etlRunning ? 'កំពុងសមកាលកម្ម...' : 'សមកាលកម្ម (Sync)'}
-          shortLabel={warehouseStatus.etlRunning ? 'សមកាល...' : 'Sync'}
+          label={warehouseStatus.etlRunning ? 'Syncing...' : 'Sync'}
+          showLabel={true}
           disabled={warehouseStatus.etlRunning || statusLoading}
           onClick={handleRefreshWarehouse}
           className={warehouseStatus.etlRunning ? '[&_svg]:animate-spin' : undefined}
+        />
+
+        {/* Batch Sync Button */}
+        <QuarterSelectModal
+          value={[]}
+          onChange={(keys) => {
+            if (keys && keys.length > 0) {
+              handleBatchSync(keys);
+            }
+          }}
+          disabled={warehouseStatus.etlRunning || statusLoading}
+          customTrigger={
+            <div className={warehouseStatus.etlRunning || statusLoading ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}>
+              <VizToolbarBtn
+                icon={warehouseStatus.etlRunning ? RiLoader4Line : RiHistoryLine}
+                iconClassName={warehouseStatus.etlRunning ? TOOLBAR_ICON.brand : TOOLBAR_ICON.blue}
+                label={warehouseStatus.etlRunning ? 'Syncing...' : 'Batch Sync'}
+                showLabel={true}
+                disabled={warehouseStatus.etlRunning || statusLoading}
+                className={warehouseStatus.etlRunning ? '[&_svg]:animate-spin pointer-events-none' : 'pointer-events-none'}
+              />
+            </div>
+          }
         />
 
         {/* Clean Button */}
         <VizToolbarBtn
           icon={RiDeleteBinLine}
           iconClassName="text-rose-500 hover:text-rose-600"
-          label="សម្អាត (Clean)"
-          shortLabel="សម្អាត"
+          label="Clean"
+          showLabel={true}
           disabled={loading || statusLoading || warehouseStatus.etlRunning}
           onClick={() => {
             setCleanOption('period');
@@ -578,8 +697,8 @@ export default function CountryAnalyticsPage({ onLogout }) {
         <VizToolbarBtn
           icon={RiSettings3Line}
           iconClassName="text-slate-500 hover:text-slate-600"
-          label="ការកំណត់ទិន្នន័យ (Database Settings)"
-          shortLabel="កំណត់ DB"
+          label="DB Settings"
+          showLabel={true}
           onClick={() => {
             setConnectionModalOpen(true);
           }}
@@ -589,8 +708,8 @@ export default function CountryAnalyticsPage({ onLogout }) {
         <VizToolbarBtn
           icon={checkingMissing ? RiLoader4Line : RiAlertLine}
           iconClassName={checkingMissing ? TOOLBAR_ICON.brand : "text-orange-500 hover:text-orange-600"}
-          label="ពិនិត្យសូចនាករដែលខ្វះ (Check Missing Indicators)"
-          shortLabel="ខ្វះ"
+          label={checkingMissing ? 'Checking...' : 'Missing'}
+          showLabel={true}
           disabled={loading || statusLoading || checkingMissing || !warehouseStatus.hasData}
           onClick={handleCheckMissingIndicators}
           className={checkingMissing ? '[&_svg]:animate-spin' : undefined}
@@ -600,8 +719,8 @@ export default function CountryAnalyticsPage({ onLogout }) {
         <VizToolbarBtn
           icon={managingSites ? RiLoader4Line : RiDatabase2Line}
           iconClassName={managingSites ? TOOLBAR_ICON.brand : "text-sky-500 hover:text-sky-600"}
-          label="គ្រប់គ្រងមន្ទីរពេទ្យ (Manage Sites)"
-          shortLabel="មន្ទីរពេទ្យ (Sites)"
+          label={managingSites ? 'Loading...' : 'Manage Sites'}
+          showLabel={true}
           disabled={loading || statusLoading || managingSites || warehouseStatus.etlRunning}
           onClick={handleOpenManageSites}
           className={managingSites ? '[&_svg]:animate-spin' : undefined}

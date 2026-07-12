@@ -21,7 +21,8 @@ const {
   getEtlProgress,
   getSitesSyncStatus,
   clearPeriodAnalytics,
-  truncateAnalyticsTable
+  truncateAnalyticsTable,
+  getSyncedPeriods
 } = require('../services/analyticsEtlService');
 
 const router = express.Router();
@@ -67,6 +68,21 @@ router.get('/status', authenticateToken, async (req, res) => {
       etlRunning,
       etlProgress: progress,
       recentHistory: history
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// ─── GET /apiv1/analytics/synced-periods ───────────────────────────────────────────
+// Get a flat array of all period keys that have at least one record in the warehouse.
+
+router.get('/synced-periods', authenticateToken, async (req, res) => {
+  try {
+    const periods = await getSyncedPeriods();
+    res.json({
+      success: true,
+      data: periods
     });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });

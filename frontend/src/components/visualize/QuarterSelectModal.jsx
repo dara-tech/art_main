@@ -21,6 +21,7 @@ import {
   periodsForYear,
   resolvePeriodKeys
 } from '../../utils/visualizePeriods';
+import { getSyncedPeriods } from '../../services/analyticsApi';
 
 function formatPeriodSummary(periodKeys) {
   const mt = VIZ_KH.periodModal;
@@ -37,7 +38,9 @@ export default function QuarterSelectModal({
   onChange,
   disabled = false,
   className = '',
-  showLabel = false
+  showLabel = false,
+  singleSelect = false,
+  customTrigger = null
 }) {
   const mt = VIZ_KH.periodModal;
   const browseYears = useMemo(() => listBrowseYears(12), []);
@@ -48,6 +51,7 @@ export default function QuarterSelectModal({
   const [draftKeys, setDraftKeys] = useState(value);
   const [browseYear, setBrowseYear] = useState(currentYear());
   const [periodKind, setPeriodKind] = useState(PERIOD_KIND.quarter);
+  const [syncedKeys, setSyncedKeys] = useState([]);
 
   const summary = useMemo(() => formatPeriodSummary(value), [value]);
   const draftSummary = useMemo(() => formatPeriodSummary(draftKeys), [draftKeys]);
@@ -66,12 +70,18 @@ export default function QuarterSelectModal({
     if (!open) return undefined;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    
+    getSyncedPeriods().then(res => {
+      if (res?.success) setSyncedKeys(res.data || []);
+    }).catch(console.error);
+    
     return () => {
       document.body.style.overflow = prev;
     };
   }, [open]);
 
-  const openModal = () => {
+  const openModal = (e) => {
+    e?.preventDefault();
     if (disabled) return;
     setDraftKeys(value);
     const first = value[0] ? getPeriodByKey(value[0]) : null;
@@ -81,7 +91,11 @@ export default function QuarterSelectModal({
   };
 
   const toggleKey = (key) => {
-    setDraftKeys((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+    if (singleSelect) {
+      setDraftKeys([key]);
+    } else {
+      setDraftKeys((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+    }
   };
 
   const selectAllInView = () => {
@@ -111,22 +125,28 @@ export default function QuarterSelectModal({
 
   return (
     <>
-      <div className={cn('grid', showLabel ? 'gap-2' : 'gap-0', className)}>
-        {showLabel ? (
-          <span className="text-[11px] font-medium leading-none text-muted-foreground">{VIZ_KH.pickPeriods}</span>
-        ) : null}
-        <button
-          type="button"
-          onClick={openModal}
-          disabled={disabled}
-          className={cn(
-            p360ControlClass,
-            'w-full border bg-background px-3 text-left font-medium transition hover:bg-muted/20 disabled:opacity-50'
-          )}
-        >
-          {summary}
-        </button>
-      </div>
+      {customTrigger ? (
+        <div onClick={openModal} className={className} role="button" tabIndex={0}>
+          {customTrigger}
+        </div>
+      ) : (
+        <div className={cn('grid', showLabel ? 'gap-2' : 'gap-0', className)}>
+          {showLabel ? (
+            <span className="text-[11px] font-medium leading-none text-muted-foreground">{VIZ_KH.pickPeriods}</span>
+          ) : null}
+          <button
+            type="button"
+            onClick={openModal}
+            disabled={disabled}
+            className={cn(
+              p360ControlClass,
+              'w-full border bg-background px-3 text-left font-medium transition hover:bg-muted/20 disabled:opacity-50'
+            )}
+          >
+            {summary}
+          </button>
+        </div>
+      )}
 
       {open &&
         createPortal(
@@ -200,14 +220,16 @@ export default function QuarterSelectModal({
                   ))}
                 </div>
 
-                <div className="mb-3 flex flex-wrap gap-1">
-                  <button type="button" onClick={selectAllInView} className={appNavItemClass(false)}>
-                    {VIZ_KH.modalSelectAll}
-                  </button>
-                  <button type="button" onClick={clearInView} className={appNavItemClass(false)}>
-                    {VIZ_KH.modalClear}
-                  </button>
-                </div>
+                {!singleSelect && (
+                  <div className="mb-3 flex flex-wrap gap-1">
+                    <button type="button" onClick={selectAllInView} className={appNavItemClass(false)}>
+                      {VIZ_KH.modalSelectAll}
+                    </button>
+                    <button type="button" onClick={clearInView} className={appNavItemClass(false)}>
+                      {VIZ_KH.modalClear}
+                    </button>
+                  </div>
+                )}
 
                 {periodKind === PERIOD_KIND.quarter ? (
                   <div className="grid grid-cols-2 gap-2">
@@ -220,6 +242,7 @@ export default function QuarterSelectModal({
                           period={p}
                           active={active}
                           disabled={off}
+                          isSynced={syncedKeys.includes(p.key)}
                           onToggle={() => !off && toggleKey(p.key)}
                           large
                         />
@@ -239,6 +262,7 @@ export default function QuarterSelectModal({
                           period={p}
                           active={active}
                           disabled={off}
+                          isSynced={syncedKeys.includes(p.key)}
                           onToggle={() => !off && toggleKey(p.key)}
                         />
                       );
@@ -257,6 +281,7 @@ export default function QuarterSelectModal({
                           period={p}
                           active={active}
                           disabled={off}
+                          isSynced={syncedKeys.includes(p.key)}
                           onToggle={() => !off && toggleKey(p.key)}
                         />
                       );
@@ -299,7 +324,7 @@ export default function QuarterSelectModal({
   );
 }
 
-function PeriodChip({ period, active, disabled, onToggle, large = false, subtitle }) {
+function PeriodChip({ period, active, disabled, onToggle, large = false, subtitle, isSynced = false }) {
   return (
     <button
       type="button"
@@ -322,7 +347,12 @@ function PeriodChip({ period, active, disabled, onToggle, large = false, subtitl
         )}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium text-foreground">{period.label}</span>
+        <span className="flex items-center text-sm font-medium text-foreground">
+          {period.label}
+          {isSynced && (
+            <span className="ml-2 inline-block h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" title="Synced Data Available"></span>
+          )}
+        </span>
         {subtitle ? <span className="block text-[10px] text-muted-foreground tabular-nums">{subtitle}</span> : null}
       </span>
     </button>

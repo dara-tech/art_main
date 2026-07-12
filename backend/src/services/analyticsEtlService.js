@@ -843,6 +843,18 @@ async function truncateAnalyticsTable() {
   await getWarehouseSequelize().query(`TRUNCATE TABLE analytics_indicator_summary`);
 }
 
+/**
+ * Get all period_labels that have data in the warehouse.
+ */
+async function getSyncedPeriods() {
+  await ensureAnalyticsTables();
+  const rows = await getWarehouseSequelize().query(
+    `SELECT DISTINCT period_label FROM analytics_indicator_summary`,
+    { type: getWarehouseSequelize().QueryTypes.SELECT }
+  );
+  return rows.map(r => r.period_label);
+}
+
 module.exports = {
   ensureAnalyticsTables,
   runEtl,
@@ -855,5 +867,6 @@ module.exports = {
   getSitesSyncStatus,
   getEtlProgress,
   clearPeriodAnalytics,
-  truncateAnalyticsTable
+  truncateAnalyticsTable,
+  getSyncedPeriods
 };
