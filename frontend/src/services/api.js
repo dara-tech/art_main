@@ -8,8 +8,9 @@ export const getApiBaseUrl = () => {
     return envUrl.replace(/\/+$/, '');
   }
   if (import.meta.env.MODE === 'production') {
-    return 'https://art-main-8pfj.onrender.com';
+    return 'https://107-175-91-211.sslip.io';
   }
+
   return (envUrl || 'http://localhost:3001').replace(/\/+$/, '');
 };
 
