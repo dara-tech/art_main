@@ -25,7 +25,7 @@ export default function AppLayout({ onLogout, children }) {
       document.documentElement.style.setProperty('--sidebar-w', '0px');
     }
   }, [isSidebar]);
-
+// ok
   return (
     <div className={isSidebar ? "flex min-h-screen bg-card" : "min-h-screen bg-card"}>
       {isSidebar && <SidebarNav />}
