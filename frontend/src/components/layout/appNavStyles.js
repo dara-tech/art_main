@@ -23,7 +23,7 @@ export const appSubnavShellClass =
   'w-full shrink-0 border-0 bg-card/95 backdrop-blur-sm';
 
 /** Fixed flush under main app top bar (overlap header border-b by 1px) */
-export const p360FixedShellClass = 'shrink-0 border-0 bg-card/95 backdrop-blur-sm fixed inset-x-0 z-40 -mt-px border-t-0';
+export const p360FixedShellClass = 'shrink-0 border-b border-border/80 bg-card/95 backdrop-blur-sm sticky top-[var(--app-topbar-h,2.5rem)] z-40 border-t-0';
 
 /** @deprecated use fixed — kept for type compat */
 export const p360StackedShellClass = cn(appSubnavShellClass, 'relative z-30 border-t-0');

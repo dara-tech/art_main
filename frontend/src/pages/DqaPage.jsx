@@ -179,6 +179,56 @@ function dqaCellClassName(col, { isIssueCol, isHighlight, hasIssue }) {
   );
 }
 
+const DQA_COMPONENTS = [
+  { id: 'all', nameKh: 'គ្រប់សូចនាករ', nameEn: 'All Components', badgeColor: 'bg-primary text-primary-foreground border-primary' },
+  { id: 'accuracy', nameKh: '1. ភាពត្រឹមត្រូវ', nameEn: 'Accuracy & Validity', badgeColor: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' },
+  { id: 'completeness', nameKh: '2. ភាពពេញលេញ', nameEn: 'Completeness', badgeColor: 'bg-blue-500/10 text-blue-600 border-blue-500/30' },
+  { id: 'timeliness', nameKh: '3. ភាពទាន់ពេលវេលា', nameEn: 'Timeliness', badgeColor: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/30' },
+  { id: 'consistency', nameKh: '4. ភាពស៊ីសង្វាក់គ្នា', nameEn: 'Consistency & Logic', badgeColor: 'bg-violet-500/10 text-violet-600 border-violet-500/30' },
+  { id: 'integrity', nameKh: '5. ភាពត្រឹមត្រូវបច្ចេកទេស', nameEn: 'Integrity & Uniqueness', badgeColor: 'bg-amber-500/10 text-amber-600 border-amber-500/30' },
+  { id: 'availability', nameKh: '6. ភាពអាចទទួលបាន', nameEn: 'Availability', badgeColor: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/30' },
+  { id: 'confidentiality', nameKh: '7. ភាពសម្ងាត់', nameEn: 'Confidentiality', badgeColor: 'bg-fuchsia-500/10 text-fuchsia-600 border-fuchsia-500/30' }
+];
+
+const CHECK_COMPONENT_MAP = {
+  '1': 'integrity',
+  '2': 'accuracy',
+  '3': 'consistency',
+  '4': 'accuracy',
+  '5': 'completeness',
+  '6': 'completeness',
+  '7': 'completeness',
+  '8': 'completeness',
+  '9': 'accuracy',
+  '10': 'completeness',
+  '11': 'completeness',
+  '12': 'completeness',
+  '13': 'accuracy',
+  '14': 'consistency',
+  '15': 'consistency',
+  '16': 'completeness',
+  '17': 'integrity',
+  '18': 'accuracy',
+  '19': 'accuracy',
+  '20': 'timeliness',
+  '21': 'timeliness',
+  '22': 'integrity',
+  '23': 'integrity',
+  '24': 'consistency',
+  '25': 'timeliness',
+  '26': 'consistency',
+  '27': 'accuracy',
+  '28': 'completeness',
+  '29': 'consistency',
+  '30': 'integrity'
+};
+
+function getScriptComponent(script) {
+  const num = String(script?.checkNumber || '').replace(/^0+/, '');
+  const compId = CHECK_COMPONENT_MAP[num] || 'accuracy';
+  return DQA_COMPONENTS.find((c) => c.id === compId) || DQA_COMPONENTS[1];
+}
+
 export default function DqaPage({ onLogout }) {
   const { user } = useAuth();
   const { sites: registrySites } = useSites();
@@ -186,6 +236,7 @@ export default function DqaPage({ onLogout }) {
   const [scripts, setScripts] = useState([]);
   const [siteCode, setSiteCode] = useState('');
   const [summary, setSummary] = useState([]);
+  const [selectedComponentFilter, setSelectedComponentFilter] = useState('all');
   const [loadingMeta, setLoadingMeta] = useState(true);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [error, setError] = useState('');
@@ -235,17 +286,37 @@ export default function DqaPage({ onLogout }) {
   }, [registrySites, user]);
 
   const filteredScripts = useMemo(() => {
+    let list = scripts;
+    if (selectedComponentFilter !== 'all') {
+      list = list.filter((s) => {
+        const comp = getScriptComponent(s);
+        return comp.id === selectedComponentFilter;
+      });
+    }
     const q = search.trim().toLowerCase();
-    if (!q) return scripts;
-    return scripts.filter(
+    if (!q) return list;
+    return list.filter(
       (s) =>
         String(s.checkNumber || '').includes(q) ||
         String(s.title || '').toLowerCase().includes(q) ||
         String(s.id || '').toLowerCase().includes(q)
     );
-  }, [scripts, search]);
+  }, [scripts, search, selectedComponentFilter]);
 
   const summaryById = useMemo(() => new Map(summary.map((r) => [r.scriptId, r])), [summary]);
+
+  const componentIssueCounts = useMemo(() => {
+    const counts = {};
+    for (const comp of DQA_COMPONENTS) counts[comp.id] = 0;
+    for (const script of scripts) {
+      const comp = getScriptComponent(script);
+      const row = summaryById.get(script.id);
+      const issues = Number(row?.rowCount || 0);
+      counts[comp.id] = (counts[comp.id] || 0) + issues;
+      counts['all'] = (counts['all'] || 0) + issues;
+    }
+    return counts;
+  }, [scripts, summaryById]);
 
   const runSummary = useCallback(async () => {
     if (!siteCode) {
@@ -379,6 +450,9 @@ export default function DqaPage({ onLogout }) {
       onSearchChange={setSearch}
       summaryCount={summary.length}
       totalIssues={totalIssues}
+      scripts={scripts}
+      summaryById={summaryById}
+      getScriptComponent={getScriptComponent}
     />
   );
 
@@ -427,12 +501,55 @@ export default function DqaPage({ onLogout }) {
                   </div>
                 ) : !loadingMeta && !error ? (
                   <div className="flex min-h-0 flex-1 flex-col">
+                    {/* 7 Key Components of Health Data Quality Selector Bar */}
+                    <div className="border-b border-border/60 bg-muted/30 p-2 shrink-0">
+                      <div className="flex items-center justify-between px-2 pb-1.5">
+                        <span className="text-[11px] font-bold text-foreground uppercase tracking-wide">
+                          សូចនាករទាំង ៧ នៃគុណភាពទិន្នន័យសុខាភិបាល (7 Key Components of Health Data Quality Evaluation)
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          WHO & National DQA Audit Standard Framework
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1.5">
+                        {DQA_COMPONENTS.map((comp) => {
+                          const isSelected = selectedComponentFilter === comp.id;
+                          const issues = componentIssueCounts[comp.id] || 0;
+                          return (
+                            <button
+                              key={comp.id}
+                              type="button"
+                              onClick={() => setSelectedComponentFilter(comp.id)}
+                              className={cn(
+                                'flex flex-col justify-between p-2 border text-left transition-all',
+                                isSelected
+                                  ? 'bg-background border-primary shadow-xs ring-1 ring-primary'
+                                  : 'bg-card/80 border-border/60 hover:bg-muted/50'
+                              )}
+                            >
+                              <div className="text-[10px] font-bold truncate leading-snug">{comp.nameKh}</div>
+                              <div className="flex items-center justify-between mt-1 text-[9px] text-muted-foreground">
+                                <span className="truncate">{comp.nameEn}</span>
+                                {issues > 0 ? (
+                                  <span className="ml-1 px-1 py-0.2 text-[9px] font-bold bg-amber-500/15 text-amber-700 border border-amber-500/30">
+                                    {issues}
+                                  </span>
+                                ) : (
+                                  <span className="ml-1 text-[9px] font-bold text-emerald-600">0</span>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
 
                     <div className="min-h-0 flex-1 overflow-auto">
                     <table className={cn('w-full min-w-[640px] border-collapse text-left', P360_TABLE_TEXT)}>
                       <thead className="sticky top-0 z-10 border-b border-border/20 bg-muted/95 backdrop-blur-md">
                         <tr className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                           <th className="w-12 px-3 py-2 font-semibold">{DQA_KH.table.number}</th>
+                          <th className="w-48 px-3 py-2 font-semibold">សូចនាករគុណភាព (Component)</th>
                           <th className="px-3 py-2 font-semibold">{DQA_KH.table.check}</th>
                           <th className="w-24 px-3 py-2 text-right font-semibold">{DQA_KH.table.issues}</th>
                           <th className="w-28 px-3 py-2 text-right font-semibold">{DQA_KH.table.ms}</th>
@@ -445,10 +562,16 @@ export default function DqaPage({ onLogout }) {
                           const count = row?.rowCount;
                           const hasRun = row != null;
                           const hasIssues = hasRun && count > 0;
+                          const component = getScriptComponent(script);
                           return (
                             <tr key={script.id} className="border-b border-border/20 hover:bg-muted/20 transition-colors duration-150">
                               <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
                                 {script.checkNumber || '—'}
+                              </td>
+                              <td className="px-3 py-2">
+                                <span className={cn('inline-block px-2 py-0.5 text-[10px] font-bold border', component.badgeColor)}>
+                                  {component.nameKh}
+                                </span>
                               </td>
                               <td className="px-3 py-2">
                                 <div className="font-medium text-foreground">{toDqaTitleKh(script.title)}</div>

@@ -24,6 +24,7 @@ const {
   truncateAnalyticsTable,
   getSyncedPeriods
 } = require('../services/analyticsEtlService');
+const { getWarehouseSequelize } = require('../config/warehouseDatabase');
 
 const router = express.Router();
 
@@ -33,7 +34,11 @@ let etlRunning = false;
 // ─── Utility ──────────────────────────────────────────────────────────────────
 
 function parsePeriodQuery(query) {
-  const periodType = String(query.periodType || 'quarter').toLowerCase();
+  let periodType = String(query.periodType || 'quarter').toLowerCase();
+  if (periodType === 'quarterly') periodType = 'quarter';
+  else if (periodType === 'monthly') periodType = 'month';
+  else if (periodType === 'yearly' || periodType === 'annual') periodType = 'year';
+
   const year = String(query.year || new Date().getFullYear());
   const quarter = String(query.quarter || Math.floor(new Date().getMonth() / 3) + 1);
   const month = String(query.month || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`);
@@ -59,12 +64,24 @@ router.get('/status', authenticateToken, async (req, res) => {
     const history = await getEtlHistory({ limit: 5 });
     const progress = getEtlProgress();
 
+    // hasData is true if ETL log exists OR if warehouse actually has rows for the period
+    let hasData = Boolean(lastRefreshed);
+    if (!hasData) {
+      try {
+        const countRows = await getWarehouseSequelize().query(
+          `SELECT COUNT(*) AS cnt FROM analytics_indicator_summary WHERE period_label = :periodLabel LIMIT 1`,
+          { replacements: { periodLabel }, type: getWarehouseSequelize().QueryTypes.SELECT }
+        );
+        hasData = Number(countRows[0]?.cnt || 0) > 0;
+      } catch (_) { /* ignore — warehouse may not be ready */ }
+    }
+
     res.json({
       success: true,
       periodLabel,
       periodType,
       lastRefreshed,
-      hasData: Boolean(lastRefreshed),
+      hasData,
       etlRunning,
       etlProgress: progress,
       recentHistory: history

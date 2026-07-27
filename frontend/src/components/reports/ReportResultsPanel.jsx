@@ -97,12 +97,12 @@ export default function ReportResultsPanel({
         : 'PNTT';
 
   return (
-    <div className="w-full overflow-hidden border border-border/80 bg-card shadow-xl shadow-black/6">
-      <div className="h-1.5 w-full bg-primary" />
-      <div className="w-full border-b border-border/80 bg-muted/65 px-3 py-3 text-center sm:px-4">
+    <div className="w-full flex flex-1 flex-col min-h-0 h-full overflow-hidden border border-border/80 bg-card shadow-xl shadow-black/6 rounded-none">
+      <div className="h-1.5 w-full bg-primary shrink-0" />
+      <div className="w-full shrink-0 border-b border-border/80 bg-muted/65 px-3 py-3 text-center sm:px-4">
         <h1 className="text-base font-bold tracking-tight text-foreground sm:text-lg">{reportTitle}</h1>
       </div>
-      <table className="w-full border-collapse text-xs">
+      <table className="w-full shrink-0 border-collapse text-xs">
         <tbody>
           <tr className="border-b border-border/80">
             <td className="w-1/4 border-b border-r border-border/80 bg-muted/55 px-3 py-2.5 font-semibold text-foreground">
@@ -129,23 +129,23 @@ export default function ReportResultsPanel({
         </tbody>
       </table>
 
-      <Separator />
+      <Separator className="shrink-0" />
 
-      <div className="border-t border-border/80 p-3 sm:p-4">
+      <div className="flex flex-1 flex-col min-h-0 border-t border-border/80 p-3 sm:p-4">
         {loading && !hasRows ? (
-          <div className="flex h-44 w-full items-center justify-center border border-border/80 bg-muted/25 shadow-inner">
+          <div className="flex flex-1 min-h-[260px] h-full w-full items-center justify-center border border-border/80 bg-muted/25 shadow-inner rounded-none">
             <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
               <RiLoader4Line className="size-4 animate-spin" />
               Loading report...
             </div>
           </div>
         ) : !hasRows ? (
-          <div className="flex h-44 w-full items-center justify-center border border-border/80 bg-muted/20 text-xs text-muted-foreground shadow-inner">
+          <div className="flex flex-1 min-h-[260px] h-full w-full items-center justify-center border border-border/80 bg-muted/20 text-xs text-muted-foreground shadow-inner rounded-none">
             No data yet. Choose site/period and click Run.
           </div>
         ) : isAdultChild ? (
-          <div className="overflow-hidden border border-border/80 bg-card shadow-sm">
-            <div className="max-h-[520px] overflow-auto">
+          <div className="flex flex-1 min-h-0 flex-col overflow-hidden border border-border/80 bg-card shadow-sm rounded-none h-full">
+            <div className="flex-1 min-h-0 overflow-auto h-full no-scrollbar">
               <table className="w-full border-collapse">
                 <thead className="sticky top-0 border-b border-border/20 bg-muted/95 backdrop-blur-md">
                   <tr className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
@@ -344,7 +344,7 @@ export default function ReportResultsPanel({
           typeof previewRows[0] === 'object' &&
           Object.prototype.hasOwnProperty.call(previewRows[0], 'sectionNumber') &&
           Object.prototype.hasOwnProperty.call(previewRows[0], 'rows') ? (
-          <div className="overflow-x-auto border border-border/80 shadow-sm">
+          <div className="overflow-x-auto border border-border/80 shadow-sm no-scrollbar">
             <InfantReportTable sections={previewRows} loading={loading} formatValue={formatValue} onCellClick={onInfantCellClick} />
           </div>
         ) : reportType === 'pntt' &&
@@ -352,7 +352,7 @@ export default function ReportResultsPanel({
           typeof previewRows[0] === 'object' &&
           Object.prototype.hasOwnProperty.call(previewRows[0], 'sectionNumber') &&
           Object.prototype.hasOwnProperty.call(previewRows[0], 'rows') ? (
-          <div className="overflow-x-auto border border-border/80 p-3 shadow-sm">
+          <div className="overflow-x-auto border border-border/80 p-3 shadow-sm no-scrollbar">
             <PnttReportTable sections={previewRows} loading={loading} formatValue={formatValue} onCellClick={onPnttCellClick} />
           </div>
         ) : !isAdultChild &&
@@ -360,7 +360,7 @@ export default function ReportResultsPanel({
           typeof previewRows[0] === 'object' &&
           Object.prototype.hasOwnProperty.call(previewRows[0], 'sectionNumber') &&
           Object.prototype.hasOwnProperty.call(previewRows[0], 'rows') ? (
-          <div className="overflow-x-auto border border-border/20">
+          <div className="overflow-x-auto border border-border/20 no-scrollbar">
             <table className="w-full border-collapse text-xs">
               <thead>
                 <tr className="border-b border-border/20 bg-muted/15 text-[10px] font-semibold text-muted-foreground/85 uppercase tracking-wider">

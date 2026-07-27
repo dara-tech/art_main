@@ -591,7 +591,26 @@ export default function ReportHomePage({ onLogout }) {
   const hasRows = previewRows.length > 0;
   const adultChildRows = useMemo(() => {
     if (!isAdultChild) return [];
-    const sortedRows = [...previewRows].sort(compareIndicatorLabel);
+    // Deduplicate rows by indicator number prefix before display.
+    // Prefer rows with full-text indicator (no underscores) and higher totals.
+    const getIndKey = (row) => {
+      const ind = String(row?.Indicator || '');
+      const numKey = ind.match(/^([\d.]+)/)?.[1];
+      return numKey ?? ind.toLowerCase().replace(/\s+/g, '_');
+    };
+    const deduped = new Map();
+    for (const row of previewRows) {
+      const key = getIndKey(row);
+      const existing = deduped.get(key);
+      const ind = String(row?.Indicator || '');
+      const indHasUnderscore = /^[a-z0-9]+_/.test(ind); // script-ID format
+      const rowTotal = Number(row?.TOTAL || 0) + Number(row?.Male_0_14 || 0) + Number(row?.Female_0_14 || 0) + Number(row?.Male_over_14 || 0) + Number(row?.Female_over_14 || 0);
+      const existTotal = existing ? (Number(existing?.TOTAL || 0) + Number(existing?.Male_0_14 || 0) + Number(existing?.Female_0_14 || 0) + Number(existing?.Male_over_14 || 0) + Number(existing?.Female_over_14 || 0)) : -1;
+      if (!existing || (!indHasUnderscore && rowTotal >= existTotal)) {
+        deduped.set(key, row);
+      }
+    }
+    const sortedRows = Array.from(deduped.values()).sort(compareIndicatorLabel);
     return sortedRows.map((row) => {
       const male014 = Number(row?.Male_0_14 ?? 0);
       const female014 = Number(row?.Female_0_14 ?? 0);
@@ -1125,7 +1144,10 @@ export default function ReportHomePage({ onLogout }) {
                   Female_0_14: Number(r?.Female_0_14 ?? r?.female_0_14 ?? 0),
                   Male_over_14: Number(r?.Male_over_14 ?? r?.male_over_14 ?? 0),
                   Female_over_14: Number(r?.Female_over_14 ?? r?.female_over_14 ?? 0),
-                  TOTAL: Number(r?.TOTAL ?? r?.total ?? r?.grand_total ?? 0)
+                })).map((r) => ({
+                  ...r,
+                  // Compute TOTAL from 4 age/sex columns — warehouse has no TOTAL column
+                  TOTAL: r.Male_0_14 + r.Female_0_14 + r.Male_over_14 + r.Female_over_14
                 }));
 
                 const injectIndicator9 = (items) => {
@@ -1153,7 +1175,25 @@ export default function ReportHomePage({ onLogout }) {
                   return found ? [...items, row] : items;
                 };
 
-                const finalRows = injectIndicator9(normalizedWarehouseRows);
+                // Deduplicate by indicator number prefix (e.g. "1.", "11.") — keep row with highest total
+                const dedupeByIndicator = (items) => {
+                  const seen = new Map();
+                  for (const row of items) {
+                    const ind = String(row?.Indicator || '');
+                    // Extract leading indicator number like "1.", "11.2."
+                    const numKey = ind.match(/^([\d.]+)/)?.[1] ?? ind.toLowerCase().replace(/\s+/g, '_');
+                    const existing = seen.get(numKey);
+                    const rowTotal = (row.TOTAL || 0) + (row.Male_0_14 || 0) + (row.Female_0_14 || 0) + (row.Male_over_14 || 0) + (row.Female_over_14 || 0);
+                    const existTotal = existing ? ((existing.TOTAL || 0) + (existing.Male_0_14 || 0) + (existing.Female_0_14 || 0) + (existing.Male_over_14 || 0) + (existing.Female_over_14 || 0)) : -1;
+                    // Prefer warehouse full-text indicator over raw script IDs (script IDs have underscores)
+                    const indHasUnderscore = /^[a-z0-9]+_/.test(ind);
+                    if (!existing || (!indHasUnderscore && rowTotal >= existTotal)) {
+                      seen.set(numKey, row);
+                    }
+                  }
+                  return Array.from(seen.values());
+                };
+                const finalRows = injectIndicator9(dedupeByIndicator(normalizedWarehouseRows));
                 setRows(finalRows);
                 setRunTimeMs(Math.round(performance.now() - startedAt));
                 setProgress({ completed: finalRows.length, total: finalRows.length });
@@ -1245,36 +1285,43 @@ export default function ReportHomePage({ onLogout }) {
           }
           }
         }
-        for (const candidateSiteCode of candidateSiteCodes) {
+        if (!success) for (const candidateSiteCode of candidateSiteCodes) {
           if (success) break;
           let attemptRowCount = 0;
           setRows([]);
           setProgress({ completed: 0, total: 0 });
-          await reportingApi.streamAllIndicators({ siteCode: candidateSiteCode, siteLevel: selectedSiteLevel, ...currentPeriod }, {
-            onMessage: (payload) => {
-              if (payload.type === 'start') {
-                setProgress({ completed: 0, total: Number(payload.total) || 0 });
+          try {
+            await reportingApi.streamAllIndicators({ siteCode: candidateSiteCode, siteLevel: selectedSiteLevel, ...currentPeriod }, {
+              onMessage: (payload) => {
+                if (payload.type === 'start') {
+                  setProgress({ completed: 0, total: Number(payload.total) || 0 });
+                }
+              },
+              onIndicator: (payload) => {
+                attemptRowCount += 1;
+                setRows((prev) => [...prev, payload.data].filter(Boolean));
+                setProgress({
+                  completed: Number(payload.completed) || 0,
+                  total: Number(payload.total) || 0
+                });
+              },
+              onIndicatorError: (payload) => {
+                setProgress({
+                  completed: Number(payload.completed) || 0,
+                  total: Number(payload.total) || 0
+                });
+                toast.error(`Indicator ${payload.indicatorId} failed: ${payload.error}`);
+              },
+              onDone: (payload) => {
+                setRunTimeMs(Number(payload.durationMs) || Math.round(performance.now() - startedAt));
               }
-            },
-            onIndicator: (payload) => {
-              attemptRowCount += 1;
-              setRows((prev) => [...prev, payload.data].filter(Boolean));
-              setProgress({
-                completed: Number(payload.completed) || 0,
-                total: Number(payload.total) || 0
-              });
-            },
-            onIndicatorError: (payload) => {
-              setProgress({
-                completed: Number(payload.completed) || 0,
-                total: Number(payload.total) || 0
-              });
-              toast.error(`Indicator ${payload.indicatorId} failed: ${payload.error}`);
-            },
-            onDone: (payload) => {
-              setRunTimeMs(Number(payload.durationMs) || Math.round(performance.now() - startedAt));
+            });
+          } catch (streamErr) {
+            console.warn('[Report] Stream error for site', candidateSiteCode, streamErr?.message || streamErr);
+            if (attemptRowCount === 0) {
+              toast.error('Connection to clinical database was interrupted. Please try again.');
             }
-          });
+          }
           if (attemptRowCount > 0) {
             success = true;
             break;
@@ -1413,10 +1460,10 @@ export default function ReportHomePage({ onLogout }) {
         loading={loading}
         runReport={runReport}
       />
-      <Patient360Layout lockViewport>
-        <AppPageShell wide className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col !p-0">
-          <div className="space-y-4 p-4 md:p-5">
-        <ReportResultsPanel
+      <Patient360Layout lockViewport className="flex flex-col h-full">
+        <AppPageShell wide className="flex h-full min-h-0 min-w-0 w-full max-w-full flex-1 flex-col !p-0">
+          <div className="flex flex-1 min-h-0 flex-col space-y-3 p-3 sm:p-4 md:p-5 h-full">
+            <ReportResultsPanel
           reportHeaderMeta={reportHeaderMeta}
           currentPeriod={currentPeriod}
           reportType={reportType}
@@ -1456,7 +1503,7 @@ export default function ReportHomePage({ onLogout }) {
               }}
             >
             <motion.div
-              className="flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden bg-card shadow-2xl shadow-black/15"
+              className="flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden bg-card shadow-2xl shadow-black/15 border border-border rounded-none"
               initial={{ opacity: 0, y: 18, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.98 }}
@@ -1484,7 +1531,7 @@ export default function ReportHomePage({ onLogout }) {
                 </div>
                 <button
                   type="button"
-                  className="ml-3 border border-border/80 bg-background px-2.5 py-1 text-xs font-medium shadow-sm hover:bg-muted"
+                  className="ml-3 border border-border/80 bg-background px-2.5 py-1 text-xs font-medium shadow-sm hover:bg-muted rounded-none"
                   onClick={() => {
                     setDetailOpen(false);
                     setDetailFilter(null);
@@ -1514,7 +1561,7 @@ export default function ReportHomePage({ onLogout }) {
                         }
                       }}
                       placeholder="Search records (clinic ID, ART, TPT drug, status, source...)"
-                      className="h-8 w-full border border-border/80 bg-background pl-8 pr-2 text-xs shadow-sm"
+                      className="h-8 w-full border border-border/80 bg-background pl-8 pr-2 text-xs shadow-sm rounded-none"
                     />
                   </div>
                   {detailFilter && (
@@ -1532,7 +1579,7 @@ export default function ReportHomePage({ onLogout }) {
                             fetchDetailPage(detailFilter, 1, detailRowSearch, e.target.value, detailMaxAge);
                           }
                         }}
-                        className="h-8 w-16 border border-border/80 bg-background px-2 text-xs shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className="h-8 w-16 border border-border/80 bg-background px-2 text-xs shadow-sm rounded-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                       <span className="text-xs text-muted-foreground">-</span>
                       <input
@@ -1547,7 +1594,7 @@ export default function ReportHomePage({ onLogout }) {
                             fetchDetailPage(detailFilter, 1, detailRowSearch, detailMinAge, e.target.value);
                           }
                         }}
-                        className="h-8 w-16 border border-border/80 bg-background px-2 text-xs shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className="h-8 w-16 border border-border/80 bg-background px-2 text-xs shadow-sm rounded-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                       {(detailMinAge || detailMaxAge) && (
                         <button
@@ -1559,7 +1606,7 @@ export default function ReportHomePage({ onLogout }) {
                             detailMaxAgeRef.current = '';
                             fetchDetailPage(detailFilter, 1, detailRowSearch, '', '');
                           }}
-                          className="h-8 border border-border/80 bg-background px-2 text-[10px] text-muted-foreground shadow-sm hover:bg-muted"
+                          className="h-8 border border-border/80 bg-background px-2 text-[10px] text-muted-foreground shadow-sm hover:bg-muted rounded-none"
                         >
                           Clear
                         </button>
@@ -1576,7 +1623,7 @@ export default function ReportHomePage({ onLogout }) {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    className="inline-flex h-7 items-center gap-1 border border-border/80 bg-background px-2.5 text-xs font-medium shadow-sm hover:bg-muted disabled:opacity-50"
+                    className="inline-flex h-7 items-center gap-1 border border-border/80 bg-background px-2.5 text-xs font-medium shadow-sm hover:bg-muted disabled:opacity-50 rounded-none"
                     disabled={detailLoading || detailExporting || detailListCount === 0}
                     onClick={handleExportAllDetails}
                     title="Download all matching records as CSV"
@@ -1590,7 +1637,7 @@ export default function ReportHomePage({ onLogout }) {
                   </button>
                   <button
                     type="button"
-                    className="inline-flex h-7 w-7 items-center justify-center border border-border/80 bg-background hover:bg-muted"
+                    className="inline-flex h-7 w-7 items-center justify-center border border-border/80 bg-background hover:bg-muted rounded-none"
                     onClick={() => setShowColumnConfig((v) => !v)}
                     title={showColumnConfig ? 'Hide column settings' : 'Show column settings'}
                     aria-label={showColumnConfig ? 'Hide column settings' : 'Show column settings'}
@@ -1618,7 +1665,7 @@ export default function ReportHomePage({ onLogout }) {
                               moveSelectedColumn(dragColumnKey, key);
                               setDragColumnKey('');
                             }}
-                            className="inline-flex cursor-grab items-center gap-1.5 border border-border/80 bg-background px-2 py-1 text-xs shadow-sm active:cursor-grabbing"
+                            className="inline-flex cursor-grab items-center gap-1.5 border border-border/80 bg-background px-2 py-1 text-xs shadow-sm active:cursor-grabbing rounded-none"
                           >
                             <RiDraggable className="size-3.5 text-muted-foreground" />
                             {toDetailColumnLabel(key)}
@@ -1633,10 +1680,10 @@ export default function ReportHomePage({ onLogout }) {
                       value={detailColumnSearch}
                       onChange={(e) => setDetailColumnSearch(e.target.value)}
                       placeholder="Search columns..."
-                      className="h-8 w-full border border-border/80 bg-background pl-8 pr-2 text-xs shadow-sm"
+                      className="h-8 w-full border border-border/80 bg-background pl-8 pr-2 text-xs shadow-sm rounded-none"
                     />
                   </div>
-                  <div className="grid max-h-32 grid-cols-2 gap-2 overflow-auto md:grid-cols-4">
+                  <div className="grid max-h-32 grid-cols-2 gap-2 overflow-auto md:grid-cols-4 no-scrollbar">
                     {visibleColumnGroups.map((group) => {
                       const checked = group.keys.every((k) => selectedDetailColumns.includes(k));
                       return (
@@ -1663,7 +1710,7 @@ export default function ReportHomePage({ onLogout }) {
                   </div>
                 </div>
               )}
-              <div className="min-h-0 flex-1 overflow-auto p-4">
+              <div className="min-h-0 flex-1 overflow-auto p-4 no-scrollbar">
                 {detailLoading ? (
                   <div className="flex min-h-52 items-center justify-center">
                     <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
@@ -1678,7 +1725,7 @@ export default function ReportHomePage({ onLogout }) {
                     {detailRowSearch.trim() ? 'No records match your search.' : 'No detail records found.'}
                   </div>
                 ) : (
-                  <div className="overflow-auto border border-border/20 shadow-sm">
+                  <div className="overflow-auto border border-border/20 shadow-sm rounded-none no-scrollbar">
                   <table className="w-full border-collapse text-xs">
                     <thead>
                       <tr className="sticky top-0 z-10 border-b border-border/20 bg-muted/95 backdrop-blur-md text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
@@ -1735,7 +1782,7 @@ export default function ReportHomePage({ onLogout }) {
                     <>
                       <button
                         type="button"
-                        className="h-7 border border-border/80 bg-background px-3 text-xs shadow-sm disabled:opacity-50"
+                        className="h-7 border border-border/80 bg-background px-3 text-xs shadow-sm disabled:opacity-50 rounded-none"
                         disabled={detailLoading || detailPage <= 1}
                         onClick={() => fetchDetailPage(detailFilter, detailPage - 1, detailRowSearch)}
                       >
@@ -1743,7 +1790,7 @@ export default function ReportHomePage({ onLogout }) {
                       </button>
                       <button
                         type="button"
-                        className="h-7 border border-border/80 bg-background px-3 text-xs shadow-sm disabled:opacity-50"
+                        className="h-7 border border-border/80 bg-background px-3 text-xs shadow-sm disabled:opacity-50 rounded-none"
                         disabled={detailLoading || detailPage >= detailTotalPages}
                         onClick={() => fetchDetailPage(detailFilter, detailPage + 1, detailRowSearch)}
                       >

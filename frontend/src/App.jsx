@@ -9,6 +9,7 @@ import { Patient360LoadingPanel } from './components/patient360/Patient360Loadin
 import LoginPage from './pages/LoginPage.jsx';
 import Patient360Page from './pages/Patient360Page.jsx';
 import VisualizePage from './pages/VisualizePage.jsx';
+import DashboardPage from './pages/DashboardPage.jsx';
 import ReportHomePage from './pages/ReportHomePage.jsx';
 
 const DocumentPage = lazy(() => import('./pages/DocumentPage.jsx'));
@@ -26,7 +27,7 @@ import { isGuest, hasRole } from './utils/authRoles.js';
 function RequireNotGuest({ children }) {
   const { user } = useAuth();
   if (isGuest(user)) {
-    return <Navigate to="/reports" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
   return children;
 }
@@ -34,7 +35,7 @@ function RequireNotGuest({ children }) {
 function RequireNotGuestOrPdmo({ children }) {
   const { user } = useAuth();
   if (isGuest(user) || hasRole(user, 'pdmo')) {
-    return <Navigate to="/reports" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
   return children;
 }
@@ -103,8 +104,9 @@ function App() {
       <AppLayout onLogout={logout}>
         <Suspense fallback={<PageFallback />}>
           <Routes>
+            <Route path="/dashboard" element={<DashboardPage onLogout={logout} />} />
             <Route path="/reports" element={<ReportHomePage onLogout={logout} />} />
-            <Route path="/" element={<Navigate to="/reports" replace />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/documents" element={<RequireNotGuestOrPdmo><DocumentPage onLogout={logout} /></RequireNotGuestOrPdmo>} />
             <Route path="/dqa" element={<RequireNotGuestOrPdmo><DqaPage onLogout={logout} /></RequireNotGuestOrPdmo>} />
             <Route path="/patient-360" element={<RequireNotGuest><Patient360Page onLogout={logout} /></RequireNotGuest>} />
@@ -127,7 +129,7 @@ function App() {
             />
             <Route path="/queries/dqa" element={<Navigate to="/dqa" replace />} />
             <Route path="/details/:indicatorId" element={<IndicatorDetailsPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Suspense>
       </AppLayout>

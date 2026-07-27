@@ -19,6 +19,7 @@ const insightRoutes = require('./routes/insight');
 const vcctRoutes = require('./routes/vcct');
 const analyticsRoutes = require('./routes/analytics');
 const settingsRoutes = require('./routes/settings');
+const aiRoutes = require('./routes/ai');
 
 const app = express();
 const port = Number(process.env.PORT || 3001);
@@ -46,6 +47,7 @@ app.use('/apiv1/insight', insightRoutes);
 app.use('/apiv1/vcct', vcctRoutes);
 app.use('/apiv1/analytics', analyticsRoutes);
 app.use('/apiv1/settings', settingsRoutes);
+app.use('/apiv1/ai', aiRoutes);
 
 app.use((error, _req, res, _next) => {
   res.status(500).json({ success: false, error: error.message || 'Internal server error' });

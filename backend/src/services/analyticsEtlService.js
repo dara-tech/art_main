@@ -612,12 +612,25 @@ async function querySummary({ periodLabel, periodType, provinceId, siteCode } = 
   }
   
   if (provinceId) {
-    conditions.push('province_id = :provinceId');
-    replacements.provinceId = provinceId;
+    const pClean = String(provinceId).replace(/\D/g, '');
+    if (pClean) {
+      conditions.push('province_id = :provinceId');
+      replacements.provinceId = pClean.padStart(2, '0');
+    }
   }
-  if (siteCode) {
-    conditions.push('site_code = :siteCode');
-    replacements.siteCode = siteCode;
+  if (siteCode && siteCode !== 'all' && siteCode !== 'ALL' && siteCode !== '__CAMBODIA__' && siteCode !== '0000') {
+    const clean = String(siteCode).replace(/^province:/i, '').trim();
+    const digits = clean.replace(/\D/g, '');
+    if (digits.length <= 2 || (digits.length === 4 && digits.endsWith('00'))) {
+      const pid = digits.slice(0, 2);
+      if (pid) {
+        conditions.push('province_id = :provinceId');
+        replacements.provinceId = pid;
+      }
+    } else {
+      conditions.push('site_code = :siteCode');
+      replacements.siteCode = clean;
+    }
   }
 
   const sql = `

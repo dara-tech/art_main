@@ -86,9 +86,69 @@ export default function CountryAnalyticsPage({ onLogout }) {
   const [cleanOption, setCleanOption] = useState('period'); // 'period', 'indicator', 'all'
   const [cleanIndicator, setCleanIndicator] = useState('');
   const [clearing, setClearing] = useState(false);
+  const [deletingIndicator, setDeletingIndicator] = useState(null);
+  const [selectedIndicators, setSelectedIndicators] = useState(new Set()); // bulk select
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // Settings Modal state
   const [connectionModalOpen, setConnectionModalOpen] = useState(false);
+
+  // Delete a single indicator row from the warehouse for the current period
+  const handleDeleteIndicator = async (indicatorText) => {
+    if (deletingIndicator) return;
+    setDeletingIndicator(indicatorText);
+    try {
+      await clearAnalyticsData({ ...currentPeriod, indicator: indicatorText });
+      setCountryRows((prev) => prev.filter((r) => (r.indicator || r.Indicator) !== indicatorText));
+      setSelectedIndicators((prev) => { const n = new Set(prev); n.delete(indicatorText); return n; });
+      toast.success(`Deleted indicator: ${indicatorText.split('. ')[0] || indicatorText}`);
+    } catch (e) {
+      toast.error('Failed to delete indicator: ' + e.message);
+    } finally {
+      setDeletingIndicator(null);
+    }
+  };
+
+  // Bulk delete all selected indicators
+  const handleBulkDelete = async () => {
+    if (bulkDeleting || selectedIndicators.size === 0) return;
+    setBulkDeleting(true);
+    const toDelete = Array.from(selectedIndicators);
+    let successCount = 0;
+    try {
+      await Promise.all(
+        toDelete.map((ind) =>
+          clearAnalyticsData({ ...currentPeriod, indicator: ind })
+            .then(() => { successCount += 1; })
+            .catch((e) => console.warn('[BulkDelete] Failed for', ind, e.message))
+        )
+      );
+      setCountryRows((prev) => prev.filter((r) => !selectedIndicators.has(r.indicator || r.Indicator)));
+      setSelectedIndicators(new Set());
+      toast.success(`Deleted ${successCount} of ${toDelete.length} indicators.`);
+    } catch (e) {
+      toast.error('Bulk delete error: ' + e.message);
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
+  const toggleSelectRow = (indicatorText) => {
+    setSelectedIndicators((prev) => {
+      const n = new Set(prev);
+      if (n.has(indicatorText)) n.delete(indicatorText);
+      else n.add(indicatorText);
+      return n;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIndicators.size === filteredRows.length && filteredRows.length > 0) {
+      setSelectedIndicators(new Set());
+    } else {
+      setSelectedIndicators(new Set(filteredRows.map((r) => r.indicator)));
+    }
+  };
 
   // Missing indicators state
   const [checkingMissing, setCheckingMissing] = useState(false);
@@ -953,6 +1013,16 @@ export default function CountryAnalyticsPage({ onLogout }) {
                       <table className="w-full border-collapse text-[11px]">
                         <thead>
                           <tr className="border-b border-border/20 bg-muted/50 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider text-left">
+                            {/* Select-all checkbox */}
+                            <th className="p-2.5 w-8" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                className="accent-primary cursor-pointer"
+                                checked={filteredRows.length > 0 && selectedIndicators.size === filteredRows.length}
+                                ref={(el) => { if (el) el.indeterminate = selectedIndicators.size > 0 && selectedIndicators.size < filteredRows.length; }}
+                                onChange={toggleSelectAll}
+                              />
+                            </th>
                             <th className="p-2.5 w-8"></th>
                             <th className="p-2.5 min-w-[280px]">សូចនាករ (Indicator Name)</th>
                             <th className="p-2.5 text-right">ប្រុស ០-១៤</th>
@@ -961,11 +1031,13 @@ export default function CountryAnalyticsPage({ onLogout }) {
                             <th className="p-2.5 text-right">ស្រី &gt;១៤</th>
                             <th className="p-2.5 text-right">សរុប (Total)</th>
                             <th className="p-2.5 text-right pr-4">មន្ទីរពេទ្យ (Sites)</th>
+                            <th className="p-2.5 w-8"></th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border/20">
                           {filteredRows.map((row, idx) => {
                             const isExpanded = expandedIndicators.has(row.indicator);
+                            const isSelected = selectedIndicators.has(row.indicator);
                             const grandTotal = Number(row.Male_0_14 || 0) + Number(row.Female_0_14 || 0) + Number(row.Male_over_14 || 0) + Number(row.Female_over_14 || 0);
                             
                             // Filter matching province records for drill down
@@ -975,8 +1047,21 @@ export default function CountryAnalyticsPage({ onLogout }) {
                               <Fragment key={`${row.indicator}-${idx}`}>
                                 <tr
                                   onClick={() => toggleRow(row.indicator)}
-                                  className="hover:bg-muted/20 transition-colors duration-150 cursor-pointer group"
+                                  className={cn(
+                                    'transition-colors duration-150 cursor-pointer group',
+                                    isSelected ? 'bg-primary/8 hover:bg-primary/12' : 'hover:bg-muted/20'
+                                  )}
                                 >
+                                  {/* Checkbox cell */}
+                                  <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                                    <input
+                                      type="checkbox"
+                                      className="accent-primary cursor-pointer"
+                                      checked={isSelected}
+                                      onChange={() => toggleSelectRow(row.indicator)}
+                                    />
+                                  </td>
+                                  {/* Expand/collapse icon */}
                                   <td className="p-2.5 text-center">
                                     {isExpanded ? (
                                       <RiArrowUpSLine className="size-4 text-primary transition" />
@@ -1004,12 +1089,28 @@ export default function CountryAnalyticsPage({ onLogout }) {
                                   <td className="p-2.5 text-right tabular-nums text-report-female/95 font-medium">{formatVal(row.Female_over_14)}</td>
                                   <td className="p-2.5 text-right tabular-nums font-black text-foreground underline decoration-border/60 bg-muted/5">{formatVal(grandTotal)}</td>
                                   <td className="p-2.5 text-right tabular-nums font-medium text-muted-foreground">{formatVal(row.site_count)}</td>
+                                  {/* Delete row button */}
+                                  <td
+                                    className="p-1 text-center"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <button
+                                      title={`Delete indicator: ${row.indicator}`}
+                                      onClick={() => handleDeleteIndicator(row.indicator)}
+                                      disabled={deletingIndicator === row.indicator}
+                                      className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 p-1 rounded hover:bg-red-500/15 text-red-400 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                      {deletingIndicator === row.indicator
+                                        ? <RiLoader4Line className="size-3.5 animate-spin" />
+                                        : <RiDeleteBinLine className="size-3.5" />}
+                                    </button>
+                                  </td>
                                 </tr>
 
                                 {/* Collapsible Province Drill-Down Row */}
                                 {isExpanded && (
                                   <tr>
-                                    <td colSpan={8} className="bg-muted/5 p-0 border-t border-b">
+                                    <td colSpan={9} className="bg-muted/5 p-0 border-t border-b">
                                       <motion.div
                                         initial={{ opacity: 0, height: 0 }}
                                         animate={{ opacity: 1, height: 'auto' }}
@@ -1094,6 +1195,43 @@ export default function CountryAnalyticsPage({ onLogout }) {
           </Card>
         </AppPageShell>
       </Patient360Layout>
+
+      {/* Floating Bulk Action Bar */}
+      <AnimatePresence>
+        {selectedIndicators.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 60 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 60 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+            className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-2xl border border-border/60 bg-card/95 px-5 py-3 shadow-2xl backdrop-blur-md"
+          >
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
+                {selectedIndicators.size}
+              </span>
+              <span>indicator{selectedIndicators.size !== 1 ? 's' : ''} selected</span>
+            </div>
+            <Separator orientation="vertical" className="h-5" />
+            <button
+              onClick={() => setSelectedIndicators(new Set())}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Deselect all
+            </button>
+            <button
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="flex items-center gap-1.5 rounded-lg bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {bulkDeleting
+                ? <RiLoader4Line className="size-3.5 animate-spin" />
+                : <RiDeleteBinLine className="size-3.5" />}
+              {bulkDeleting ? 'Deleting...' : `Delete ${selectedIndicators.size} row${selectedIndicators.size !== 1 ? 's' : ''}`}
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Clean Confirmation Modal */}
       {cleanModalOpen && (

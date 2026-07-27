@@ -17,12 +17,12 @@ import { APP_NAV_ICON } from './appNavStyles';
 import { cn } from '@/lib/utils';
 
 const ACCENT_COLORS = [
-  { id: 'blue', light: 'oklch(0.6 0.18 250)', dark: 'oklch(0.7 0.14 250)', hex: '#3b82f6', name: 'Blue', navBg: '#121b2d' },
-  { id: 'purple', light: 'oklch(0.55 0.22 290)', dark: 'oklch(0.68 0.16 290)', hex: '#8b5cf6', name: 'Purple', navBg: '#1c152a' },
-  { id: 'pink', light: 'oklch(0.6 0.22 345)', dark: 'oklch(0.72 0.16 345)', hex: '#ec4899', name: 'Pink', navBg: '#2d121c' },
-  { id: 'orange', light: 'oklch(0.5 0.13 46)', dark: 'oklch(0.72 0.11 52)', hex: '#f97316', name: 'Orange', navBg: '#2a1720' },
-  { id: 'yellow', light: 'oklch(0.75 0.16 75)', dark: 'oklch(0.82 0.14 75)', hex: '#eab308', name: 'Yellow', navBg: '#2a2015' },
-  { id: 'green', light: 'oklch(0.65 0.18 140)', dark: 'oklch(0.74 0.13 140)', hex: '#22c55e', name: 'Green', navBg: '#14241c' },
+  { id: 'blue', light: 'oklch(0.6 0.18 250)', dark: 'oklch(0.7 0.14 250)', hex: '#3b82f6', name: 'Blue', navBg: '#090d16' },
+  { id: 'purple', light: 'oklch(0.55 0.22 290)', dark: 'oklch(0.68 0.16 290)', hex: '#8b5cf6', name: 'Purple', navBg: '#110e1b' },
+  { id: 'pink', light: 'oklch(0.6 0.22 345)', dark: 'oklch(0.72 0.16 345)', hex: '#ec4899', name: 'Pink', navBg: '#160e14' },
+  { id: 'orange', light: 'oklch(0.5 0.13 46)', dark: 'oklch(0.72 0.11 52)', hex: '#f97316', name: 'Orange', navBg: '#141210' },
+  { id: 'yellow', light: 'oklch(0.75 0.16 75)', dark: 'oklch(0.82 0.14 75)', hex: '#eab308', name: 'Yellow', navBg: '#141310' },
+  { id: 'green', light: 'oklch(0.65 0.18 140)', dark: 'oklch(0.74 0.13 140)', hex: '#22c55e', name: 'Green', navBg: '#0c1510' },
 ];
 
 export default function SidebarNav() {

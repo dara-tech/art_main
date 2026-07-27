@@ -79,6 +79,41 @@ export default function DqaToolbar({
             running && '[&_svg]:animate-spin'
           )}
         />
+
+        {summaryCount > 0 ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="h-8 gap-1.5 rounded-none border-border/80 px-2.5 text-xs shadow-xs hover:bg-muted"
+            onClick={() => {
+              const csvRows = [
+                ['Check #', 'Quality Component', 'DQA Check Title', 'Issue Count', 'Query Execution Time (ms)'],
+                ...scripts.map((script) => {
+                  const comp = getScriptComponent ? getScriptComponent(script) : { nameKh: '' };
+                  const row = summaryById ? summaryById.get(script.id) : null;
+                  return [
+                    `"${script.checkNumber || ''}"`,
+                    `"${comp.nameKh || ''}"`,
+                    `"${script.title || ''}"`,
+                    row?.rowCount != null ? row.rowCount : 0,
+                    row?.queryMs != null ? row.queryMs : 0
+                  ];
+                })
+              ];
+              const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + csvRows.map((e) => e.join(',')).join('\n');
+              const encodedUri = encodeURI(csvContent);
+              const link = document.createElement('a');
+              link.setAttribute('href', encodedUri);
+              link.setAttribute('download', `DQA_Audit_Summary_${siteCode || 'Site'}.csv`);
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }}
+            title="ទាញយករបាយការណ៍ DQA ជា CSV"
+          >
+            📥 របាយការណ៍ CSV
+          </Button>
+        ) : null}
       </Patient360NavRow>
     </Patient360NavBar>
   );

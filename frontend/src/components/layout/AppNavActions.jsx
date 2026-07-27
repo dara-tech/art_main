@@ -8,7 +8,9 @@ import {
   RiShieldCheckLine,
   RiUserSearchLine,
   RiUserSettingsLine,
-  RiDatabase2Line
+  RiDatabase2Line,
+  RiApps2Line,
+  RiDashboard3Line
 } from '@remixicon/react';
 import { 
   LogOut, 
@@ -22,6 +24,7 @@ import {
   KeyRound,
   Settings,
   ChevronRight,
+  ChevronDown,
   Check,
   X,
   Info,
@@ -81,7 +84,7 @@ const ACCENT_COLORS = [
     gradientEndDark: 'oklch(0.75 0.12 200)',
     hex: '#3b82f6',
     name: 'Blue',
-    navBg: '#121b2d'
+    navBg: '#090d16'
   },
   { 
     id: 'purple', 
@@ -93,7 +96,7 @@ const ACCENT_COLORS = [
     gradientEndDark: 'oklch(0.75 0.15 330)',
     hex: '#8b5cf6',
     name: 'Purple',
-    navBg: '#1c152a'
+    navBg: '#110e1b'
   },
   { 
     id: 'pink', 
@@ -105,7 +108,7 @@ const ACCENT_COLORS = [
     gradientEndDark: 'oklch(0.7 0.18 20)',
     hex: '#ec4899',
     name: 'Pink',
-    navBg: '#2d121c'
+    navBg: '#160e14'
   },
   { 
     id: 'orange', 
@@ -117,7 +120,7 @@ const ACCENT_COLORS = [
     gradientEndDark: 'oklch(0.72 0.16 345)',
     hex: '#f97316',
     name: 'Orange',
-    navBg: '#2a1720'
+    navBg: '#141210'
   },
   { 
     id: 'yellow', 
@@ -129,7 +132,7 @@ const ACCENT_COLORS = [
     gradientEndDark: 'oklch(0.74 0.13 140)',
     hex: '#eab308',
     name: 'Yellow',
-    navBg: '#2a2015'
+    navBg: '#141310'
   },
   { 
     id: 'green', 
@@ -141,7 +144,7 @@ const ACCENT_COLORS = [
     gradientEndDark: 'oklch(0.82 0.14 75)',
     hex: '#22c55e',
     name: 'Green',
-    navBg: '#14241c'
+    navBg: '#0c1510'
   },
 ];
 
@@ -208,6 +211,86 @@ export default function AppNavActions({ onLogout, hideNav }) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const [isAppMenuOpen, setIsAppMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isAppMenuOpen) return;
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest('.app-menu-dropdown-container')) {
+        setIsAppMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [isAppMenuOpen]);
+
+  const appMenuItems = [
+    {
+      label: 'Dashboard',
+      path: '/dashboard',
+      desc: 'ផ្ទាំងគ្រប់គ្រងទិន្នន័យ',
+      Icon: RiDashboard3Line,
+      allowed: true,
+      gradient: 'bg-gradient-to-tr from-emerald-600 to-teal-500',
+    },
+    {
+      label: 'ART Reports',
+      path: '/reports',
+      desc: 'របាយការណ៍ & សង្ខេប',
+      Icon: RiBarChartBoxLine,
+      allowed: true,
+      gradient: 'bg-gradient-to-tr from-blue-600 to-indigo-500',
+    },
+    {
+      label: '៣៦០°',
+      path: '/patient-360',
+      desc: 'ព័ត៌មានអ្នកជំងឺ ៣៦០°',
+      Icon: RiUserSearchLine,
+      allowed: !guestUser,
+      gradient: 'bg-gradient-to-tr from-teal-600 to-emerald-400',
+    },
+    {
+      label: 'វិភាគ',
+      path: '/visualize',
+      desc: 'វិភាគទិន្នន័យ & រ៉ាត',
+      Icon: RiBarChartGroupedLine,
+      allowed: !guestUser,
+      gradient: 'bg-gradient-to-tr from-amber-500 to-orange-500',
+    },
+    {
+      label: 'ឃ្លាំងទិន្នន័យ',
+      path: '/country-analytics',
+      desc: 'Warehouse Analytics',
+      Icon: RiDatabase2Line,
+      allowed: !guestUser && !pdmoUser,
+      gradient: 'bg-gradient-to-tr from-cyan-600 to-sky-400',
+    },
+    {
+      label: 'DQA',
+      path: '/dqa',
+      desc: 'ត្រួតពិនិត្យគុណភាពទិន្នន័យ',
+      Icon: RiShieldCheckLine,
+      allowed: !guestUser && !pdmoUser,
+      gradient: 'bg-gradient-to-tr from-rose-600 to-pink-500',
+    },
+    {
+      label: 'API',
+      path: '/documents',
+      desc: 'API Reference & Doc',
+      Icon: RiFileTextLine,
+      allowed: !guestUser && !pdmoUser,
+      gradient: 'bg-gradient-to-tr from-purple-600 to-violet-500',
+    },
+    {
+      label: 'Admin',
+      path: '/admin',
+      desc: 'គ្រប់គ្រងប្រព័ន្ធ',
+      Icon: RiUserSettingsLine,
+      allowed: adminUser,
+      gradient: 'bg-gradient-to-tr from-slate-700 to-slate-900',
+    },
+  ].filter((item) => item.allowed);
+
   // Modal active state
   const [activeModal, setActiveModal] = useState(null);
   
@@ -240,7 +323,7 @@ export default function AppNavActions({ onLogout, hideNav }) {
 
   // Settings states
   const [appLang, setAppLang] = useState(localStorage.getItem('app-lang') || 'kh');
-  const [defaultPage, setDefaultPage] = useState(localStorage.getItem('app-default-page') || '/reports');
+  const [defaultPage, setDefaultPage] = useState(localStorage.getItem('app-default-page') || '/dashboard');
   const [sidebarHover, setSidebarHover] = useState(localStorage.getItem('app-sidebar-hover') === 'true');
   const [useAnalytics, setUseAnalytics] = useState(() => {
     return localStorage.getItem('app-use-analytics') === 'true';
@@ -374,7 +457,7 @@ export default function AppNavActions({ onLogout, hideNav }) {
 
   return (
     <header
-      className="flex h-10 shrink-0 items-end justify-between border-b border-border/80 px-2 pt-1 transition-all duration-300"
+      className="sticky top-0 z-50 flex h-10 shrink-0 items-end justify-between border-b border-border/80 px-2 pt-1 transition-all duration-300"
       style={{ backgroundColor: headerBg }}
       aria-label="Global"
     >
@@ -383,83 +466,12 @@ export default function AppNavActions({ onLogout, hideNav }) {
           <span className="bg-teal-600 text-white text-[10px] font-black px-2 py-0.5 rounded tracking-wider select-none">
             ART
           </span>
+          <span className="text-xs font-bold text-white ml-2 tracking-tight">
+            ART Portal
+          </span>
         </div>
       )}
-
-      {!hideNav && (
-        <nav className="flex min-w-0 flex-1 items-end gap-0.5 overflow-x-auto no-scrollbar relative -mb-[1px] z-10" aria-label="Main">
-          <NavLink
-            to="/reports"
-            title="ART Reports"
-            className={({ isActive }) => getTabClass(isActive)}
-          >
-            <RiBarChartBoxLine className={APP_NAV_ICON} />
-            <span className="hidden sm:inline">ART Reports</span>
-            <span className="sm:hidden">ART</span>
-          </NavLink>
-
-          {!guestUser && (
-            <>
-              <NavLink
-                to="/patient-360"
-                title="ព័ត៌មានអ្នកជំងឺ ៣៦០°"
-                className={({ isActive }) => getTabClass(isActive)}
-              >
-                <RiUserSearchLine className={APP_NAV_ICON} />
-                <span>៣៦០°</span>
-              </NavLink>
-              <NavLink
-                to="/visualize"
-                title="វិភាគទិន្នន័យ"
-                className={({ isActive }) => getTabClass(isActive)}
-              >
-                <RiBarChartGroupedLine className={APP_NAV_ICON} />
-                <span>វិភាគ</span>
-              </NavLink>
-              {!pdmoUser && (
-                <>
-                  <NavLink
-                    to="/country-analytics"
-                    title="វិភាគឃ្លាំងទិន្នន័យ (Warehouse Analytics)"
-                    className={({ isActive }) => getTabClass(isActive)}
-                  >
-                    <RiDatabase2Line className={APP_NAV_ICON} />
-                    <span className="hidden md:inline">ឃ្លាំងទិន្នន័យ</span>
-                    <span className="md:hidden">ឃ្លាំង</span>
-                  </NavLink>
-                  <NavLink
-                    to="/dqa"
-                    title="Data quality"
-                    className={({ isActive }) => getTabClass(isActive)}
-                  >
-                    <RiShieldCheckLine className={APP_NAV_ICON} />
-                    <span>DQA</span>
-                  </NavLink>
-                  <NavLink
-                    to="/documents"
-                    title="API reference"
-                    className={({ isActive }) => getTabClass(isActive)}
-                  >
-                    <RiFileTextLine className={APP_NAV_ICON} />
-                    <span>API</span>
-                  </NavLink>
-                </>
-              )}
-              {adminUser && (
-                <NavLink
-                  to="/admin"
-                  title="Admin"
-                  className={({ isActive }) => getTabClass(isActive)}
-                >
-                  <RiUserSettingsLine className={APP_NAV_ICON} />
-                  <span>Admin</span>
-                </NavLink>
-              )}
-            </>
-          )}
-        </nav>
-      )}
-      {hideNav && <div className="flex-1" />}
+      <div className="flex-1" />
 
       <div className="flex shrink-0 items-center h-8 mb-[2px] gap-1 bg-transparent pr-1">
         {/* Search Dropdown Container */}
@@ -616,6 +628,63 @@ export default function AppNavActions({ onLogout, hideNav }) {
             </div>
           )}
         </div>
+
+        {/* App Menu Icon Dropdown (Right between Search and toolbar icons) */}
+        {!hideNav && (
+          <div className="relative app-menu-dropdown-container flex items-center">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setIsAppMenuOpen((prev) => !prev)}
+              className="h-7 w-7 text-white/70 hover:bg-white/10 hover:text-white rounded-md flex items-center justify-center p-0 cursor-pointer outline-none focus:outline-none"
+              title="App Menu (កម្មវិធីប្រព័ន្ធ)"
+              aria-label="App Menu"
+            >
+              <RiApps2Line className="size-4 text-emerald-400" />
+            </Button>
+
+            {isAppMenuOpen && (
+              <div className="absolute right-0 top-8.5 z-50 w-72 sm:w-80 rounded-xl border border-border bg-card p-2.5 shadow-2xl backdrop-blur-xl animate-in fade-in-50 zoom-in-95">
+                <div className="px-2 py-1.5 mb-1.5 border-b border-border/60 flex items-center justify-between">
+                  <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <RiApps2Line className="size-4 text-primary" />
+                    App Menu (កម្មវិធីប្រព័ន្ធ)
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-medium">ART Portal</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[75vh] overflow-y-auto p-0.5">
+                  {appMenuItems.map((item) => (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => setIsAppMenuOpen(false)}
+                      className={({ isActive }) =>
+                        cn(
+                          "flex items-center gap-3 p-2.5 rounded-2xl text-xs font-medium transition-all border group",
+                          isActive
+                            ? "bg-primary/10 text-foreground font-semibold border-primary/35"
+                            : "border-transparent text-foreground/85 hover:bg-muted/80 hover:border-border/60 hover:text-foreground"
+                        )
+                      }
+                    >
+                      {/* Apple iOS-Style Squircle App Icon Badge (Flat, No Shadow) */}
+                      <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-[11px] text-white transition-transform duration-200 group-hover:scale-105", item.gradient)}>
+                        <item.Icon className="size-5 text-white" />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="truncate font-bold text-xs leading-snug">{item.label}</span>
+                        <span className="text-[10px] text-muted-foreground truncate font-normal">{item.desc}</span>
+                      </div>
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="w-px h-4 bg-white/15 mx-1" />
         
         {/* Profile Dropdown Container */}
@@ -1147,6 +1216,7 @@ export default function AppNavActions({ onLogout, hideNav }) {
                         <SelectValue placeholder="Select Page" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="/dashboard">Dashboard</SelectItem>
                         <SelectItem value="/reports">ART Reports</SelectItem>
                         <SelectItem value="/patient-360">Patient 360°</SelectItem>
                         <SelectItem value="/visualize">Visualize</SelectItem>
