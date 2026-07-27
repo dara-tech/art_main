@@ -10,7 +10,7 @@ import { Patient360NavBar, Patient360NavRow } from '../patient360/Patient360NavB
 import QuarterSelectModal from '../visualize/QuarterSelectModal';
 import { VizToolbarBtn } from '../visualize/visualizeToolbarUi';
 import { TOOLBAR_ICON } from '../layout/toolbarIconColors';
-import { cn } from '@/lib/utils';
+import { getApiBaseUrl } from '@/services/api';
 
 export default function ReportFilters({
   sites,
@@ -27,7 +27,8 @@ export default function ReportFilters({
   const selectItemClass = 'px-3 py-2 rounded-none text-xs cursor-pointer data-[selected]:bg-primary data-[selected]:text-primary-foreground';
 
   const handleDownloadScripts = () => {
-    const url = `${import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || ''}/apiv1/optimized-indicators/download-scripts`;
+    const url = `${getApiBaseUrl()}/apiv1/optimized-indicators/download-scripts`;
+
     const token = localStorage.getItem('token');
     fetch(url, {
       headers: { 'Authorization': `Bearer ${token}` }

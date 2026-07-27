@@ -1,9 +1,10 @@
-import api from './api';
+import api, { getApiBaseUrl } from './api';
 import { handleUnauthorized, isUnauthorizedResponse } from './authSession';
 
 async function streamVisualizeRun(body, handlers = {}) {
   const token = localStorage.getItem('token');
-  const base = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+  const base = getApiBaseUrl();
+
   const url = `${base}/apiv1/visualize/run/stream`;
   const response = await fetch(url, {
     method: 'POST',

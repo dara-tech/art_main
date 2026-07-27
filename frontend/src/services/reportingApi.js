@@ -1,4 +1,4 @@
-import api from './api';
+import api, { getApiBaseUrl } from './api';
 import { handleUnauthorized, isUnauthorizedResponse } from './authSession';
 
 function assertOkResponse(response) {
@@ -9,7 +9,8 @@ function assertOkResponse(response) {
 
 async function streamNdjsonReport(relativePath, params, handlers = {}) {
   const token = localStorage.getItem('token');
-  const base = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+  const base = getApiBaseUrl();
+
   const search = new URLSearchParams(
     Object.entries(params || {}).reduce((acc, [key, value]) => {
       if (value != null && value !== '') acc[key] = String(value);
@@ -74,7 +75,8 @@ export const reportingApi = {
   getAllIndicators: async (params) => (await api.get('/apiv1/indicators-optimized/all', { params })).data,
   streamAllIndicators: async (params, handlers = {}) => {
     const token = localStorage.getItem('token');
-    const base = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+    const base = getApiBaseUrl();
+
     const search = new URLSearchParams(
       Object.entries(params || {}).reduce((acc, [key, value]) => {
         if (value != null && value !== '') acc[key] = String(value);
