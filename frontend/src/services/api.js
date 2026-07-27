@@ -1,4 +1,8 @@
+import axios from 'axios';
+import { handleUnauthorized, isUnauthorizedResponse } from './authSession';
+
 export const getApiBaseUrl = () => {
+
   const envUrl = import.meta.env.VITE_API_URL;
   if (envUrl && envUrl.trim() !== '' && !envUrl.includes('192.168.') && !envUrl.includes('localhost')) {
     return envUrl.replace(/\/+$/, '');
