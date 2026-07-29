@@ -4,7 +4,7 @@ import {
 } from 'recharts';
 import {
   RiUserHeartLine, RiGroupLine, RiBarChartGroupedFill, RiPieChartFill, RiTableLine, RiFilter3Line, RiShieldCheckLine, RiCapsuleLine
-} from 'react-icons/ri';
+} from '@remixicon/react';
 
 const KP_CATEGORIES = [
   { id: 'msm', label: 'MSM (បុរសស្រឡាញ់បុរស)', shortLabel: 'MSM', color: '#3b82f6', icon: RiUserHeartLine },
