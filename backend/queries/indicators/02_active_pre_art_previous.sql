@@ -1,67 +1,62 @@
+-- =====================================================
+-- 02 ACTIVE PRE ART PREVIOUS
 -- Indicator 2: Active Pre-ART patients in previous quarter
--- Based on script 9 logic but for previous quarter
-with tblactive as (
-    with tblvisit as (
-        select clinicid, DatVisit, ARTnum, DaApp, vid, 
-               ROW_NUMBER() OVER (PARTITION BY clinicid ORDER BY DatVisit DESC) as id 
-        from tblavmain 
-        where DatVisit <= :PreviousEndDate
-        union all 
-        select clinicid, DatVisit, ARTnum, DaApp, vid, 
-               ROW_NUMBER() OVER (PARTITION BY clinicid ORDER BY DatVisit DESC) as id 
-        from tblcvmain 
-        where DatVisit <= :PreviousEndDate
-    ),
-    
-    tblimain as (
-        select ClinicID, DafirstVisit, "15+" as typepatients, TypeofReturn, LClinicID, 
-               SiteNameold, DaBirth, timestampdiff(year, DaBirth, :PreviousEndDate) as age, 
-               Sex, DaHIV, OffIn 
-        from tblaimain 
-        where DafirstVisit <= :PreviousEndDate
-        union all 
-        select ClinicID, DafirstVisit, "≤14" as typepatients, '' as TypeofReturn, 
-               LClinicID, SiteNameold, DaBirth, timestampdiff(year, DaBirth, :PreviousEndDate) as age, 
-               Sex, DaTest as DaHIV, OffIn 
-        from tblcimain 
-        where DafirstVisit <= :PreviousEndDate
-    ),
-    
-    tblart as (
-        select *, timestampdiff(month, DaArt, :PreviousEndDate) as nmonthART 
-        from tblaart 
-        where DaArt <= :PreviousEndDate 
-        union all 
-        select *, timestampdiff(month, DaArt, :PreviousEndDate) as nmonthART 
-        from tblcart 
-        where DaArt <= :PreviousEndDate
-    ),
-    
-    tblexit as (
-        select * 
-        from tblavpatientstatus 
-        where da <= :PreviousEndDate  
-        union all 
-        select * 
-        from tblcvpatientstatus  
-        where da <= :PreviousEndDate
-    )
-    
-    select i.clinicid, i.DafirstVisit, i.typepatients, i.TypeofReturn, i.LClinicID, 
+-- Deduplicated per patient (GROUP BY site_code, ClinicID)
+-- Safe for single-site and country-level (warehouse) execution
+-- =====================================================
+WITH tblimain AS (
+    SELECT site_code, ClinicID, DafirstVisit, "15+" AS typepatients, TypeofReturn, LClinicID, 
+           SiteNameold, DaBirth, TIMESTAMPDIFF(year, DaBirth, :PreviousEndDate) AS age, 
+           Sex, DaHIV, OffIn 
+    FROM tblaimain 
+    WHERE DafirstVisit <= :PreviousEndDate
+    UNION ALL 
+    SELECT site_code, ClinicID, DafirstVisit, "≤14" AS typepatients, '' AS TypeofReturn, 
+           LClinicID, SiteNameold, DaBirth, TIMESTAMPDIFF(year, DaBirth, :PreviousEndDate) AS age, 
+           Sex, DaTest AS DaHIV, OffIn 
+    FROM tblcimain 
+    WHERE DafirstVisit <= :PreviousEndDate
+),
+
+tblart AS (
+    SELECT site_code, ClinicID, MIN(ART) AS ART, MIN(DaArt) AS DaArt 
+    FROM (
+        SELECT site_code, ClinicID, ART, DaArt FROM tblaart WHERE DaArt <= :PreviousEndDate
+        UNION ALL
+        SELECT site_code, ClinicID, ART, DaArt FROM tblcart WHERE DaArt <= :PreviousEndDate
+    ) raw_art
+    GROUP BY site_code, ClinicID
+),
+
+tblexit AS (
+    SELECT site_code, ClinicID, MAX(Status) AS Status, MAX(Da) AS Da 
+    FROM (
+        SELECT site_code, ClinicID, Status, Da FROM tblavpatientstatus WHERE da <= :PreviousEndDate
+        UNION ALL
+        SELECT site_code, ClinicID, Status, Da FROM tblcvpatientstatus WHERE da <= :PreviousEndDate
+    ) raw_exit
+    GROUP BY site_code, ClinicID
+),
+
+tblactive AS (
+    SELECT i.site_code, i.clinicid, i.DafirstVisit, i.typepatients, i.TypeofReturn, i.LClinicID, 
            i.SiteNameold, i.DaBirth, i.age, i.Sex, i.DaHIV, i.OffIn, 
-           a.ART, a.DaArt, v.DatVisit, v.ARTnum, v.DaApp, a.nmonthART
-    from tblvisit v
-    left join tblimain i on i.clinicid = v.clinicid
-    left join tblart a on a.clinicid = v.clinicid
-    left join tblexit e on v.clinicid = e.clinicid
-    where id = 1 and e.status is null
+           a.ART, a.DaArt
+    FROM tblimain i
+    LEFT JOIN tblart a 
+        ON (i.site_code = a.site_code OR i.site_code IS NULL OR a.site_code IS NULL) 
+       AND i.clinicid = a.clinicid
+    LEFT JOIN tblexit e 
+        ON (i.site_code = e.site_code OR i.site_code IS NULL OR e.site_code IS NULL) 
+       AND i.clinicid = e.clinicid
+    WHERE e.status IS NULL AND i.OffIn <> 1
 )
 
-select '2. Active Pre-ART patients in previous quarter' as Indicator, 
-       sum(if(typepatients = '≤14' and sex = 1, 1, 0)) as Male_0_14,
-       sum(if(typepatients = '≤14' and sex = 0, 1, 0)) as Female_0_14,
-       sum(if(typepatients = '15+' and sex = 1, 1, 0)) as Male_over_14,
-       sum(if(typepatients = '15+' and sex = 0, 1, 0)) as Female_over_14,
-       count(*) as TOTAL
-from tblactive
-where ART is null;
+SELECT '2. Active Pre-ART patients in previous quarter' AS Indicator, 
+       IFNULL(COUNT(*), 0) AS TOTAL,
+       IFNULL(SUM(IF(typepatients = '≤14' AND sex = 1, 1, 0)), 0) AS Male_0_14,
+       IFNULL(SUM(IF(typepatients = '≤14' AND sex = 0, 1, 0)), 0) AS Female_0_14,
+       IFNULL(SUM(IF(typepatients = '15+' AND sex = 1, 1, 0)), 0) AS Male_over_14,
+       IFNULL(SUM(IF(typepatients = '15+' AND sex = 0, 1, 0)), 0) AS Female_over_14
+FROM tblactive
+WHERE ART IS NULL;

@@ -8,9 +8,10 @@ const INDICATOR_CONCURRENCY = Number(process.env.INDICATOR_CONCURRENCY || 3);
 const BASE_DIR = path.resolve(__dirname, '../../queries/indicators');
 
 function processQuery(query, params) {
-  let out = query;
+  let out = query || '';
+  out = out.replace(/SET\s+@[A-Za-z0-9_]+\s*=\s*[^;]+;?\s*/gi, '');
   Object.entries(params).forEach(([key, value]) => {
-    const re = new RegExp(`:${key}\\b`, 'g');
+    const re = new RegExp(`(:${key}|@${key})\\b`, 'g');
     const v = typeof value === 'string' ? `'${value.replace(/'/g, "''")}'` : value;
     out = out.replace(re, v);
   });

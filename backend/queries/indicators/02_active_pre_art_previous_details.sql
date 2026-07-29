@@ -1,88 +1,98 @@
+-- =====================================================
+-- 02 ACTIVE PRE ART PREVIOUS DETAILS
 -- Indicator 2: Active Pre-ART patients in previous quarter - Detailed Records
--- Based on script 9 logic but for previous quarter
-with tblactive as (
-    with tblvisit as (
-        select clinicid, DatVisit, ARTnum, DaApp, vid, 
-               ROW_NUMBER() OVER (PARTITION BY clinicid ORDER BY DatVisit DESC) as id 
-        from tblavmain 
-        where DatVisit <= :PreviousEndDate
-        union all 
-        select clinicid, DatVisit, ARTnum, DaApp, vid, 
-               ROW_NUMBER() OVER (PARTITION BY clinicid ORDER BY DatVisit DESC) as id 
-        from tblcvmain 
-        where DatVisit <= :PreviousEndDate
-    ),
-    
-    tblimain as (
-        select ClinicID, DafirstVisit, "15+" as typepatients, TypeofReturn, LClinicID, 
-               SiteNameold, DaBirth, timestampdiff(year, DaBirth, :PreviousEndDate) as age, 
-               Sex, DaHIV, OffIn 
-        from tblaimain 
-        where DafirstVisit <= :PreviousEndDate
-        union all 
-        select ClinicID, DafirstVisit, "≤14" as typepatients, '' as TypeofReturn, 
-               LClinicID, SiteNameold, DaBirth, timestampdiff(year, DaBirth, :PreviousEndDate) as age, 
-               Sex, DaTest as DaHIV, OffIn 
-        from tblcimain 
-        where DafirstVisit <= :PreviousEndDate
-    ),
-    
-    tblart as (
-        select *, timestampdiff(month, DaArt, :PreviousEndDate) as nmonthART 
-        from tblaart 
-        where DaArt <= :PreviousEndDate 
-        union all 
-        select *, timestampdiff(month, DaArt, :PreviousEndDate) as nmonthART 
-        from tblcart 
-        where DaArt <= :PreviousEndDate
-    ),
-    
-    tblexit as (
-        select * 
-        from tblavpatientstatus 
-        where da <= :PreviousEndDate  
-        union all 
-        select * 
-        from tblcvpatientstatus  
-        where da <= :PreviousEndDate
-    )
-    
-    select i.clinicid, i.DafirstVisit, i.typepatients, i.TypeofReturn, i.LClinicID, 
+-- Safe for single-site and country-level (warehouse) execution
+-- =====================================================
+WITH tblimain AS (
+    SELECT site_code, ClinicID, DafirstVisit, "15+" AS typepatients, TypeofReturn, LClinicID, 
+           SiteNameold, DaBirth, TIMESTAMPDIFF(year, DaBirth, :PreviousEndDate) AS age, 
+           Sex, DaHIV, OffIn 
+    FROM tblaimain 
+    WHERE DafirstVisit <= :PreviousEndDate
+    UNION ALL 
+    SELECT site_code, ClinicID, DafirstVisit, "≤14" AS typepatients, '' AS TypeofReturn, 
+           LClinicID, SiteNameold, DaBirth, TIMESTAMPDIFF(year, DaBirth, :PreviousEndDate) AS age, 
+           Sex, DaTest AS DaHIV, OffIn 
+    FROM tblcimain 
+    WHERE DafirstVisit <= :PreviousEndDate
+),
+
+tblart AS (
+    SELECT site_code, ClinicID, ART, DaArt, TIMESTAMPDIFF(month, DaArt, :PreviousEndDate) AS nmonthART 
+    FROM tblaart 
+    WHERE DaArt <= :PreviousEndDate 
+    UNION ALL 
+    SELECT site_code, ClinicID, ART, DaArt, TIMESTAMPDIFF(month, DaArt, :PreviousEndDate) AS nmonthART 
+    FROM tblcart 
+    WHERE DaArt <= :PreviousEndDate
+),
+
+tblexit AS (
+    SELECT site_code, ClinicID, Status, Da 
+    FROM tblavpatientstatus 
+    WHERE da <= :PreviousEndDate  
+    UNION ALL 
+    SELECT site_code, ClinicID, Status, Da 
+    FROM tblcvpatientstatus  
+    WHERE da <= :PreviousEndDate
+),
+
+tblvisit AS (
+    SELECT site_code, clinicid, DatVisit, ARTnum, DaApp, vid, 
+           ROW_NUMBER() OVER (PARTITION BY site_code, clinicid ORDER BY DatVisit DESC) AS id 
+    FROM tblavmain 
+    WHERE DatVisit <= :PreviousEndDate
+    UNION ALL 
+    SELECT site_code, clinicid, DatVisit, ARTnum, DaApp, vid, 
+           ROW_NUMBER() OVER (PARTITION BY site_code, clinicid ORDER BY DatVisit DESC) AS id 
+    FROM tblcvmain 
+    WHERE DatVisit <= :PreviousEndDate
+),
+
+tblactive AS (
+    SELECT i.site_code, i.clinicid, i.DafirstVisit, i.typepatients, i.TypeofReturn, i.LClinicID, 
            i.SiteNameold, i.DaBirth, i.age, i.Sex, i.DaHIV, i.OffIn, 
            a.ART, a.DaArt, v.DatVisit, v.ARTnum, v.DaApp, a.nmonthART
-    from tblvisit v
-    left join tblimain i on i.clinicid = v.clinicid
-    left join tblart a on a.clinicid = v.clinicid
-    left join tblexit e on v.clinicid = e.clinicid
-    where id = 1 and e.status is null
+    FROM tblimain i
+    LEFT JOIN tblart a 
+        ON (i.site_code = a.site_code OR i.site_code IS NULL OR a.site_code IS NULL) 
+       AND i.clinicid = a.clinicid
+    LEFT JOIN tblexit e 
+        ON (i.site_code = e.site_code OR i.site_code IS NULL OR e.site_code IS NULL) 
+       AND i.clinicid = e.clinicid
+    LEFT JOIN tblvisit v 
+        ON (i.site_code = v.site_code OR i.site_code IS NULL OR v.site_code IS NULL) 
+       AND i.clinicid = v.clinicid 
+       AND v.id = 1
+    WHERE e.status IS NULL AND i.OffIn <> 1
 )
 
-select 
+SELECT 
     clinicid,
     sex,
-    case 
-        when sex = 0 then 'Female'
-        when sex = 1 then 'Male'
-        else 'Unknown'
-    end as sex_display,
+    CASE 
+        WHEN sex = 0 THEN 'Female'
+        WHEN sex = 1 THEN 'Male'
+        ELSE 'Unknown'
+    END AS sex_display,
     typepatients,
     DaBirth,
     DafirstVisit,
     DaArt,
     DatVisit,
     OffIn,
-    case 
-        when typepatients = '≤14' then 'Child'
-        when typepatients = '15+' then 'Adult'
-        else 'Unknown'
-    end as patient_type,
+    CASE 
+        WHEN typepatients = '≤14' THEN 'Child'
+        WHEN typepatients = '15+' THEN 'Adult'
+        ELSE 'Unknown'
+    END AS patient_type,
     age,
-    case 
-        when OffIn = 0 then 'Not Transferred'
-        when OffIn = 1 then 'Transferred In'
-        when OffIn = 3 then 'Transferred Out'
-        else concat('Status: ', OffIn)
-    end as transfer_status
-from tblactive
-where ART is null
-order by DafirstVisit DESC, clinicid;
+    CASE 
+        WHEN OffIn = 0 THEN 'Not Transferred'
+        WHEN OffIn = 1 THEN 'Transferred In'
+        WHEN OffIn = 3 THEN 'Transferred Out'
+        ELSE CONCAT('Status: ', OffIn)
+    END AS transfer_status
+FROM tblactive
+WHERE ART IS NULL
+ORDER BY DafirstVisit DESC, clinicid;
