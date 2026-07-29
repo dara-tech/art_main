@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   RiBarChartBoxLine,
   RiBarChartGroupedLine,
@@ -9,7 +9,12 @@ import {
   RiUserSettingsLine,
   RiDatabase2Line,
   RiFileAddLine,
-  RiStethoscopeLine
+  RiHeartPulseLine,
+  RiDashboard3Line,
+  RiGroupLine,
+  RiBuilding4Line,
+  RiArrowDownSLine,
+  RiArrowRightSLine
 } from '@remixicon/react';
 import { useAuth } from '../../contexts/AuthContext';
 import { isAdmin, isGuest, hasRole } from '../../utils/authRoles';
@@ -27,19 +32,28 @@ const ACCENT_COLORS = [
 
 export default function SidebarNav() {
   const { user } = useAuth();
+  const location = useLocation();
   const adminUser = isAdmin(user);
   const guestUser = isGuest(user);
   const pdmoUser = hasRole(user, 'pdmo');
 
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const [selectedColor, setSelectedColor] = useState(() => localStorage.getItem('app-accent-color') || 'orange');
-  const [sidebarHover, setSidebarHover] = useState(() => localStorage.getItem('app-sidebar-hover') === 'true');
+
+  // Group Expand/Collapse States
+  const [openGroups, setOpenGroups] = useState({
+    dashboards: true,
+    patients: true,
+    forms: true,
+    data: true
+  });
+
+  const toggleGroup = (groupKey) => {
+    setOpenGroups(prev => ({ ...prev, [groupKey]: !prev[groupKey] }));
+  };
 
   useEffect(() => {
     const handleLayoutChange = () => {
       setSelectedColor(localStorage.getItem('app-accent-color') || 'orange');
-      setTheme(localStorage.getItem('theme') || 'light');
-      setSidebarHover(localStorage.getItem('app-sidebar-hover') === 'true');
     };
     window.addEventListener('app-layout-style-changed', handleLayoutChange);
     window.addEventListener('app-accent-color-changed', handleLayoutChange);
@@ -54,7 +68,7 @@ export default function SidebarNav() {
 
   const getLinkClass = (isActive) => {
     return cn(
-      'flex items-center gap-3 px-3 py-2.5 transition-all duration-200 cursor-pointer text-xs font-semibold relative outline-none focus:outline-none border-0',
+      'flex items-center gap-2.5 px-3 py-2 transition-all duration-200 cursor-pointer text-xs font-semibold relative outline-none focus:outline-none border-0',
       isActive
         ? 'bg-card text-foreground rounded-l-xl rounded-r-none border-t border-b border-l border-border/25 mr-[-1px] z-10 ' +
           'before:content-[""] before:absolute before:right-0 before:-top-[12px] before:size-[12px] before:rounded-br-xl before:shadow-[3px_3px_0_3px_var(--card)] ' +
@@ -65,84 +79,163 @@ export default function SidebarNav() {
 
   return (
     <aside
-      className="w-52 shrink-0 flex flex-col border-r border-border/10 py-3 pl-3 pr-0 select-none transition-all duration-300"
+      className="w-56 shrink-0 flex flex-col border-r border-border/10 py-3 pl-3 pr-0 select-none transition-all duration-300 overflow-y-auto no-scrollbar"
       style={{ backgroundColor: sidebarBg }}
     >
       {/* Brand logo */}
-      <div className="flex items-center gap-2 px-3 py-4 mb-4 border-b border-white/5 mr-3">
+      <div className="flex items-center gap-2 px-3 py-3 mb-2 border-b border-white/5 mr-3 shrink-0">
         <span className="bg-teal-600 text-white text-[10px] font-black px-2 py-0.5 rounded tracking-wider">
           ART
         </span>
         <span className="text-white text-xs font-bold tracking-tight">ART Portal</span>
       </div>
 
-      {/* Nav Links */}
-      <nav className="flex flex-col gap-1.5 flex-1" aria-label="Sidebar">
-        <NavLink to="/reports" className={({ isActive }) => getLinkClass(isActive)}>
-          <RiBarChartBoxLine className={APP_NAV_ICON} />
-          <span>ART Reports</span>
-        </NavLink>
+      {/* Nav Links Container */}
+      <nav className="flex flex-col gap-1 flex-1 font-khmer pr-1" aria-label="Sidebar">
+        
+        {/* GROUP 1: DASHBOARDS & SECTORS */}
+        <div className="flex flex-col">
+          <button
+            type="button"
+            onClick={() => toggleGroup('dashboards')}
+            className="flex items-center justify-between px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/50 hover:text-white transition-colors mr-3"
+          >
+            <span>ផ្ទាំងព័ត៌មាន (Dashboards)</span>
+            {openGroups.dashboards ? <RiArrowDownSLine className="size-3.5 opacity-60" /> : <RiArrowRightSLine className="size-3.5 opacity-60" />}
+          </button>
+
+          {openGroups.dashboards && (
+            <div className="flex flex-col gap-1 pl-1">
+              <NavLink to="/reports" className={({ isActive }) => getLinkClass(isActive)}>
+                <RiBarChartBoxLine className={APP_NAV_ICON} />
+                <span>ART Reports</span>
+              </NavLink>
+
+              <NavLink
+                to="/reports?view=kp"
+                className={({ isActive }) => getLinkClass(isActive || location.search.includes('view=kp'))}
+              >
+                <RiGroupLine className={APP_NAV_ICON} />
+                <span>ក្រុមប្រជាជន KP</span>
+              </NavLink>
+
+              <NavLink
+                to="/reports?view=pntt"
+                className={({ isActive }) => getLinkClass(isActive || location.search.includes('view=pntt'))}
+              >
+                <RiHeartPulseLine className={APP_NAV_ICON} />
+                <span>PNTT ដៃគូ & កូន</span>
+              </NavLink>
+
+              <NavLink to="/pmtct-infant" className={({ isActive }) => getLinkClass(isActive)}>
+                <RiHeartPulseLine className={APP_NAV_ICON} />
+                <span>ទារក EID (Infant)</span>
+              </NavLink>
+            </div>
+          )}
+        </div>
 
         {!guestUser && (
           <>
-            <NavLink to="/patient-360" className={({ isActive }) => getLinkClass(isActive)}>
-              <RiUserSearchLine className={APP_NAV_ICON} />
-              <span>៣៦០°</span>
-            </NavLink>
+            {/* GROUP 2: PATIENT CARE */}
+            <div className="flex flex-col mt-2">
+              <button
+                type="button"
+                onClick={() => toggleGroup('patients')}
+                className="flex items-center justify-between px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/50 hover:text-white transition-colors mr-3"
+              >
+                <span>អ្នកជំងឺ (Patient 360°)</span>
+                {openGroups.patients ? <RiArrowDownSLine className="size-3.5 opacity-60" /> : <RiArrowRightSLine className="size-3.5 opacity-60" />}
+              </button>
 
-            <div className="mt-4 mb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-white/40">
-              ទម្រង់អ្នកជំងឺ (Forms)
+              {openGroups.patients && (
+                <div className="flex flex-col gap-1 pl-1">
+                  <NavLink to="/patient-360" className={({ isActive }) => getLinkClass(isActive)}>
+                    <RiUserSearchLine className={APP_NAV_ICON} />
+                    <span>ព័ត៌មាន ៣៦០°</span>
+                  </NavLink>
+                </div>
+              )}
             </div>
 
-            <NavLink to="/forms/adult" className={({ isActive }) => getLinkClass(isActive)}>
-              <RiFileAddLine className={APP_NAV_ICON} />
-              <span>មនុស្សពេញវ័យ (Adult)</span>
-            </NavLink>
+            {/* GROUP 3: PATIENT REGISTRATION FORMS */}
+            <div className="flex flex-col mt-2">
+              <button
+                type="button"
+                onClick={() => toggleGroup('forms')}
+                className="flex items-center justify-between px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/50 hover:text-white transition-colors mr-3"
+              >
+                <span>ទម្រង់អ្នកជំងឺ (Forms)</span>
+                {openGroups.forms ? <RiArrowDownSLine className="size-3.5 opacity-60" /> : <RiArrowRightSLine className="size-3.5 opacity-60" />}
+              </button>
 
-            <NavLink to="/forms/child" className={({ isActive }) => getLinkClass(isActive)}>
-              <RiFileAddLine className={APP_NAV_ICON} />
-              <span>កុមារ (Child)</span>
-            </NavLink>
+              {openGroups.forms && (
+                <div className="flex flex-col gap-1 pl-1">
+                  <NavLink to="/forms/adult" className={({ isActive }) => getLinkClass(isActive)}>
+                    <RiFileAddLine className={APP_NAV_ICON} />
+                    <span>មនុស្សពេញវ័យ (Adult)</span>
+                  </NavLink>
 
-            <NavLink to="/forms/infant" className={({ isActive }) => getLinkClass(isActive)}>
-              <RiFileAddLine className={APP_NAV_ICON} />
-              <span>ទារក (Infant)</span>
-            </NavLink>
+                  <NavLink to="/forms/child" className={({ isActive }) => getLinkClass(isActive)}>
+                    <RiFileAddLine className={APP_NAV_ICON} />
+                    <span>កុមារ (Child)</span>
+                  </NavLink>
 
-            <div className="mt-4 mb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-white/40">
-              ទិន្នន័យ (Data)
+                  <NavLink to="/forms/infant" className={({ isActive }) => getLinkClass(isActive)}>
+                    <RiFileAddLine className={APP_NAV_ICON} />
+                    <span>ទារក (Infant)</span>
+                  </NavLink>
+                </div>
+              )}
             </div>
 
-            <NavLink to="/visualize" className={({ isActive }) => getLinkClass(isActive)}>
-              <RiBarChartGroupedLine className={APP_NAV_ICON} />
-              <span>វិភាគ</span>
-            </NavLink>
+            {/* GROUP 4: DATA & ANALYTICS */}
+            <div className="flex flex-col mt-2">
+              <button
+                type="button"
+                onClick={() => toggleGroup('data')}
+                className="flex items-center justify-between px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/50 hover:text-white transition-colors mr-3"
+              >
+                <span>វិភាគទិន្នន័យ (Data)</span>
+                {openGroups.data ? <RiArrowDownSLine className="size-3.5 opacity-60" /> : <RiArrowRightSLine className="size-3.5 opacity-60" />}
+              </button>
 
-            {!pdmoUser && (
-              <>
-                <NavLink to="/country-analytics" className={({ isActive }) => getLinkClass(isActive)}>
-                  <RiDatabase2Line className={APP_NAV_ICON} />
-                  <span>ឃ្លាំងទិន្នន័យ</span>
-                </NavLink>
+              {openGroups.data && (
+                <div className="flex flex-col gap-1 pl-1">
+                  <NavLink to="/visualize" className={({ isActive }) => getLinkClass(isActive)}>
+                    <RiBarChartGroupedLine className={APP_NAV_ICON} />
+                    <span>វិភាគ (Visualize)</span>
+                  </NavLink>
 
-                <NavLink to="/dqa" className={({ isActive }) => getLinkClass(isActive)}>
-                  <RiShieldCheckLine className={APP_NAV_ICON} />
-                  <span>DQA</span>
-                </NavLink>
+                  {!pdmoUser && (
+                    <>
+                      <NavLink to="/country-analytics" className={({ isActive }) => getLinkClass(isActive)}>
+                        <RiDatabase2Line className={APP_NAV_ICON} />
+                        <span>ឃ្លាំងទិន្នន័យ (Analytics)</span>
+                      </NavLink>
 
-                <NavLink to="/documents" className={({ isActive }) => getLinkClass(isActive)}>
-                  <RiFileTextLine className={APP_NAV_ICON} />
-                  <span>API</span>
-                </NavLink>
-              </>
-            )}
+                      <NavLink to="/dqa" className={({ isActive }) => getLinkClass(isActive)}>
+                        <RiShieldCheckLine className={APP_NAV_ICON} />
+                        <span>DQA គុណភាពទិន្នន័យ</span>
+                      </NavLink>
 
-            {adminUser && (
-              <NavLink to="/admin" className={({ isActive }) => getLinkClass(isActive)}>
-                <RiUserSettingsLine className={APP_NAV_ICON} />
-                <span>Admin</span>
-              </NavLink>
-            )}
+                      <NavLink to="/documents" className={({ isActive }) => getLinkClass(isActive)}>
+                        <RiFileTextLine className={APP_NAV_ICON} />
+                        <span>API Reference</span>
+                      </NavLink>
+                    </>
+                  )}
+
+                  {adminUser && (
+                    <NavLink to="/admin" className={({ isActive }) => getLinkClass(isActive)}>
+                      <RiUserSettingsLine className={APP_NAV_ICON} />
+                      <span>Admin Management</span>
+                    </NavLink>
+                  )}
+                </div>
+              )}
+            </div>
+
           </>
         )}
       </nav>

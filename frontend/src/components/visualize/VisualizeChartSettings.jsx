@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { RiSettings3Line, RiCloseLine } from '@remixicon/react';
+import { Maximize2, Minimize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Select,
@@ -47,6 +48,7 @@ export default function VisualizeChartSettings({
 }) {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('data'); // 'data' | 'legend' | 'series' | 'style' | 'limitValues' | 'parameters'
+  const [isModalFullscreen, setIsModalFullscreen] = useState(false);
   const rootRef = useRef(null);
   const s = { ...DEFAULT_CHART_SETTINGS, ...settings };
   const coloredSeries = applySeriesColors(series, s);
@@ -119,7 +121,12 @@ export default function VisualizeChartSettings({
           }}
         >
           <div
-            className="flex max-h-[min(92vh,38rem)] w-full max-w-2xl flex-col overflow-hidden bg-card shadow-2xl shadow-black/15 border-none rounded-2xl"
+            className={cn(
+              "flex flex-col overflow-hidden bg-card shadow-2xl shadow-black/15 border-none rounded-2xl transition-all duration-200",
+              isModalFullscreen
+                ? "fixed inset-3 w-auto h-auto max-w-none max-h-none z-[160]"
+                : "max-h-[min(92vh,38rem)] w-full max-w-2xl"
+            )}
             onMouseDown={(e) => e.stopPropagation()}
           >
             {/* Modal Header - Dark plum color consistency */}
@@ -127,14 +134,28 @@ export default function VisualizeChartSettings({
               <h2 id="chart-options-title" className="text-sm font-bold tracking-wide">
                 Options (ជម្រើសគំនូសតាង)
               </h2>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="inline-flex size-7 shrink-0 items-center justify-center rounded-md cursor-pointer text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-                aria-label="Close"
-              >
-                <RiCloseLine className="size-4.5" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setIsModalFullscreen(!isModalFullscreen)}
+                  className="inline-flex size-7 shrink-0 items-center justify-center rounded-md cursor-pointer text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                  title={isModalFullscreen ? "Exit Modal Fullscreen" : "Modal Fullscreen"}
+                  aria-label={isModalFullscreen ? "Exit Modal Fullscreen" : "Modal Fullscreen"}
+                >
+                  {isModalFullscreen ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    setIsModalFullscreen(false);
+                  }}
+                  className="inline-flex size-7 shrink-0 items-center justify-center rounded-md cursor-pointer text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                  aria-label="Close"
+                >
+                  <RiCloseLine className="size-4.5" />
+                </button>
+              </div>
             </div>
 
             {/* Modal Tabs - Styled like App Navigation Bar tabs */}

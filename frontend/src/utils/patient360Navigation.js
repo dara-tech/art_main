@@ -77,10 +77,13 @@ export function buildPatient360Path({
   const cid = String(clinicId || '').trim();
   if (!cid) return '/patient-360';
   const params = new URLSearchParams();
-  if (siteCode) params.set('site', String(siteCode).trim());
+  if (siteCode) {
+    params.set('site', String(siteCode).trim());
+    params.set('siteCode', String(siteCode).trim());
+  }
   params.set('clinicId', cid);
   if (program) params.set('program', program);
-  const tab = section || indicatorToP360Section(indicatorId);
+  const tab = section || (indicatorId ? indicatorToP360Section(indicatorId) : 'overview');
   if (tab && tab !== 'overview') params.set('tab', tab);
   return `/patient-360?${params.toString()}`;
 }
@@ -95,8 +98,9 @@ export function parsePatient360SearchParams(searchParams) {
   if (!searchParams) return null;
   const clinicId = String(searchParams.get('clinicId') || '').trim();
   if (!clinicId) return null;
+  const site = String(searchParams.get('site') || searchParams.get('siteCode') || '').trim() || null;
   return {
-    site: String(searchParams.get('site') || '').trim() || null,
+    site,
     clinicId,
     program: String(searchParams.get('program') || 'adult').trim() || 'adult',
     tab: String(searchParams.get('tab') || 'overview').trim() || 'overview'

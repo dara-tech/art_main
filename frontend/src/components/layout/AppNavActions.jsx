@@ -13,7 +13,8 @@ import {
   RiApps2Line,
   RiDashboard3Line,
   RiHeartPulseLine,
-  RiUserHeartLine
+  RiUserHeartLine,
+  RiGroupLine
 } from '@remixicon/react';
 import { 
   LogOut, 
@@ -40,7 +41,9 @@ import {
   Palette,
   Merge,
   Zap,
-  Sliders
+  Sliders,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
@@ -244,7 +247,7 @@ export default function AppNavActions({ onLogout, hideNav }) {
     },
     {
       label: 'PNTT Services',
-      path: '/reports?reportType=pntt',
+      path: '/dashboard?view=pntt',
       desc: 'ផ្ទាំងព័ត៌មាន PNTT (Partner Testing)',
       Icon: RiUserHeartLine,
       allowed: true,
@@ -273,6 +276,14 @@ export default function AppNavActions({ onLogout, hideNav }) {
       Icon: RiUserSearchLine,
       allowed: !guestUser,
       gradient: 'bg-gradient-to-tr from-teal-600 to-emerald-400',
+    },
+    {
+      label: 'KP Population',
+      path: '/dashboard?view=kp',
+      desc: 'វិភាគក្រុមប្រជាជនគន្លឹះ KP',
+      Icon: RiGroupLine,
+      allowed: !guestUser,
+      gradient: 'bg-gradient-to-tr from-indigo-600 to-purple-500',
     },
     {
       label: 'វិភាគ',
@@ -370,6 +381,37 @@ export default function AppNavActions({ onLogout, hideNav }) {
       return ALL_REPORT_INDICATORS.map(ind => ind.id);
     }
   });
+  const [isFullscreen, setIsFullscreen] = useState(() => typeof document !== 'undefined' && Boolean(document.fullscreenElement));
+  const [isModalFullscreen, setIsModalFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullScreen = () => {
+    if (!document.fullscreenElement) {
+      const docEl = document.documentElement;
+      if (docEl.requestFullscreen) {
+        docEl.requestFullscreen().catch(() => {});
+      } else if (docEl.webkitRequestFullscreen) {
+        docEl.webkitRequestFullscreen().catch(() => {});
+      } else if (docEl.msRequestFullscreen) {
+        docEl.msRequestFullscreen().catch(() => {});
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen().catch(() => {});
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen().catch(() => {});
+      }
+    }
+  };
 
   useEffect(() => {
     if (activeModal === 'profile' && user) {
@@ -711,30 +753,34 @@ export default function AppNavActions({ onLogout, hideNav }) {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 max-h-[75vh] overflow-y-auto p-0.5">
-                  {appMenuItems.map((item) => (
-                    <NavLink
-                      key={item.path}
-                      to={item.path}
-                      onClick={() => setIsAppMenuOpen(false)}
-                      className={({ isActive }) =>
-                        cn(
+                  {appMenuItems.map((item) => {
+                    const currentPath = location.pathname + location.search;
+                    const isActive = item.path.includes('?')
+                      ? currentPath === item.path
+                      : location.pathname === item.path && (!location.search.includes('view=') || item.path !== '/dashboard');
+                    return (
+                      <NavLink
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setIsAppMenuOpen(false)}
+                        className={cn(
                           "flex items-center gap-2.5 p-2 rounded-xl text-xs font-medium transition-all border group",
                           isActive
-                            ? "bg-primary/10 text-foreground font-semibold border-primary/35"
+                            ? "bg-primary/10 text-foreground font-semibold border-primary/45 ring-1 ring-primary/30 shadow-2xs"
                             : "border-transparent text-foreground/85 hover:bg-muted/80 hover:border-border/60 hover:text-foreground"
-                        )
-                      }
-                    >
-                      {/* Apple iOS-Style Squircle App Icon Badge (Flat, No Shadow) */}
-                      <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-[11px] text-white transition-transform duration-200 group-hover:scale-105", item.gradient)}>
-                        <item.Icon className="size-5 text-white" />
-                      </div>
-                      <div className="flex flex-col min-w-0">
-                        <span className="truncate font-bold text-xs leading-snug">{item.label}</span>
-                        <span className="text-[10px] text-muted-foreground truncate font-normal leading-tight">{item.desc}</span>
-                      </div>
-                    </NavLink>
-                  ))}
+                        )}
+                      >
+                        {/* Apple iOS-Style Squircle App Icon Badge (Flat, No Shadow) */}
+                        <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-[11px] text-white transition-transform duration-200 group-hover:scale-105", item.gradient)}>
+                          <item.Icon className="size-5 text-white" />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="truncate font-bold text-xs leading-snug">{item.label}</span>
+                          <span className="text-[10px] text-muted-foreground truncate font-normal leading-tight">{item.desc}</span>
+                        </div>
+                      </NavLink>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -991,7 +1037,14 @@ export default function AppNavActions({ onLogout, hideNav }) {
       {/* Modal overlays */}
       {activeModal && (
         <div className="fixed inset-0 bg-[#0c0a0b]/75 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="flex w-full max-w-md flex-col overflow-hidden bg-card text-foreground rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] border-none relative animate-in zoom-in-95 duration-200">
+          <div
+            className={cn(
+              "flex flex-col overflow-hidden bg-card text-foreground rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] border-none relative animate-in zoom-in-95 duration-200 transition-all",
+              isModalFullscreen
+                ? "fixed inset-3 w-auto h-auto max-w-none max-h-none z-50 rounded-2xl"
+                : activeModal === 'reportConfig' ? "w-full max-w-xl flex-1 max-h-[85vh]" : "w-full max-w-md"
+            )}
+          >
             {/* Modal Header */}
             <div className="flex shrink-0 items-center justify-between gap-3 bg-[#2a1720] border-b border-white/10 px-5 py-3.5 text-white">
               <h3 className="text-sm font-bold flex items-center gap-2">
@@ -1011,14 +1064,28 @@ export default function AppNavActions({ onLogout, hideNav }) {
                 {activeModal === 'passwords' && 'Change Password'}
                 {activeModal === 'settings' && 'Preferences & Settings'}
               </h3>
-              <button
-                type="button"
-                onClick={() => setActiveModal(null)}
-                className="inline-flex size-7 shrink-0 items-center justify-center rounded-md cursor-pointer text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-                aria-label="Close"
-              >
-                <X className="size-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setIsModalFullscreen(!isModalFullscreen)}
+                  className="inline-flex size-7 shrink-0 items-center justify-center rounded-md cursor-pointer text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                  title={isModalFullscreen ? "Exit Modal Fullscreen" : "Modal Fullscreen"}
+                  aria-label={isModalFullscreen ? "Exit Modal Fullscreen" : "Modal Fullscreen"}
+                >
+                  {isModalFullscreen ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveModal(null);
+                    setIsModalFullscreen(false);
+                  }}
+                  className="inline-flex size-7 shrink-0 items-center justify-center rounded-md cursor-pointer text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                  aria-label="Close"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
             </div>
 
             {/* Modal Body */}
@@ -1340,7 +1407,7 @@ export default function AppNavActions({ onLogout, hideNav }) {
                     </button>
                   </div>
 
-                  <div className="flex items-center justify-between py-2">
+                  <div className="flex items-center justify-between py-2 border-b border-border">
                     <div>
                       <div className="font-semibold text-xs text-foreground">Use Analytics Data (វិភាគ)</div>
                       <div className="text-[10px] text-muted-foreground mt-0.5">Speed up load times by querying pre-aggregated warehouse data.</div>
@@ -1362,6 +1429,31 @@ export default function AppNavActions({ onLogout, hideNav }) {
                         className={cn(
                           "pointer-events-none inline-block size-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out",
                           useAnalytics ? "translate-x-4" : "translate-x-0"
+                        )}
+                      />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between py-2">
+                    <div>
+                      <div className="font-semibold text-xs text-foreground flex items-center gap-1.5">
+                        <span>Full Screen Mode</span>
+                        <span className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded font-normal">ពេញអេក្រង់</span>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">Toggle browser full screen mode for maximum viewing area.</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={toggleFullScreen}
+                      className={cn(
+                        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out outline-none",
+                        isFullscreen ? "bg-primary" : "bg-muted-foreground/30"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "pointer-events-none inline-block size-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out",
+                          isFullscreen ? "translate-x-4" : "translate-x-0"
                         )}
                       />
                     </button>

@@ -1,10 +1,16 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, LabelList, Legend
 } from 'recharts';
 import {
-  RiUserHeartLine, RiGroupLine, RiBarChartGroupedFill, RiPieChartFill, RiTableLine, RiFilter3Line, RiShieldCheckLine, RiCapsuleLine
+  RiUserHeartLine, RiGroupLine, RiBarChartGroupedFill, RiPieChartFill, RiTableLine, RiFilter3Line, RiShieldCheckLine, RiCapsuleLine,
+  RiSearchLine, RiCloseLine, RiDownloadLine, RiExternalLinkLine, RiListCheck, RiUserSearchLine, RiLoader4Line, RiInformationLine, RiArrowRightSLine, RiArrowLeftSLine
 } from '@remixicon/react';
+import { downloadCsv, rowsToCsv, safeExportFilename } from '../../utils/exportCsv';
+import { buildPatient360Path } from '../../utils/patient360Navigation';
+import patient360Api from '../../services/patient360Api';
 
 const KP_CATEGORIES = [
   { id: 'msm', label: 'MSM (បុរសស្រឡាញ់បុរស)', shortLabel: 'MSM', color: '#3b82f6', icon: RiUserHeartLine },
@@ -14,8 +20,107 @@ const KP_CATEGORIES = [
   { id: 'genpop', label: 'General Population (ប្រជាជនទូទៅ)', shortLabel: 'GenPop', color: '#10b981', icon: RiGroupLine },
 ];
 
+function generateMockKpPatients(kpGroupObj, siteCode = 'ALL', count = 45) {
+  const kpId = kpGroupObj?.id || 'all';
+  
+  const sampleSites = [
+    { code: '0102', name: 'National Pediatric Hospital (NPH)' },
+    { code: '0101', name: 'Calmette Hospital' },
+    { code: '0103', name: 'Khmer-Soviet Friendship Hospital' },
+    { code: '0201', name: 'Battambang Provincial Hospital' },
+    { code: '0301', name: 'Siem Reap Provincial Hospital' },
+    { code: '0401', name: 'Kampong Cham Provincial Hospital' }
+  ];
+
+  const kpTypes = [
+    { id: 'msm', shortName: 'MSM', name: 'MSM (បុរសស្រឡាញ់បុរស)', sex: 'Male', fill: '#3b82f6' },
+    { id: 'tg', shortName: 'TG', name: 'TG (ស្រីកែភេទ)', sex: 'Transgender (TG)', fill: '#ec4899' },
+    { id: 'fsw', shortName: 'FSW', name: 'FSW (ស្រីកន្លែងកម្សាន្ត)', sex: 'Female', fill: '#f59e0b' },
+    { id: 'pwid', shortName: 'PWID', name: 'PWID/PWUD (គ្រឿងញៀន)', sex: 'Male', fill: '#a855f7' },
+    { id: 'genpop', shortName: 'GenPop', name: 'ប្រជាជនទូទៅ (General Pop)', sex: 'Female', fill: '#10b981' }
+  ];
+
+  const regimens = [
+    { name: 'TLD (Tenofovir/Lamivudine/Dolutegravir)', mmd: '3 Months MMD' },
+    { name: 'TLD (Tenofovir/Lamivudine/Dolutegravir)', mmd: '6 Months MMD' },
+    { name: 'TLE (Tenofovir/Lamivudine/Efavirenz)', mmd: '3 Months MMD' },
+    { name: 'ABC + 3TC + DTG', mmd: '3 Months MMD' },
+  ];
+
+  const rows = [];
+  for (let i = 1; i <= count; i++) {
+    let kpInfo = kpTypes.find(k => k.id === kpId);
+    if (!kpInfo || kpId === 'all') {
+      kpInfo = kpTypes[(i - 1) % kpTypes.length];
+    }
+
+    const site = sampleSites[(i - 1) % sampleSites.length];
+    const reg = regimens[(i - 1) % regimens.length];
+    const isSuppressed = (i % 15) !== 0;
+    const vlVal = isSuppressed ? ((i % 3 === 0) ? '< 20 copies/mL' : (i % 2 === 0 ? '18 copies/mL' : '< 40 copies/mL')) : `${650 + (i * 85)} copies/mL`;
+    
+    const age = 19 + ((i * 7 + 3) % 29);
+    
+    let sexVal = kpInfo.sex;
+    if (kpInfo.id === 'pwid') {
+      sexVal = (i % 4 === 0) ? 'Female' : 'Male';
+    } else if (kpInfo.id === 'genpop') {
+      sexVal = (i % 2 === 0) ? 'Female' : 'Male';
+    }
+
+    const year = 2019 + ((i * 3) % 7);
+    const month = String(((i * 5) % 12) + 1).padStart(2, '0');
+    const day = String(((i * 7) % 28) + 1).padStart(2, '0');
+    const artStartDate = `${year}-${month}-${day}`;
+
+    const visitMonth = String(((i % 6) + 1)).padStart(2, '0');
+    const visitDay = String(((i * 3 % 25) + 1)).padStart(2, '0');
+    const lastVisitDate = `2026-${visitMonth}-${visitDay}`;
+
+    const numPadded = String(i * 3 + 1).padStart(4, '0');
+    const clinicId = `${site.code}-${numPadded}`;
+
+    rows.push({
+      id: clinicId,
+      clinicId,
+      kpCategory: kpInfo.shortName,
+      kpName: kpInfo.name,
+      kpFill: kpInfo.fill,
+      kpId: kpInfo.id,
+      sex: sexVal,
+      age,
+      artStartDate,
+      lastVisitDate,
+      vlCopies: vlVal,
+      vlSuppressed: isSuppressed,
+      regimen: reg.name,
+      mmdMonths: reg.mmd,
+      siteName: siteCode === 'ALL' ? site.name : `Site ${siteCode}`,
+      siteCode: site.code,
+      status: 'Active ART'
+    });
+  }
+  return rows;
+}
+
 export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedPeriodKey = '' }) {
+  const navigate = useNavigate();
   const [selectedKp, setSelectedKp] = useState('all');
+
+  // KP Line List Modal States
+  const [lineListOpen, setLineListOpen] = useState(false);
+  const [activeModalKp, setActiveModalKp] = useState(null);
+  const [modalRows, setModalRows] = useState([]);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalSearch, setModalSearch] = useState('');
+  const [modalVlFilter, setModalVlFilter] = useState('all'); // 'all' | 'suppressed' | 'unsuppressed'
+  const [modalMmdFilter, setModalMmdFilter] = useState('all'); // 'all' | 'mmd3' | 'mmd6'
+  const [modalPage, setModalPage] = useState(1);
+  const [modalPageSize, setModalPageSize] = useState(10);
+
+  useEffect(() => {
+    setModalPage(1);
+  }, [modalSearch, modalVlFilter, modalMmdFilter, lineListOpen]);
 
   const totalPatients = useMemo(() => kpis.activeArt || 72878, [kpis]);
   const newlyInitiated = useMemo(() => kpis.newlyInitiated || 2450, [kpis]);
@@ -42,10 +147,90 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
     return kpData.filter(d => d.id === selectedKp);
   }, [kpData, selectedKp]);
 
+  // Open Line List Modal Handler
+  const handleOpenLineList = async (kpItem) => {
+    const targetKp = kpItem || { id: 'all', name: 'គ្រប់ក្រុមប្រជាជនគន្លឹះ (All KP Groups)', shortName: 'All KP', fill: '#3b82f6' };
+    setActiveModalKp(targetKp);
+    setLineListOpen(true);
+    setModalLoading(true);
+    setModalSearch('');
+    setModalVlFilter('all');
+    setModalMmdFilter('all');
+
+    try {
+      const mockRows = generateMockKpPatients(targetKp, siteCode, 45);
+      setModalRows(mockRows);
+    } catch (err) {
+      console.error('Error preparing KP line list:', err);
+      setModalRows([]);
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  // Filtered rows inside modal
+  const filteredModalRows = useMemo(() => {
+    let rows = modalRows;
+    if (modalVlFilter === 'suppressed') {
+      rows = rows.filter(r => r.vlSuppressed);
+    } else if (modalVlFilter === 'unsuppressed') {
+      rows = rows.filter(r => !r.vlSuppressed);
+    }
+
+    if (modalMmdFilter === 'mmd3') {
+      rows = rows.filter(r => String(r.mmdMonths).includes('3'));
+    } else if (modalMmdFilter === 'mmd6') {
+      rows = rows.filter(r => String(r.mmdMonths).includes('6'));
+    }
+
+    if (!modalSearch.trim()) return rows;
+    const q = modalSearch.toLowerCase().trim();
+    return rows.filter(r => 
+      String(r.clinicId).toLowerCase().includes(q) ||
+      String(r.kpCategory).toLowerCase().includes(q) ||
+      String(r.siteName).toLowerCase().includes(q) ||
+      String(r.regimen).toLowerCase().includes(q)
+    );
+  }, [modalRows, modalSearch, modalVlFilter, modalMmdFilter]);
+
+  const totalKpModalRows = filteredModalRows.length;
+  const totalKpPages = Math.max(1, Math.ceil(totalKpModalRows / modalPageSize));
+  const safeKpPage = Math.min(modalPage, totalKpPages);
+  const startKpIndex = (safeKpPage - 1) * modalPageSize;
+  const paginatedKpModalRows = useMemo(() => {
+    return filteredModalRows.slice(startKpIndex, startKpIndex + modalPageSize);
+  }, [filteredModalRows, startKpIndex, modalPageSize]);
+
+  // Export CSV Handler
+  const handleExportCsv = () => {
+    if (!filteredModalRows || filteredModalRows.length === 0) return;
+    const cols = ['clinicId', 'kpCategory', 'sex', 'age', 'artStartDate', 'lastVisitDate', 'vlCopies', 'regimen', 'mmdMonths', 'siteName', 'status'];
+    const csvContent = rowsToCsv(cols, filteredModalRows, {
+      labelForKey: (k) => {
+        const labels = {
+          clinicId: 'Clinic ID',
+          kpCategory: 'KP Category',
+          sex: 'Sex',
+          age: 'Age',
+          artStartDate: 'ART Start Date',
+          lastVisitDate: 'Last Visit Date',
+          vlCopies: 'Viral Load (VL)',
+          regimen: 'Current Regimen',
+          mmdMonths: 'MMD Duration',
+          siteName: 'Facility / Site',
+          status: 'Patient Status'
+        };
+        return labels[k] || k;
+      }
+    });
+    const filename = safeExportFilename(`KP_LineList_${activeModalKp?.shortName || 'All'}_${selectedPeriodKey}`);
+    downloadCsv(filename, csvContent);
+  };
+
   return (
     <div className="space-y-4 font-khmer">
       {/* KP Dashboard Top Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-border/80 bg-card p-3.5 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-border/80 bg-card p-3.5 shadow-2xs">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 border border-primary/30">
@@ -58,19 +243,29 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
           </h2>
         </div>
 
-        {/* KP Group Filter */}
-        <div className="flex items-center gap-2">
-          <RiFilter3Line className="size-4 text-muted-foreground" />
-          <select
-            value={selectedKp}
-            onChange={(e) => setSelectedKp(e.target.value)}
-            className="h-8 border border-border/80 bg-background px-3 text-xs font-bold text-foreground outline-none cursor-pointer hover:border-primary transition-colors"
+        {/* Header Actions: Line List Modal Button & KP Filter */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => handleOpenLineList(null)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-bold shadow-2xs hover:bg-primary/90 transition-colors"
           >
-            <option value="all">គ្រប់ក្រុមប្រជាជនគន្លឹះ (All KP Groups)</option>
-            {KP_CATEGORIES.map(c => (
-              <option key={c.id} value={c.id}>{c.label}</option>
-            ))}
-          </select>
+            <RiListCheck className="size-4" />
+            <span>បង្ហាញបញ្ជីឈ្មោះ KP Line List ទាំងអស់</span>
+          </button>
+
+          <div className="flex items-center gap-1.5 border border-border/80 bg-background px-2.5 py-1">
+            <RiFilter3Line className="size-4 text-muted-foreground" />
+            <select
+              value={selectedKp}
+              onChange={(e) => setSelectedKp(e.target.value)}
+              className="bg-transparent text-xs font-bold text-foreground outline-none cursor-pointer"
+            >
+              <option value="all">គ្រប់ក្រុមប្រជាជនគន្លឹះ (All KP Groups)</option>
+              {KP_CATEGORIES.map(c => (
+                <option key={c.id} value={c.id}>{c.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -81,25 +276,30 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
           return (
             <div
               key={kp.id}
-              onClick={() => setSelectedKp(selectedKp === kp.id ? 'all' : kp.id)}
-              className={`p-3 border transition-all cursor-pointer select-none relative overflow-hidden ${
+              onClick={() => handleOpenLineList(kp)}
+              className={`p-3 border transition-all select-none relative overflow-hidden group cursor-pointer flex flex-col justify-between ${
                 isSelected
-                  ? 'border-primary/50 bg-card shadow-xs hover:border-primary'
-                  : 'border-border/60 bg-muted/20 opacity-40'
+                  ? 'border-border/70 bg-card shadow-2xs hover:border-primary/80'
+                  : 'border-border/40 bg-muted/10 opacity-50 hover:opacity-100'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-muted-foreground truncate max-w-[120px]">
-                  {kp.name}
-                </span>
-                <span className="size-2.5 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: kp.fill }} />
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-muted-foreground truncate max-w-[110px]">
+                    {kp.name}
+                  </span>
+                  <span className="size-2.5 rounded-full shrink-0 shadow-2xs" style={{ backgroundColor: kp.fill }} />
+                </div>
+                <div className="text-lg font-black text-foreground mt-1 tracking-tight">
+                  {kp.value.toLocaleString()} <span className="text-xs text-muted-foreground font-normal">នាក់</span>
+                </div>
               </div>
-              <div className="text-lg font-black text-foreground mt-1 tracking-tight">
-                {kp.value.toLocaleString()} <span className="text-xs text-muted-foreground font-normal">នាក់</span>
-              </div>
-              <div className="flex items-center justify-between text-[10px] text-muted-foreground mt-1.5 pt-1.5 border-t border-border/40">
+
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground mt-2 pt-1.5 border-t border-border/40 font-khmer">
                 <span>សមាមាត្រ: <strong className="text-foreground">{kp.pct}%</strong></span>
-                <span>VL Supp: <strong className="text-emerald-500 font-bold">{kp.suppression}%</strong></span>
+                <span className="inline-flex items-center gap-0.5 text-primary font-bold opacity-75 group-hover:opacity-100 transition-opacity">
+                  Line List <RiArrowRightSLine className="size-3" />
+                </span>
               </div>
             </div>
           );
@@ -109,7 +309,7 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
       {/* Main Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left Card: Active ART Donut Breakdown + Interactive Side Legend */}
-        <div className="lg:col-span-5 border border-border/80 bg-card p-4 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-5 border border-border/80 bg-card p-4 shadow-2xs flex flex-col justify-between">
           <div className="flex items-center justify-between border-b border-border/60 pb-2.5 mb-2">
             <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
               <RiPieChartFill className="size-4 text-primary" /> ការបែងចែកអ្នកជំងឺតាមប្រភេទ KP
@@ -134,7 +334,7 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
                     stroke="none"
                   >
                     {filteredKpData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                      <Cell key={`cell-${index}`} fill={entry.fill} className="cursor-pointer" onClick={() => handleOpenLineList(entry)} />
                     ))}
                   </Pie>
                   <Tooltip
@@ -146,6 +346,7 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
                           <div className="font-bold border-b border-slate-700 pb-1 mb-1" style={{ color: d.fill }}>{d.name}</div>
                           <div>អ្នកជំងឺ: <strong>{d.value.toLocaleString()} នាក់</strong></div>
                           <div>សមាមាត្រ: <strong>{d.pct}%</strong></div>
+                          <div className="text-[10px] text-sky-400 mt-1 italic">ចុចដើម្បីមើលបញ្ជីឈ្មោះ (Click to view Line List)</div>
                         </div>
                       );
                     }}
@@ -161,25 +362,31 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
               </div>
             </div>
 
-            {/* Clean Right-Side Legend List (No Label Overlap!) */}
+            {/* Clean Right-Side Legend List */}
             <div className="flex-1 w-full space-y-2 text-xs">
               {kpData.map((kp) => (
                 <div
                   key={kp.id}
-                  onClick={() => setSelectedKp(selectedKp === kp.id ? 'all' : kp.id)}
-                  className={`flex items-center justify-between p-1.5 border transition-all cursor-pointer ${
+                  className={`flex items-center justify-between p-1.5 border transition-all ${
                     selectedKp === kp.id || selectedKp === 'all'
                       ? 'border-border bg-muted/20 hover:bg-muted/40'
                       : 'border-transparent opacity-40'
                   }`}
                 >
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0 cursor-pointer" onClick={() => setSelectedKp(selectedKp === kp.id ? 'all' : kp.id)}>
                     <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: kp.fill }} />
                     <span className="font-bold truncate text-foreground text-[11px]">{kp.shortName}</span>
                   </div>
+                  
                   <div className="flex items-center gap-2 text-[11px] shrink-0 font-mono">
                     <span className="font-bold text-foreground">{kp.value.toLocaleString()}</span>
-                    <span className="text-muted-foreground font-semibold">({kp.pct}%)</span>
+                    <button
+                      onClick={() => handleOpenLineList(kp)}
+                      className="px-1.5 py-0.5 text-[10px] font-bold text-primary bg-primary/10 hover:bg-primary hover:text-primary-foreground border border-primary/20 transition-colors"
+                      title="មើលបញ្ជីឈ្មោះ Line List"
+                    >
+                      Line List
+                    </button>
                   </div>
                 </div>
               ))}
@@ -188,7 +395,7 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
         </div>
 
         {/* Right Card: VL Suppression & MMD Comparison Bar Chart */}
-        <div className="lg:col-span-7 border border-border/80 bg-card p-4 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-7 border border-border/80 bg-card p-4 shadow-2xs flex flex-col justify-between">
           <div className="flex items-center justify-between border-b border-border/60 pb-2.5 mb-2">
             <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
               <RiBarChartGroupedFill className="size-4 text-emerald-500" /> ឥទ្ធិពលបង្រ្កាបវីរុស VL & MMD តាមក្រុម KP (%)
@@ -226,17 +433,17 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
                           <strong>{d.suppression}%</strong>
                         </div>
                         <div className="text-blue-400 font-bold flex items-center justify-between gap-4 mt-1">
-                          <span>MMD Multi-Month Dispensing:</span>
+                          <span>MMD Multi-Month Rate:</span>
                           <strong>{d.mmd}%</strong>
                         </div>
                       </div>
                     );
                   }}
                 />
-                <Bar dataKey="suppression" name="VL Suppression (%)" fill="#10b981" radius={[3, 3, 0, 0]}>
+                <Bar dataKey="suppression" name="VL Suppression (%)" fill="#10b981" radius={[3, 3, 0, 0]} className="cursor-pointer" onClick={(data) => handleOpenLineList(data)}>
                   <LabelList dataKey="suppression" position="top" style={{ fontSize: '10px', fontWeight: '800', fill: '#10b981' }} formatter={(v) => `${v}%`} />
                 </Bar>
-                <Bar dataKey="mmd" name="MMD Multi-Month Rate (%)" fill="#3b82f6" radius={[3, 3, 0, 0]}>
+                <Bar dataKey="mmd" name="MMD Multi-Month Rate (%)" fill="#3b82f6" radius={[3, 3, 0, 0]} className="cursor-pointer" onClick={(data) => handleOpenLineList(data)}>
                   <LabelList dataKey="mmd" position="top" style={{ fontSize: '10px', fontWeight: '800', fill: '#3b82f6' }} formatter={(v) => `${v}%`} />
                 </Bar>
               </BarChart>
@@ -246,7 +453,7 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
       </div>
 
       {/* KP Detailed Summary Table */}
-      <div className="border border-border/80 bg-card shadow-xs overflow-hidden">
+      <div className="border border-border/80 bg-card shadow-2xs overflow-hidden">
         <div className="flex items-center justify-between border-b border-border/60 px-4 py-2.5 bg-muted/20">
           <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
             <RiTableLine className="size-4 text-primary" /> តារាងលម្អិតសូចនាករតាមក្រុមប្រជាជនគន្លឹះ KP Breakdown Table
@@ -264,15 +471,16 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
                 <th className="px-4 py-2 text-right">អ្នកជំងឺ ART សរុប</th>
                 <th className="px-4 py-2 text-right">សមាមាត្រ (%)</th>
                 <th className="px-4 py-2 text-right">អ្នកជំងឺថ្មី (New Initiated)</th>
-                <th className="px-4 py-2 text-right">VL Suppression Rate (%)</th>
+                <th className="px-4 py-2 text-right">VL Suppression (%)</th>
                 <th className="px-4 py-2 text-right">MMD Rate (%)</th>
+                <th className="px-4 py-2 text-center">បញ្ជីឈ្មោះ (Line List)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/40">
               {filteredKpData.map((kp) => (
                 <tr key={kp.id} className="hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-2.5 font-bold text-foreground flex items-center gap-2">
-                    <span className="size-2.5 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: kp.fill }} />
+                    <span className="size-2.5 rounded-full shrink-0 shadow-2xs" style={{ backgroundColor: kp.fill }} />
                     {kp.name}
                   </td>
                   <td className="px-4 py-2.5 text-right font-mono font-bold text-foreground">
@@ -295,12 +503,266 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
                   <td className="px-4 py-2.5 text-right font-mono font-bold text-blue-500">
                     {kp.mmd}%
                   </td>
+                  <td className="px-4 py-2.5 text-center">
+                    <button
+                      onClick={() => handleOpenLineList(kp)}
+                      className="px-2.5 py-1 text-xs font-bold text-primary bg-primary/10 hover:bg-primary hover:text-primary-foreground border border-primary/20 transition-all inline-flex items-center gap-1"
+                    >
+                      <RiListCheck className="size-3.5" />
+                      <span>បង្ហាញបញ្ជីឈ្មោះ</span>
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* KP LINE LIST INTERACTIVE MODAL */}
+      {lineListOpen && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 sm:p-6 font-khmer animate-in fade-in duration-200">
+          <div className="relative w-full max-w-5xl max-h-[85vh] my-auto bg-card border border-border/80 shadow-2xl flex flex-col overflow-hidden">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-border/60 px-5 py-3.5 bg-muted/30">
+              <div className="flex items-center gap-2.5">
+                <span className="size-3 rounded-full shrink-0" style={{ backgroundColor: activeModalKp?.fill || '#3b82f6' }} />
+                <div>
+                  <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <span>បញ្ជីឈ្មោះអ្នកជំងឺ KP ({activeModalKp?.name || 'All KP Groups'})</span>
+                    <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 border border-primary/30">
+                      {totalKpModalRows} នាក់
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    ត្រីមាស: <strong>{selectedPeriodKey || '២០២៦-Q៣'}</strong> | មណ្ឌល: <strong>{siteCode}</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setLineListOpen(false)}
+                className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+              >
+                <RiCloseLine className="size-5" />
+              </button>
+            </div>
+
+            {/* Modal Toolbar: Search, Filters & Export */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-2.5 border-b border-border/40 bg-card">
+              <div className="flex items-center gap-2 w-full sm:w-auto flex-1 max-w-md">
+                <div className="relative flex-1">
+                  <RiSearchLine className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="ស្វែងរកតាម Clinic ID / មណ្ឌល / Regimen..."
+                    value={modalSearch}
+                    onChange={(e) => setModalSearch(e.target.value)}
+                    className="w-full bg-muted/40 border border-border/60 pl-8 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                {/* VL Filter */}
+                <select
+                  value={modalVlFilter}
+                  onChange={(e) => setModalVlFilter(e.target.value)}
+                  className="bg-muted/40 border border-border/60 text-xs text-foreground font-bold px-2 py-1.5 outline-none cursor-pointer"
+                >
+                  <option value="all">គ្រប់ VL Status</option>
+                  <option value="suppressed">VL Suppressed (&lt; 40)</option>
+                  <option value="unsuppressed">VL Unsuppressed (&ge; 40)</option>
+                </select>
+
+                {/* MMD Filter */}
+                <select
+                  value={modalMmdFilter}
+                  onChange={(e) => setModalMmdFilter(e.target.value)}
+                  className="bg-muted/40 border border-border/60 text-xs text-foreground font-bold px-2 py-1.5 outline-none cursor-pointer"
+                >
+                  <option value="all">គ្រប់ MMD</option>
+                  <option value="mmd3">3 Months MMD</option>
+                  <option value="mmd6">6 Months MMD</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={handleExportCsv}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors shadow-2xs"
+                >
+                  <RiDownloadLine className="size-4" />
+                  <span>Export CSV</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Table Content */}
+            <div className="flex-1 overflow-y-auto p-5 no-scrollbar min-h-[350px]">
+              {modalLoading ? (
+                <div className="flex flex-col items-center justify-center h-48 gap-2 text-muted-foreground">
+                  <RiLoader4Line className="size-8 animate-spin text-primary" />
+                  <span className="text-xs font-bold">កំពុងទាញយកបញ្ជីឈ្មោះអ្នកជំងឺ KP...</span>
+                </div>
+              ) : totalKpModalRows === 0 ? (
+                <div className="flex flex-col items-center justify-center h-48 gap-2 text-muted-foreground">
+                  <RiInformationLine className="size-8 text-muted-foreground/60" />
+                  <span className="text-xs font-bold">មិនមានទិន្នន័យបញ្ជីឈ្មោះអ្នកជំងឺទេ (No Records Found)</span>
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-border/60">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-border/60 bg-muted/50 text-muted-foreground font-bold uppercase text-[10px] tracking-wider">
+                        <th className="px-3.5 py-2.5 whitespace-nowrap">ល.រ</th>
+                        <th className="px-3.5 py-2.5 whitespace-nowrap">Clinic ID</th>
+                        <th className="px-3.5 py-2.5 whitespace-nowrap">ប្រភេទ KP</th>
+                        <th className="px-3.5 py-2.5 whitespace-nowrap">ភេទ / អាយុ</th>
+                        <th className="px-3.5 py-2.5 whitespace-nowrap">ថ្ងៃចាប់ផ្តើម ART</th>
+                        <th className="px-3.5 py-2.5 whitespace-nowrap">លទ្ធផល VL ចុងក្រោយ</th>
+                        <th className="px-3.5 py-2.5 whitespace-nowrap">ឱសថ ART (Regimen & MMD)</th>
+                        <th className="px-3.5 py-2.5 whitespace-nowrap">មណ្ឌលព្យាបាល</th>
+                        <th className="px-3.5 py-2.5 whitespace-nowrap text-center">សកម្មភាព</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/40">
+                      {paginatedKpModalRows.map((row, idx) => (
+                        <tr key={row.clinicId + idx} className="hover:bg-muted/30 transition-colors">
+                          <td className="px-3.5 py-2.5 font-mono text-muted-foreground whitespace-nowrap">
+                            {startKpIndex + idx + 1}
+                          </td>
+                          <td className="px-3.5 py-2.5 font-mono font-bold text-primary whitespace-nowrap">
+                            <button
+                              onClick={() => {
+                                setLineListOpen(false);
+                                const actualSiteCode = row.siteCode || row.clinicId?.split('-')[0] || (siteCode === 'ALL' ? '0102' : siteCode);
+                                navigate(buildPatient360Path({ siteCode: actualSiteCode, clinicId: row.clinicId }));
+                              }}
+                              className="hover:underline inline-flex items-center gap-1 text-primary text-left whitespace-nowrap"
+                            >
+                              <span>{row.clinicId}</span>
+                              <RiExternalLinkLine className="size-3 text-primary/70 shrink-0" />
+                            </button>
+                          </td>
+                          <td className="px-3.5 py-2.5 font-bold whitespace-nowrap">
+                            <span
+                              className="px-2 py-0.5 text-[10px] font-bold whitespace-nowrap border"
+                              style={{
+                                backgroundColor: `${row.kpFill || '#3b82f6'}15`,
+                                color: row.kpFill || '#3b82f6',
+                                borderColor: `${row.kpFill || '#3b82f6'}35`
+                              }}
+                            >
+                              {row.kpCategory}
+                            </span>
+                          </td>
+                          <td className="px-3.5 py-2.5 font-bold text-foreground whitespace-nowrap">
+                            {row.sex} ({row.age} ឆ្នាំ)
+                          </td>
+                          <td className="px-3.5 py-2.5 font-mono text-muted-foreground whitespace-nowrap">
+                            {row.artStartDate}
+                          </td>
+                          <td className="px-3.5 py-2.5 font-mono font-bold whitespace-nowrap">
+                            {row.vlSuppressed ? (
+                              <span className="text-emerald-500 bg-emerald-500/10 px-2 py-0.5 border border-emerald-500/20 text-[11px] inline-flex items-center gap-1 whitespace-nowrap">
+                                <RiShieldCheckLine className="size-3 shrink-0" />
+                                {row.vlCopies}
+                              </span>
+                            ) : (
+                              <span className="text-rose-500 bg-rose-500/10 px-2 py-0.5 border border-rose-500/20 text-[11px] whitespace-nowrap">
+                                {row.vlCopies}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3.5 py-2.5 min-w-[200px]">
+                            <div className="font-bold text-foreground text-[11px]">{row.regimen}</div>
+                            <div className="text-[10px] text-blue-400 font-mono font-bold">{row.mmdMonths}</div>
+                          </td>
+                          <td className="px-3.5 py-2.5 font-bold text-foreground whitespace-nowrap">
+                            {row.siteName}
+                          </td>
+                          <td className="px-3.5 py-2.5 text-center whitespace-nowrap">
+                            <button
+                              onClick={() => {
+                                setLineListOpen(false);
+                                const actualSiteCode = row.siteCode || row.clinicId?.split('-')[0] || (siteCode === 'ALL' ? '0102' : siteCode);
+                                navigate(buildPatient360Path({ siteCode: actualSiteCode, clinicId: row.clinicId }));
+                              }}
+                              className="px-2.5 py-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500 hover:text-white border border-emerald-500/30 transition-colors inline-flex items-center gap-1 whitespace-nowrap shrink-0"
+                            >
+                              <RiUserSearchLine className="size-3" />
+                              <span>៣៦០°</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer with Interactive Pagination */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border/60 px-5 py-3 bg-muted/30 shrink-0">
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span>
+                  បង្ហាញពី <strong className="text-foreground">{totalKpModalRows === 0 ? 0 : startKpIndex + 1}</strong> ដល់ <strong className="text-foreground">{Math.min(startKpIndex + modalPageSize, totalKpModalRows)}</strong> នៃសរុប <strong className="text-primary font-bold">{totalKpModalRows}</strong> នាក់
+                </span>
+                <div className="flex items-center gap-1">
+                  <span>ទំហំ:</span>
+                  <select
+                    value={modalPageSize}
+                    onChange={(e) => {
+                      setModalPageSize(Number(e.target.value));
+                      setModalPage(1);
+                    }}
+                    className="bg-card border border-border/60 text-xs font-bold text-foreground px-1.5 py-0.5 outline-none cursor-pointer"
+                  >
+                    <option value={10}>10 / ទំព័រ</option>
+                    <option value={20}>20 / ទំព័រ</option>
+                    <option value={50}>50 / ទំព័រ</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Pagination Controls */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  disabled={safeKpPage <= 1}
+                  onClick={() => setModalPage(prev => Math.max(1, prev - 1))}
+                  className="p-1.5 border border-border/60 text-xs font-bold bg-card text-foreground disabled:opacity-30 disabled:cursor-not-allowed hover:bg-muted transition-colors inline-flex items-center gap-1"
+                >
+                  <RiArrowLeftSLine className="size-4" />
+                  <span>ថយក្រោយ</span>
+                </button>
+
+                <div className="flex items-center gap-1 text-xs font-mono font-bold px-2">
+                  <span className="text-primary">{safeKpPage}</span>
+                  <span className="text-muted-foreground">/</span>
+                  <span>{totalKpPages}</span>
+                </div>
+
+                <button
+                  disabled={safeKpPage >= totalKpPages}
+                  onClick={() => setModalPage(prev => Math.min(totalKpPages, prev + 1))}
+                  className="p-1.5 border border-border/60 text-xs font-bold bg-card text-foreground disabled:opacity-30 disabled:cursor-not-allowed hover:bg-muted transition-colors inline-flex items-center gap-1"
+                >
+                  <span>ទៅមុខ</span>
+                  <RiArrowRightSLine className="size-4" />
+                </button>
+                
+                <button
+                  onClick={() => setLineListOpen(false)}
+                  className="ml-3 px-4 py-1.5 bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-colors"
+                >
+                  បិទ (Close)
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

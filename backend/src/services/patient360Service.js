@@ -158,12 +158,19 @@ function validateSiteCode(siteCode) {
 
 function validateClinicId(clinicId) {
   const id = String(clinicId || '').trim();
-  if (!id || !/^[A-Za-z0-9]{1,12}$/.test(id)) {
-    const err = new Error('clinicId must be 1–12 alphanumeric characters');
+  if (!id || !/^[A-Za-z0-9\-_/.]{1,30}$/.test(id)) {
+    const err = new Error('clinicId must be 1–30 valid characters');
     err.statusCode = 400;
     throw err;
   }
   return id;
+}
+
+function parseNumericClinicId(clinicId) {
+  const str = String(clinicId || '').trim();
+  const stripped = str.includes('-') ? str.split('-').pop() : str;
+  const num = Number(stripped);
+  return Number.isFinite(num) ? num : 0;
 }
 
 async function selectSite(siteCode, sql) {
@@ -409,35 +416,45 @@ function sectionCounts(block) {
 
 /** Program detection — one simple query per table (UNION breaks under site-scope rewrite). */
 async function detectPrograms(siteCode, clinicId) {
-  const cid = escapeSqlLiteral(clinicId);
-  const cidNum = Number(clinicId);
-  const numeric =
-    (Number.isFinite(cidNum) && String(cidNum) === clinicId.replace(/^0+/, '')) ||
-    /^\d+$/.test(clinicId);
+  const cleanId = String(clinicId || '').trim();
+  const strippedId = cleanId.includes('-') ? cleanId.split('-').pop() : cleanId;
+  const cidNum = parseNumericClinicId(cleanId);
+  const numeric = cidNum > 0;
+  const cidEscaped = escapeSqlLiteral(cleanId);
+  const strippedEscaped = escapeSqlLiteral(strippedId);
 
   const checks = [];
   if (numeric) {
     checks.push(
       selectSite(
         siteCode,
-        `SELECT 'adult' AS program FROM tblaimain WHERE ClinicID = ${cidNum} LIMIT 1`
+        `SELECT 'adult' AS program FROM tblaimain WHERE ClinicID = ${cidNum} OR ClinicID = '${cidEscaped}' OR ClinicID = '${strippedEscaped}' LIMIT 1`
+      ),
+      selectSite(
+        siteCode,
+        `SELECT 'pntt' AS program FROM tblapntt WHERE ClinicID = ${cidNum} OR ClinicID = '${cidEscaped}' OR ClinicID = '${strippedEscaped}' LIMIT 1`
       )
     );
+  } else {
     checks.push(
       selectSite(
         siteCode,
-        `SELECT 'pntt' AS program FROM tblapntt WHERE ClinicID = ${cidNum} LIMIT 1`
+        `SELECT 'adult' AS program FROM tblaimain WHERE ClinicID = '${cidEscaped}' OR ClinicID = '${strippedEscaped}' LIMIT 1`
+      ),
+      selectSite(
+        siteCode,
+        `SELECT 'pntt' AS program FROM tblapntt WHERE ClinicID = '${cidEscaped}' OR ClinicID = '${strippedEscaped}' LIMIT 1`
       )
     );
   }
   checks.push(
     selectSite(
       siteCode,
-      `SELECT 'child' AS program FROM tblcimain WHERE ClinicID = '${cid}' LIMIT 1`
+      `SELECT 'child' AS program FROM tblcimain WHERE ClinicID = '${cidEscaped}' OR ClinicID = '${strippedEscaped}'${numeric ? ` OR ClinicID = ${cidNum}` : ''} LIMIT 1`
     ),
     selectSite(
       siteCode,
-      `SELECT 'infant' AS program FROM tbleimain WHERE ClinicID = '${cid}' LIMIT 1`
+      `SELECT 'infant' AS program FROM tbleimain WHERE ClinicID = '${cidEscaped}' OR ClinicID = '${strippedEscaped}'${numeric ? ` OR ClinicID = ${cidNum}` : ''} LIMIT 1`
     )
   );
 
@@ -458,7 +475,7 @@ function parseKnownPrograms(raw) {
 
 /** Tab badges only — 3 COUNTs instead of 8 full-table scans on summary load. */
 async function countAdultTabBadges(siteCode, clinicId) {
-  const cid = Number(clinicId);
+  const cid = parseNumericClinicId(clinicId);
   const cidStr = escapeSqlLiteral(clinicId);
   const [row] = await selectSite(
     siteCode,
@@ -508,7 +525,7 @@ async function countInfantTabBadges(siteCode, clinicId) {
 }
 
 async function loadAdult(siteCode, clinicId, parts = null, opts = {}) {
-  const cid = Number(clinicId);
+  const cid = parseNumericClinicId(clinicId);
   const partSet = parseParts(parts);
   const peek = opts.peek === true;
   const drugCap = opts.timelineTab ? lim(TIMELINE_DRUG_LIMIT) : lim(LIMITS.drugs);
@@ -1218,8 +1235,8 @@ async function loadInfantAll(siteCode, clinicId) {
 }
 
 async function loadPnttRows(siteCode, clinicId) {
-  const cid = Number(clinicId);
-  if (!Number.isFinite(cid)) return [];
+  const cid = parseNumericClinicId(clinicId);
+  if (!cid) return [];
   const lim = Math.max(1, Math.min(100, LIMITS.pntt));
   return selectSite(
     siteCode,
@@ -1229,8 +1246,8 @@ async function loadPnttRows(siteCode, clinicId) {
 }
 
 async function loadPnttExtras(siteCode, clinicId, pnttRows) {
-  const cid = Number(clinicId);
-  if (!Number.isFinite(cid) || !pnttRows?.length) {
+  const cid = parseNumericClinicId(clinicId);
+  if (!cid || !pnttRows?.length) {
     return { pnttPartners: [], pnttChildren: [] };
   }
   const lim = 25;
@@ -1717,8 +1734,8 @@ async function loadCounts(site, clinic, programs) {
 }
 
 async function loadPnttPartnersOnly(siteCode, clinicId) {
-  const cid = Number(clinicId);
-  if (!Number.isFinite(cid)) return [];
+  const cid = parseNumericClinicId(clinicId);
+  if (!cid) return [];
   return selectSite(
     siteCode,
     `SELECT AsID, NumPart, Age, Sex, RePatient, StatusHIV, Result, RegTreat, ClinicID, ArtNumber, PatientDate

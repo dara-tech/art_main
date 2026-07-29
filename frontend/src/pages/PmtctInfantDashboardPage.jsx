@@ -636,6 +636,29 @@ export default function PmtctInfantDashboardPage({ onLogout }) {
               </select>
             </div>
 
+            {/* MAIN DASHBOARD TYPE SELECTOR */}
+            <div className="flex items-center shrink-0">
+              <select
+                value="pmtct"
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val !== 'pmtct') {
+                    navigate(`/dashboard?view=${val}`);
+                  }
+                }}
+                className="h-8 border border-emerald-500/40 bg-emerald-500/10 px-2 text-xs font-bold text-foreground outline-none cursor-pointer rounded-none hover:border-emerald-500 transition-colors font-khmer shrink-0"
+              >
+                <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="pmtct">PNTT / PMTCT Infant (ទារក EID / ម្តាយទៅកូន)</option>
+                <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="program">Performance Program (សកម្មភាពកម្មវិធី)</option>
+                <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="kp">Key Population KP (វិភាគក្រុមប្រជាជនគន្លឹះ KP)</option>
+                <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="sites">Sites Performance (សមត្ថកិច្ចមន្ទីរពេទ្យ)</option>
+                <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="doctors">Top Doctors (គ្រូពេទ្យកំពូល)</option>
+                <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="targets">National Target (គោលដៅជាតិ 95-95-95)</option>
+                <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="dqa">Site DQA (គុណភាពទិន្នន័យ DQA)</option>
+                <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="period_comparison">Period-to-Period Comparison (ការប្រៀបធៀបតាមកាលបរិច្ឆេទ)</option>
+              </select>
+            </div>
+
             {/* INFANT SPECIFIC DATA VIEW SWITCHER DROPDOWN */}
             <div className="flex items-center shrink-0">
               <select
