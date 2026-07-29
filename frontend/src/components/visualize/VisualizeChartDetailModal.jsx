@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { RiCloseLine, RiInformationLine, RiSearchLine } from '@remixicon/react';
+import { RiArrowDownSLine, RiCloseLine, RiInformationLine, RiLayoutColumnLine, RiSearchLine } from '@remixicon/react';
 import { cn } from '@/lib/utils';
 import { P360_TABLE_BODY_ROW_INNER, P360_TABLE_TEXT, p360ControlClass } from '../layout/appNavStyles';
 import { VIZ_KH } from '../../pages/visualizeKh';
@@ -13,6 +13,7 @@ import {
   formatDetailCellValue,
   pickDetailColumnKeys
 } from '../../utils/indicatorDetailRecords';
+import { AppSpinner } from '../ui/AppLoadingOverlay';
 import { fetchVisualizePatientRecords } from '../../utils/visualizeDetailRecords';
 import {
   buildPatient360Target,
@@ -59,6 +60,7 @@ export default function VisualizeChartDetailModal({
   const patientSearchRef = useRef('');
   const lastLoadedRef = useRef(null);
   const [serverPaged, setServerPaged] = useState(true);
+  const [activeDemoFilter, setActiveDemoFilter] = useState(null);
 
   const { totalValue, demoRows } = useMemo(() => {
     const rows = detail?.rows || [];
@@ -70,10 +72,44 @@ export default function VisualizeChartDetailModal({
   }, [detail?.rows]);
 
   const loadPatients = useCallback(
-    async (page, search, minAgeVal = patientMinAge, maxAgeVal = patientMaxAge) => {
+    async (
+      page,
+      search,
+      minAgeVal = patientMinAge,
+      maxAgeVal = patientMaxAge,
+      overrideDemo = activeDemoFilter
+    ) => {
       if (!detail?.raw || !detail?.hasPatientList) return;
       setPatientLoading(true);
       setPatientError('');
+
+      let genderParam = '';
+      let minAgeParam = minAgeVal;
+      let maxAgeParam = maxAgeVal;
+      let ageGroupParam = '';
+
+      if (overrideDemo === 'male014') {
+        genderParam = 'male';
+        minAgeParam = '';
+        maxAgeParam = '';
+        ageGroupParam = '<=14';
+      } else if (overrideDemo === 'female014') {
+        genderParam = 'female';
+        minAgeParam = '';
+        maxAgeParam = '';
+        ageGroupParam = '<=14';
+      } else if (overrideDemo === 'maleOver14') {
+        genderParam = 'male';
+        minAgeParam = '';
+        maxAgeParam = '';
+        ageGroupParam = '>14';
+      } else if (overrideDemo === 'femaleOver14') {
+        genderParam = 'female';
+        minAgeParam = '';
+        maxAgeParam = '';
+        ageGroupParam = '>14';
+      }
+
       try {
         const { rows, pagination, serverPaged: sp } = await fetchVisualizePatientRecords({
           raw: detail.raw,
@@ -83,8 +119,10 @@ export default function VisualizeChartDetailModal({
           page,
           limit: PAGE_SIZE,
           search,
-          minAge: minAgeVal,
-          maxAge: maxAgeVal
+          minAge: minAgeParam,
+          maxAge: maxAgeParam,
+          gender: genderParam,
+          ageGroup: ageGroupParam
         });
         setPatientRows(rows);
         setPatientTotal(Number(pagination?.totalCount ?? rows.length));
@@ -100,8 +138,14 @@ export default function VisualizeChartDetailModal({
         setPatientLoading(false);
       }
     },
-    [detail, catalog, pageContext, periods, patientMinAge, patientMaxAge]
+    [detail, catalog, pageContext, periods, patientMinAge, patientMaxAge, activeDemoFilter]
   );
+
+  const handleDemoCardClick = (cardId) => {
+    const nextFilter = activeDemoFilter === cardId ? null : cardId;
+    setActiveDemoFilter(nextFilter);
+    loadPatients(1, patientSearch, patientMinAge, patientMaxAge, nextFilter);
+  };
 
   useEffect(() => {
     if (!open) return undefined;
@@ -143,6 +187,8 @@ export default function VisualizeChartDetailModal({
       return;
     }
 
+    const initialFilter = detail?.initialDemoFilter || null;
+    setActiveDemoFilter(initialFilter);
     setPatientSearch('');
     patientSearchRef.current = '';
     setPatientMinAge('');
@@ -150,7 +196,7 @@ export default function VisualizeChartDetailModal({
     setPatientMaxAge('');
     patientMaxAgeRef.current = '';
     setPatientPage(1);
-    loadPatients(1, '', '', '');
+    loadPatients(1, '', '', '', initialFilter);
   }, [
     open,
     detail?.raw?.indicatorId,
@@ -205,16 +251,30 @@ export default function VisualizeChartDetailModal({
     [detail, pageContext, indicatorId, onClose, onBeforeNavigateToPatient360, onNavigateToPatient360, navigate]
   );
 
-  const patientColumnKeys = useMemo(
+  const [showColumnDropdown, setShowColumnDropdown] = useState(false);
+  const [selectedColumnKeys, setSelectedColumnKeys] = useState(null);
+
+  const availableColumnKeys = useMemo(() => {
+    const set = new Set();
+    patientRows.forEach((r) => Object.keys(r || {}).forEach((k) => set.add(k)));
+    return Array.from(set).filter((k) => k !== '_key' && (k !== 'site_code' || includeSiteCol));
+  }, [patientRows, includeSiteCol]);
+
+  const defaultColumnKeys = useMemo(
     () => pickDetailColumnKeys(patientRows, { includeSite: includeSiteCol, indicatorId }),
     [patientRows, includeSiteCol, indicatorId]
+  );
+
+  const activeColumnKeys = useMemo(
+    () => selectedColumnKeys || defaultColumnKeys,
+    [selectedColumnKeys, defaultColumnKeys]
   );
 
   const linkKeys = new Set(['clinicid', 'art_number', 'Artnum', 'ART']);
 
   const patientColumns = useMemo(
     () =>
-      patientColumnKeys.map((key) => {
+      activeColumnKeys.map((key) => {
         const col = {
           id: key,
           label: detailColumnLabel(key),
@@ -233,7 +293,7 @@ export default function VisualizeChartDetailModal({
             key === 'ART' ||
             key === 'HIVLoad' ||
             key === 'VLValue',
-          getValue: (row) => formatDetailCellValue(row[key])
+          getValue: (row) => formatDetailCellValue(row[key], key)
         };
         if (linkKeys.has(key)) {
           col.renderCell = (row, text) => {
@@ -267,7 +327,7 @@ export default function VisualizeChartDetailModal({
         }
         return col;
       }),
-    [patientColumnKeys, detail, pageContext, indicatorId, onClose]
+    [activeColumnKeys, detail, pageContext, indicatorId, onClose]
   );
 
   const patientTableRows = useMemo(
@@ -314,10 +374,23 @@ export default function VisualizeChartDetailModal({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-4">
-            <div className="text-right">
-              <p className={cn('text-[10px] text-white/60', P360_TABLE_TEXT)}>{VIZ_KH.total}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveDemoFilter(null);
+                loadPatients(1, patientSearch, '', '', null);
+              }}
+              className={cn(
+                'text-right px-2 py-1 rounded-lg transition-all duration-150 cursor-pointer outline-none focus:outline-none select-none group',
+                activeDemoFilter === null
+                  ? 'bg-white/15 ring-1 ring-white/30 font-semibold'
+                  : 'hover:bg-white/10'
+              )}
+              title="Click to reset filter and show total patient list"
+            >
+              <p className={cn('text-[10px] text-white/70 group-hover:text-white transition-colors', P360_TABLE_TEXT)}>{VIZ_KH.total}</p>
               <p className="text-xl font-bold tabular-nums leading-none text-white">{totalValue}</p>
-            </div>
+            </button>
             <button
               type="button"
               onClick={onClose}
@@ -331,14 +404,38 @@ export default function VisualizeChartDetailModal({
 
         {demoRows.length ? (
           <div className="flex shrink-0 divide-x divide-border/70 border-b border-border/80 bg-muted/10">
-            {demoRows.map((row) => (
-              <div key={row.id} className="min-w-0 flex-1 px-3 py-2 text-center">
-                <p className={cn('truncate text-[10px] text-muted-foreground', P360_TABLE_TEXT)}>
-                  {VIZ_KH[LABEL_KEYS[row.labelKey] || row.labelKey]}
-                </p>
-                <p className={cn('mt-0.5 tabular-nums font-medium text-foreground', P360_TABLE_TEXT)}>{row.value}</p>
-              </div>
-            ))}
+            {demoRows.map((row) => {
+              const isSelected = activeDemoFilter === row.id;
+              return (
+                <button
+                  key={row.id}
+                  type="button"
+                  onClick={() => handleDemoCardClick(row.id)}
+                  className={cn(
+                    'min-w-0 flex-1 px-3 py-2 text-center transition-all duration-150 cursor-pointer outline-none focus:outline-none select-none group',
+                    isSelected
+                      ? 'bg-teal-500/15 font-semibold shadow-inner border-b-2 border-teal-500'
+                      : 'hover:bg-white/5'
+                  )}
+                  title={`Click to filter patient list by ${VIZ_KH[LABEL_KEYS[row.labelKey] || row.labelKey]}`}
+                >
+                  <p className={cn(
+                    'truncate text-[10px] transition-colors',
+                    isSelected ? 'text-teal-400 font-bold' : 'text-muted-foreground group-hover:text-foreground',
+                    P360_TABLE_TEXT
+                  )}>
+                    {VIZ_KH[LABEL_KEYS[row.labelKey] || row.labelKey]}
+                  </p>
+                  <p className={cn(
+                    'mt-0.5 tabular-nums font-bold transition-colors',
+                    isSelected ? 'text-teal-300 text-base' : 'text-foreground',
+                    P360_TABLE_TEXT
+                  )}>
+                    {row.value}
+                  </p>
+                </button>
+              );
+            })}
           </div>
         ) : null}
 
@@ -463,6 +560,70 @@ export default function VisualizeChartDetailModal({
                 >
                   {VIZ_KH.chartDetailSearchBtn}
                 </button>
+
+                <div className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowColumnDropdown((v) => !v)}
+                    className={cn(
+                      p360ControlClass,
+                      'h-8 px-2.5 flex items-center gap-1.5 text-xs font-medium cursor-pointer',
+                      selectedColumnKeys && 'border-teal-500 text-teal-400 bg-teal-500/10 font-semibold'
+                    )}
+                    title="Customize table columns"
+                  >
+                    <RiLayoutColumnLine className="size-3.5 text-teal-400" />
+                    <span>Columns</span>
+                    <RiArrowDownSLine className="size-3.5 opacity-70" />
+                  </button>
+
+                  {showColumnDropdown && (
+                    <div className="absolute right-0 top-full mt-1.5 z-50 w-56 rounded-xl border border-border bg-card p-2 shadow-2xl backdrop-blur-md">
+                      <div className="flex items-center justify-between px-2 py-1 border-b border-border/60 mb-1">
+                        <span className="text-xs font-bold text-foreground">Select Columns</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedColumnKeys(null);
+                            setShowColumnDropdown(false);
+                          }}
+                          className="text-[10px] text-teal-500 hover:underline font-semibold"
+                        >
+                          Reset Default
+                        </button>
+                      </div>
+                      <div className="max-h-60 overflow-y-auto space-y-0.5 py-1">
+                        {availableColumnKeys.map((key) => {
+                          const label = detailColumnLabel(key);
+                          const isChecked = activeColumnKeys.includes(key);
+                          return (
+                            <label
+                              key={key}
+                              className="flex items-center gap-2 px-2 py-1 rounded hover:bg-muted/40 text-xs text-foreground cursor-pointer select-none"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  const current = activeColumnKeys;
+                                  let next;
+                                  if (e.target.checked) {
+                                    next = [...current, key];
+                                  } else {
+                                    next = current.filter((k) => k !== key);
+                                  }
+                                  setSelectedColumnKeys(next);
+                                }}
+                                className="rounded text-teal-500 focus:ring-teal-500"
+                              />
+                              <span className="truncate">{label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </form>
               {/* <p className={cn('shrink-0 border-b border-border/60 px-5 pb-2 text-muted-foreground', P360_TABLE_TEXT)}>
                 {VIZ_KH.chartDetailOpenProfile}
@@ -478,12 +639,12 @@ export default function VisualizeChartDetailModal({
                 {patientLoading ? (
                   <div
                     className={cn(
-                      'flex h-full min-h-[14rem] items-center justify-center text-muted-foreground',
+                      'flex h-full min-h-[14rem] flex-col items-center justify-center gap-3 text-muted-foreground select-none bg-background/50 backdrop-blur-xs',
                       P360_TABLE_TEXT
                     )}
                   >
-                    <span className="inline-flex items-center gap-2">
-                      <span className="size-4 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
+                    <AppSpinner size="md" />
+                    <span className="text-xs font-bold text-foreground tracking-wide">
                       {VIZ_KH.chartDetailLoading}
                     </span>
                   </div>

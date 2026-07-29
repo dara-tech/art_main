@@ -12,23 +12,39 @@ SELECT
     p.DaBirth as DaBirth,
     p.DafirstVisit as DafirstVisit,
     art.DaArt as DaArt,
-    v.DatVisit as DatVisit,
+    NULL as DatVisit,
     p.OffIn as OffIn,
     'Adult' as patient_type,
     TIMESTAMPDIFF(YEAR, p.DaBirth, :EndDate) as age,
     CASE 
-        WHEN p.OffIn = 0 THEN 'Not Transferred'
+        WHEN p.OffIn IS NULL OR p.OffIn = 0 OR p.OffIn = -1 THEN 'Not Transferred'
         WHEN p.OffIn = 2 THEN 'Transferred In'
         WHEN p.OffIn = 3 THEN 'Transferred Out'
         ELSE CONCAT('Status: ', p.OffIn)
-    END as transfer_status
+    END as transfer_status,
+    COALESCE(
+        CASE 
+            WHEN s.Status = 1 THEN 'Active'
+            WHEN s.Status = 2 THEN 'Dead'
+            WHEN s.Status = 3 THEN 'Lost'
+            WHEN s.Status = 4 THEN 'Transferred Out'
+        END,
+        'Active'
+    ) as patient_status
 FROM tblaimain p 
-JOIN tblaart art ON p.ClinicID = art.ClinicID
-JOIN tblavmain v ON p.ClinicID = v.ClinicID AND v.DatVisit = art.DaArt 
+LEFT OUTER JOIN tblaart art ON p.ClinicID = art.ClinicID
+LEFT OUTER JOIN (
+    SELECT ClinicID, Status, ROW_NUMBER() OVER (PARTITION BY ClinicID ORDER BY Da DESC) as rn
+    FROM tblavpatientstatus
+    WHERE Da <= :EndDate
+) s ON p.ClinicID = s.ClinicID AND s.rn = 1
 WHERE 
-    art.DaArt BETWEEN :StartDate AND :EndDate 
+    p.DafirstVisit BETWEEN :StartDate AND :EndDate 
     AND (p.OffIn IS NULL OR p.OffIn <> :transfer_in_code)
     AND (p.TypeofReturn IS NULL OR p.TypeofReturn = -1)
+    AND (p.Refugstatus IS NULL OR p.Refugstatus = -1)
+    AND (p.SiteNameold IS NULL OR p.SiteNameold = '')
+GROUP BY p.ClinicID
 
 UNION ALL
 
@@ -43,22 +59,38 @@ SELECT
     END as sex_display,
     '≤14' as typepatients,
     p.DaBirth as DaBirth,
-    p.DafirstVisit as DafirstVisit,
+    p.DaFirstVisit as DafirstVisit,
     art.DaArt as DaArt,
-    v.DatVisit as DatVisit,
+    NULL as DatVisit,
     p.OffIn as OffIn,
     'Child' as patient_type,
     TIMESTAMPDIFF(YEAR, p.DaBirth, :EndDate) as age,
     CASE 
-        WHEN p.OffIn = 0 THEN 'Not Transferred'
+        WHEN p.OffIn IS NULL OR p.OffIn = 0 OR p.OffIn = -1 THEN 'Not Transferred'
         WHEN p.OffIn = 2 THEN 'Transferred In'
         WHEN p.OffIn = 3 THEN 'Transferred Out'
         ELSE CONCAT('Status: ', p.OffIn)
-    END as transfer_status
+    END as transfer_status,
+    COALESCE(
+        CASE 
+            WHEN s.Status = 1 THEN 'Active'
+            WHEN s.Status = 2 THEN 'Dead'
+            WHEN s.Status = 3 THEN 'Lost'
+            WHEN s.Status = 4 THEN 'Transferred Out'
+        END,
+        'Active'
+    ) as patient_status
 FROM tblcimain p 
-JOIN tblcart art ON p.ClinicID = art.ClinicID
-JOIN tblcvmain v ON p.ClinicID = v.ClinicID AND v.DatVisit = art.DaArt
+LEFT OUTER JOIN tblcart art ON p.ClinicID = art.ClinicID
+LEFT OUTER JOIN (
+    SELECT ClinicID, Status, ROW_NUMBER() OVER (PARTITION BY ClinicID ORDER BY Da DESC) as rn
+    FROM tblcvpatientstatus
+    WHERE Da <= :EndDate
+) s ON p.ClinicID = s.ClinicID AND s.rn = 1
 WHERE 
-    art.DaArt BETWEEN :StartDate AND :EndDate 
+    p.DaFirstVisit BETWEEN :StartDate AND :EndDate 
     AND (p.OffIn IS NULL OR p.OffIn <> :transfer_in_code)
-ORDER BY DaArt DESC, ClinicID;
+    AND (p.LClinicID IS NULL OR p.LClinicID = '')
+    AND (p.SiteNameold IS NULL OR p.SiteNameold = '')
+GROUP BY p.ClinicID
+ORDER BY DafirstVisit DESC, clinicid;

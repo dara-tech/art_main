@@ -30,7 +30,8 @@ export function VizToolbarBtn({
   'aria-expanded': ariaExpanded
 }) {
   const tip = title || (typeof label === 'string' ? label : undefined);
-  const iconOnly = Boolean(Icon) && !showLabel;
+  const IconComp = typeof Icon === 'function' || (typeof Icon === 'object' && Icon !== null) ? Icon : null;
+  const iconOnly = Boolean(IconComp) && !showLabel;
 
   const labelNode = label ? (
     iconOnly ? (
@@ -56,8 +57,8 @@ export function VizToolbarBtn({
       aria-expanded={ariaExpanded}
       className={cn(appNavItemClass(active, disabled), iconOnly && 'px-2', className)}
     >
-      {Icon ? (
-        <Icon
+      {IconComp ? (
+        <IconComp
           className={cn(
             APP_NAV_ICON,
             iconClassName || (active ? 'text-primary' : 'text-muted-foreground')

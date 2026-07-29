@@ -87,6 +87,10 @@ export function buildSiteSelectionModel(sites = []) {
   } else {
     siteLabelByCode.set(cambodiaValue, 'Cambodia');
   }
+  siteLabelByCode.set('ALL', cambodiaSite ? `${cambodiaSite.code} - ${cambodiaSite.name}` : 'Cambodia');
+  siteLabelByCode.set('all', cambodiaSite ? `${cambodiaSite.code} - ${cambodiaSite.name}` : 'Cambodia');
+  siteLabelByCode.set('__CAMBODIA__', cambodiaSite ? `${cambodiaSite.code} - ${cambodiaSite.name}` : 'Cambodia');
+  siteLabelByCode.set('0000', cambodiaSite ? `${cambodiaSite.code} - ${cambodiaSite.name}` : 'Cambodia');
   provinceOptions.forEach((group) => {
     if (!siteLabelByCode.has(String(group.code))) siteLabelByCode.set(String(group.code), group.province);
   });
@@ -106,7 +110,7 @@ export function buildSiteSelectionModel(sites = []) {
 export function inferSiteLevelFromCode(siteCode, sites = []) {
   const code = String(siteCode || '').trim();
   if (!code) return 'facility';
-  if (code === '__CAMBODIA__' || code.toLowerCase() === 'all') return 'country';
+  if (code === '__CAMBODIA__' || code.toLowerCase() === 'all' || code === '0000') return 'country';
   if (code.startsWith('province:')) return 'province';
   const site = (sites || []).find((s) => String(s.code) === code);
   const name = String(site?.name || '').toLowerCase();
@@ -211,24 +215,19 @@ export function resolveDetailSiteParams(siteCode, siteLevel, sites = []) {
   let code = String(siteCode || '').trim();
   let level = String(siteLevel || '').trim().toLowerCase();
 
-  if (code.startsWith('province:')) {
-    return { siteCode: code, siteLevel: 'province' };
+  if (code === '__CAMBODIA__' || code.toLowerCase() === 'all' || code === '0000' || level === 'country') {
+    return { siteCode: 'all', siteLevel: 'country' };
   }
 
-  if (code === '__CAMBODIA__' || code.toLowerCase() === 'all') {
-    return { siteCode: 'all', siteLevel: 'country' };
+  if (code.startsWith('province:')) {
+    return { siteCode: code, siteLevel: 'province' };
   }
 
   const inferred = inferSiteLevelFromCode(code, sites);
   if (!level) level = inferred;
 
   if (inferred === 'country' || level === 'country') {
-    const site = (sites || []).find((s) => String(s.code) === code);
-    const name = String(site?.name || '').toLowerCase();
-    const digits = code.replace(/\D/g, '');
-    if (inferred === 'country' || (name.includes('cambodia') && digits.length < 4)) {
-      return { siteCode: 'all', siteLevel: 'country' };
-    }
+    return { siteCode: 'all', siteLevel: 'country' };
   }
 
   if (inferred === 'province' && level !== 'country') {

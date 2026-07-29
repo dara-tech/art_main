@@ -612,10 +612,17 @@ async function querySummary({ periodLabel, periodType, provinceId, siteCode } = 
   }
   
   if (provinceId) {
-    const pClean = String(provinceId).replace(/\D/g, '');
-    if (pClean) {
-      conditions.push('province_id = :provinceId');
-      replacements.provinceId = pClean.padStart(2, '0');
+    const pClean = String(provinceId).trim();
+    const digits = pClean.replace(/\D/g, '');
+    if (digits) {
+      const d2 = digits.length > 2 ? digits.slice(0, 2) : digits.padStart(2, '0');
+      conditions.push('(province_id = :pId1 OR province_id = :pId2 OR province_name = :pName)');
+      replacements.pId1 = digits;
+      replacements.pId2 = d2;
+      replacements.pName = pClean;
+    } else {
+      conditions.push('province_name = :pName');
+      replacements.pName = pClean;
     }
   }
   if (siteCode && siteCode !== 'all' && siteCode !== 'ALL' && siteCode !== '__CAMBODIA__' && siteCode !== '0000') {

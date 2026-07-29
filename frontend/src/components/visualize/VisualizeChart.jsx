@@ -49,6 +49,7 @@ import {
   supportsTrendLine
 } from '../../utils/visualizeChartTypes';
 import { buildChartPointDetail, findResultForChartPoint } from '../../utils/visualizeChartDetail';
+import AppLoadingOverlay from '../ui/AppLoadingOverlay';
 import VisualizeChartDetailModal from './VisualizeChartDetailModal';
 import {
   VizChartPlot,
@@ -1051,6 +1052,7 @@ function DemographicsChart({ data, title, chartSettings = DEFAULT_CHART_SETTINGS
 
 export default function VisualizeChart({
   results = [],
+  loading = false,
   panel = 'trend',
   variant = 'bar',
   chartIndicatorIds = [],
@@ -1188,7 +1190,15 @@ export default function VisualizeChart({
   }
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
+    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-background overflow-hidden">
+      {loading && (
+        <AppLoadingOverlay
+          show={loading}
+          fullScreen={false}
+          message="កំពុងផ្ទុកទិន្នន័យ Chart..."
+          submessage="Updating chart visualizer"
+        />
+      )}
       {singleKpis.length ? <VizKpiGrid kpis={singleKpis} /> : null}
       {facilityCompare ? (
         <VizSectionHeader>

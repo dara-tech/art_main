@@ -11,6 +11,7 @@ import Patient360Page from './pages/Patient360Page.jsx';
 import VisualizePage from './pages/VisualizePage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import ReportHomePage from './pages/ReportHomePage.jsx';
+import PmtctInfantDashboardPage from './pages/PmtctInfantDashboardPage.jsx';
 
 const DocumentPage = lazy(() => import('./pages/DocumentPage.jsx'));
 const IndicatorDetailsPage = lazy(() => import('./pages/IndicatorDetailsPage.jsx'));
@@ -105,6 +106,7 @@ function App() {
         <Suspense fallback={<PageFallback />}>
           <Routes>
             <Route path="/dashboard" element={<DashboardPage onLogout={logout} />} />
+            <Route path="/pmtct-infant" element={<PmtctInfantDashboardPage onLogout={logout} />} />
             <Route path="/reports" element={<ReportHomePage onLogout={logout} />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/documents" element={<RequireNotGuestOrPdmo><DocumentPage onLogout={logout} /></RequireNotGuestOrPdmo>} />

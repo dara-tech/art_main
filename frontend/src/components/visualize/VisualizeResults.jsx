@@ -1,13 +1,17 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { cn } from '@/lib/utils';
 import { VIZ_KH } from '../../pages/visualizeKh';
 import { VizEmpty } from './visualizeUi';
 import { buildVisualizeTableModel } from '../../utils/visualizeResultsTable';
 import { buildVisualizeResultsClipboardText } from '../../utils/visualizeClipboard';
+import { buildChartPointDetail } from '../../utils/visualizeChartDetail';
+import VisualizeChartDetailModal from './VisualizeChartDetailModal';
 import Patient360DataTable from '../patient360/Patient360DataTable';
 import VisualizeChart from './VisualizeChart';
 
 export default function VisualizeResults({
   results = [],
+  loading = false,
   view = 'table',
   chartPanel = 'trend',
   chartVariant = 'bar',
@@ -46,36 +50,92 @@ export default function VisualizeResults({
     [view, tableClipboardText]
   );
 
+  const [modalDetail, setModalDetail] = useState(null);
+
+  const handleCellClick = useCallback(
+    (r, colId) => {
+      const rawResult = r?._raw || r;
+      if (!rawResult || !rawResult.indicatorId) return;
+
+      const detailObj = buildChartPointDetail(rawResult, catalog, {
+        compareMode: scopeMode === 'compare',
+        seriesLabel: rawResult.facilityLabel || rawResult.scopeLabel,
+        xLabel: rawResult.periodLabel,
+        value: rawResult.total
+      });
+
+      let filterId = null;
+      if (colId === 'male014') filterId = 'male014';
+      if (colId === 'female014') filterId = 'female014';
+      if (colId === 'maleOver14') filterId = 'maleOver14';
+      if (colId === 'femaleOver14') filterId = 'femaleOver14';
+
+      if (detailObj) {
+        detailObj.initialDemoFilter = filterId;
+        setModalDetail(detailObj);
+      }
+    },
+    [catalog, scopeMode]
+  );
+
   const columns = useMemo(
     () =>
-      tableCols.map((c) => ({
-        id: c.id,
-        label: VIZ_KH[c.labelKey] || c.id,
-        width:
-          c.id === 'periodLabel'
-            ? 88
-            : c.id === 'facilityLabel'
-              ? 140
-              : c.id === 'scopeLabel'
-                ? 120
-                : c.id === 'indicatorLabel'
-                  ? 180
-                  : 56,
-        align: c.id === 'indicatorLabel' || c.id === 'periodLabel' || c.id === 'facilityLabel' || c.id === 'scopeLabel' ? undefined : 'right',
-        mono: c.id !== 'indicatorLabel' && c.id !== 'periodLabel' && c.id !== 'facilityLabel' && c.id !== 'scopeLabel',
-        getValue: (r) => {
-          const val = r[c.id];
-          const isNumeric = c.id !== 'indicatorLabel' && c.id !== 'periodLabel' && c.id !== 'facilityLabel' && c.id !== 'scopeLabel';
-          if (isNumeric && val != null && val !== '' && val !== '—') {
-            const separator = chartSettings?.digitSeparator || 'space';
-            if (separator === 'none') return val;
-            const sep = separator === 'comma' ? ',' : ' ';
-            return String(val).replace(/\B(?=(\d{3})+(?!\d))/g, sep);
+      tableCols.map((c) => {
+        const isNumeric = c.id !== 'indicatorLabel' && c.id !== 'periodLabel' && c.id !== 'facilityLabel' && c.id !== 'scopeLabel';
+        return {
+          id: c.id,
+          label: VIZ_KH[c.labelKey] || c.id,
+          width:
+            c.id === 'periodLabel'
+              ? 80
+              : c.id === 'facilityLabel'
+                ? 150
+                : c.id === 'scopeLabel'
+                  ? 120
+                  : c.id === 'indicatorLabel'
+                    ? 220
+                    : 68,
+          align: isNumeric ? 'right' : undefined,
+          mono: isNumeric,
+          renderCell: (r) => {
+            const val = r[c.id];
+            if (val == null || val === '' || val === '—') return '—';
+
+            let displayVal = val;
+            if (isNumeric) {
+              const separator = chartSettings?.digitSeparator || 'space';
+              if (separator !== 'none') {
+                const sep = separator === 'comma' ? ',' : ' ';
+                displayVal = String(val).replace(/\B(?=(\d{3})+(?!\d))/g, sep);
+              }
+            }
+
+            const isZero = String(val).trim() === '0';
+
+            return (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCellClick(r, c.id);
+                }}
+                className={cn(
+                  'w-full text-left transition-all duration-150 cursor-pointer outline-none focus:outline-none select-none rounded px-1.5 py-0.5',
+                  isNumeric
+                    ? isZero
+                      ? 'text-right text-muted-foreground/35 hover:text-muted-foreground hover:bg-muted/20 font-medium'
+                      : 'text-right font-bold text-foreground hover:text-teal-600 dark:hover:text-teal-400 hover:bg-teal-500/10'
+                    : 'hover:text-teal-600 dark:hover:text-teal-400 font-medium hover:bg-muted/20'
+                )}
+                title={`Click to view patient details for ${c.id}`}
+              >
+                {displayVal}
+              </button>
+            );
           }
-          return val;
-        }
-      })),
-    [tableCols, chartSettings?.digitSeparator]
+        };
+      }),
+    [tableCols, chartSettings?.digitSeparator, handleCellClick]
   );
 
   if (!results.length) {
@@ -90,6 +150,7 @@ export default function VisualizeResults({
       >
         <VisualizeChart
           results={results}
+          loading={loading}
           panel={chartPanel}
           variant={chartVariant}
           chartIndicatorIds={chartIndicatorIds}
@@ -134,6 +195,20 @@ export default function VisualizeResults({
         stickyHeader={chartSettings?.fixColumnHeaders !== false}
         fixRowHeaders={Boolean(chartSettings?.fixRowHeaders)}
       />
+
+      {modalDetail && (
+        <VisualizeChartDetailModal
+          open={Boolean(modalDetail)}
+          detail={modalDetail}
+          onClose={() => setModalDetail(null)}
+          results={results}
+          catalog={catalog}
+          periods={periods}
+          pageContext={{ siteCode, siteLevel, compareSiteCodes, sites }}
+          onNavigateToPatient360={onNavigateToPatient360}
+          onBeforeNavigateToPatient360={onBeforeNavigateToPatient360}
+        />
+      )}
     </div>
   );
 }

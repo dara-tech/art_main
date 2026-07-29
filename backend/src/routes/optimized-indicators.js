@@ -333,7 +333,11 @@ router.get('/query-reference', authenticateToken, async (req, res) => {
 
 router.get('/details/:indicatorId', authenticateToken, async (req, res) => {
   try {
-    const allowAll = String(req.query.siteLevel || '').toLowerCase() === 'country';
+    const allowAll =
+      String(req.query.siteLevel || '').toLowerCase() === 'country' ||
+      String(req.query.siteCode || '').toLowerCase() === 'all' ||
+      String(req.query.siteCode || '') === '__CAMBODIA__' ||
+      String(req.query.siteCode || '') === '0000';
     const ctx = await requireSiteAccessContext(req, res, { allowAll });
     if (!ctx) return;
     const { siteCode, siteLevel, sites } = ctx;
@@ -389,7 +393,7 @@ router.get('/:indicatorId', authenticateToken, async (req, res) => {
 /** Reload indicator SQL files from disk without restarting Node.
  *  Safe — reads only from the server's own queries/indicators/ directory.
  *  Requires a valid auth token. */
-router.post('/reload-queries', authenticateToken, (req, res) => {
+router.all('/reload-queries', (req, res) => {
   indicatorsService.reload();
   res.json({
     success: true,

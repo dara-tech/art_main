@@ -594,19 +594,25 @@ export default function ReportHomePage({ onLogout }) {
     // Deduplicate rows by indicator number prefix before display.
     // Prefer rows with full-text indicator (no underscores) and higher totals.
     const getIndKey = (row) => {
-      const ind = String(row?.Indicator || '');
-      const numKey = ind.match(/^([\d.]+)/)?.[1];
-      return numKey ?? ind.toLowerCase().replace(/\s+/g, '_');
+      const rawInd = String(row?.Indicator || '').trim();
+      const formattedInd = formatIndicatorLabel(rawInd);
+      const str = formattedInd !== rawInd ? formattedInd : rawInd;
+      const numMatch = str.match(/^(?:\(old\)\s*)?0*(\d+(?:\.\d+)*)/i) || rawInd.match(/^(?:\(old\)\s*)?0*(\d+(?:\.\d+)*)/i);
+      if (numMatch) {
+        const isOld = str.includes('(old)') || rawInd.includes('(old)');
+        return isOld ? `old_${numMatch[1]}` : numMatch[1];
+      }
+      return str.toLowerCase().replace(/\s+/g, '_');
     };
     const deduped = new Map();
     for (const row of previewRows) {
       const key = getIndKey(row);
       const existing = deduped.get(key);
       const ind = String(row?.Indicator || '');
-      const indHasUnderscore = /^[a-z0-9]+_/.test(ind); // script-ID format
+      const indHasUnderscore = /^[a-z0-9]+_/.test(ind); // script-ID format like 01_active_art_previous
       const rowTotal = Number(row?.TOTAL || 0) + Number(row?.Male_0_14 || 0) + Number(row?.Female_0_14 || 0) + Number(row?.Male_over_14 || 0) + Number(row?.Female_over_14 || 0);
       const existTotal = existing ? (Number(existing?.TOTAL || 0) + Number(existing?.Male_0_14 || 0) + Number(existing?.Female_0_14 || 0) + Number(existing?.Male_over_14 || 0) + Number(existing?.Female_over_14 || 0)) : -1;
-      if (!existing || (!indHasUnderscore && rowTotal >= existTotal)) {
+      if (!existing || (!indHasUnderscore && (rowTotal >= existTotal || existTotal === 0)) || (indHasUnderscore && existTotal === 0 && rowTotal > 0)) {
         deduped.set(key, row);
       }
     }

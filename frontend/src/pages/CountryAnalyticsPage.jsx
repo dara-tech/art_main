@@ -15,7 +15,10 @@ import {
   RiDeleteBinLine,
   RiSettings3Line,
   RiAlertLine,
-  RiDownloadCloud2Line
+  RiDownloadCloud2Line,
+  RiFilter3Line,
+  RiListCheck,
+  RiCodeSSlashLine
 } from '@remixicon/react';
 import { AnimatePresence, motion } from 'motion/react';
 import { toast } from 'sonner';
@@ -25,6 +28,7 @@ import {
   getAnalyticsStatus,
   getCountryAnalytics,
   getProvinceAnalytics,
+  getAnalyticsSummary,
   getEtlHistory,
   triggerAnalyticsRefresh,
   clearAnalyticsData,
@@ -42,6 +46,7 @@ import Patient360Layout from '../components/patient360/Patient360Layout';
 import AppPageShell from '../components/layout/AppPageShell';
 import QuarterSelectModal from '../components/visualize/QuarterSelectModal';
 import DatabaseConnectionModal from '../components/database/DatabaseConnectionModal';
+import AppLoadingOverlay, { AppSpinner } from '@/components/ui/AppLoadingOverlay';
 import { getPeriodByKey, listRecentQuarters } from '../utils/visualizePeriods';
 import { Patient360NavBar, Patient360NavRow } from '../components/patient360/Patient360NavBar';
 import { VizToolbarBtn } from '../components/visualize/visualizeToolbarUi';
@@ -53,6 +58,70 @@ import {
   vizKpiCardClass
 } from '../components/layout/appNavStyles';
 import cn from 'clsx';
+
+const ALL_WAREHOUSE_INDICATORS = [
+  { id: '01_active_art_previous', name: '1. ចំនួនអ្នកជំងឺ ART សកម្មដល់ចុងត្រីមាសមុន (Active ART previous)' },
+  { id: '02_active_pre_art_previous', name: '2. ចំនួនអ្នកជំងឺ Pre-ART សកម្មដល់ចុងត្រីមាសមុន (Active Pre-ART previous)' },
+  { id: '03_newly_enrolled', name: '3. ចំនួនអ្នកជំងឺចុះឈ្មោះថ្មី (Newly Enrolled)' },
+  { id: '04_retested_positive', name: '4. ចំនួនអ្នកជំងឺដែលវិជ្ជមានពីតេស្តបញ្ជាក់ (Re-tested positive)' },
+  { id: '05_newly_initiated', name: '5. ចំនួនអ្នកជំងឺចាប់ផ្តើមព្យាបាលដោយ ARV ថ្មី (Newly Initiated)' },
+  { id: '05.1.1_art_same_day', name: '5.1.1. ក្នុងថ្ងៃតែមួយ (Same day)' },
+  { id: '05.1.2_art_1_7_days', name: '5.1.2. ពី ១ ទៅ ៧ ថ្ងៃ (1-7 days)' },
+  { id: '05.1.3_art_over_7_days', name: '5.1.3. ច្រើនជាង ៧ ថ្ងៃ (>7 days)' },
+  { id: '05.2_art_with_tld', name: '5.2. ចាប់ផ្តើម ART ដោយ TLD (Started with TLD)' },
+  { id: '05.3_art_pregnant', name: '5.3. ចំនួនអ្នកជំងឺ ART ថ្មីដែលមានផ្ទៃពោះ (Pregnant)' },
+  { id: '06_transfer_in', name: '6. បញ្ជូនចូល (Transfer-in)' },
+  { id: '07_lost_and_return', name: '7. បោះបង់ហើយត្រឡប់ (Lost & Return)' },
+  { id: '08_tpt_new_start', name: '8. ចំនួនអ្នកជំងឺចាប់ផ្តើម TPT ក្នុងត្រីមាសនេះ (Started TPT)' },
+  { id: '09.1_dead', name: '9.1. ស្លាប់ (Dead)' },
+  { id: '09.2_lost_to_followup', name: '9.2. បោះបង់ (LTFU)' },
+  { id: '09.3_transfer_out', name: '9.3. ផ្ទេរចេញ (Transfer-out)' },
+  { id: '10_active_pre_art', name: '10. Pre-ART សកម្ម (Active Pre-ART)' },
+  { id: '11_active_art_current', name: '11. ART សកម្ម (Active ART)' },
+  { id: '11.1_eligible_mmd', name: '11.1. សមស្រប MMD (Eligible MMD)' },
+  { id: '11.2_mmd', name: '11.2. MMD' },
+  { id: '11.3_tld', name: '11.3. TLD' },
+  { id: '11.4_tpt_start', name: '11.4. ចាប់ផ្តើម TPT (TPT Start)' },
+  { id: '11.5_tpt_complete', name: '11.5. បញ្ចប់ TPT (TPT Complete)' },
+  { id: '11.5.1_started_art_over_6m', name: '11.5.1. ចាប់ផ្តើម ART > 6M' },
+  { id: '11.6_eligible_vl_test', name: '11.6. សមស្របតេស្ត VL (Eligible VL)' },
+  { id: '11.7_vl_tested_12m', name: '11.7. VL ក្នុង 12M' },
+  { id: '11.8_vl_suppression', name: '11.8. VL បង្ក្រាប (VL suppression)' },
+  { id: '11.9_eligible_eac_high_vl', name: '11.9. សមស្រប EAC' },
+  { id: '11.10_eac_session_1', name: '11.10. EAC 1' },
+  { id: '11.11_eac_session_2', name: '11.11. EAC 2' },
+  { id: '11.12_eac_session_3', name: '11.12. EAC 3' },
+  { id: '11.13_vl_followup_6m_after_eac', name: '11.13. VL តាមដាន ≤6M' },
+  { id: '11.14_vl_followup_6m_apart_high_vl', name: '11.14. VL តាមដាន ≥6M' }
+];
+
+const INDICATOR_PRESET_BUNDLES = [
+  {
+    id: 'newly',
+    label: 'Newly Enrolled & Initiated',
+    ids: ['03_newly_enrolled', '05_newly_initiated', '05.1.1_art_same_day', '05.1.2_art_1_7_days', '05.1.3_art_over_7_days', '05.2_art_with_tld', '05.3_art_pregnant']
+  },
+  {
+    id: 'active',
+    label: 'Active & Retention',
+    ids: ['01_active_art_previous', '02_active_pre_art_previous', '10_active_pre_art', '11_active_art_current']
+  },
+  {
+    id: 'vl',
+    label: 'Viral Load & EAC',
+    ids: ['11.6_eligible_vl_test', '11.7_vl_tested_12m', '11.8_vl_suppression', '11.9_eligible_eac_high_vl', '11.10_eac_session_1', '11.11_eac_session_2', '11.12_eac_session_3', '11.13_vl_followup_6m_after_eac', '11.14_vl_followup_6m_apart_high_vl']
+  },
+  {
+    id: 'tpt',
+    label: 'TPT Care Cascade',
+    ids: ['08_tpt_new_start', '11.4_tpt_start', '11.5_tpt_complete', '11.5.1_started_art_over_6m']
+  },
+  {
+    id: 'exits',
+    label: 'Exits & LTFU',
+    ids: ['09.1_dead', '09.2_lost_to_followup', '09.3_transfer_out']
+  }
+];
 
 export default function CountryAnalyticsPage({ onLogout }) {
   const { user } = useAuth();
@@ -92,6 +161,79 @@ export default function CountryAnalyticsPage({ onLogout }) {
 
   // Settings Modal state
   const [connectionModalOpen, setConnectionModalOpen] = useState(false);
+
+  // Facility site breakdown state (Level 2 drill-down)
+  const [expandedProvinces, setExpandedProvinces] = useState(new Set());
+  const [siteBreakdownMap, setSiteBreakdownMap] = useState({});
+  const [loadingProvinceSites, setLoadingProvinceSites] = useState({});
+
+  const toggleProvinceRow = async (indicator, provinceId, provinceName) => {
+    const targetProv = provinceId || provinceName;
+    const key = `${indicator}:${targetProv}`;
+    const next = new Set(expandedProvinces);
+    if (next.has(key)) {
+      next.delete(key);
+      setExpandedProvinces(next);
+      return;
+    }
+
+    next.add(key);
+    setExpandedProvinces(next);
+
+    if (!siteBreakdownMap[key]) {
+      setLoadingProvinceSites((prev) => ({ ...prev, [key]: true }));
+      try {
+        const res = await getAnalyticsSummary({
+          ...currentPeriod,
+          provinceId: targetProv
+        });
+        if (res.success && Array.isArray(res.data)) {
+          const normTarget = String(indicator || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          const siteRowsForIndicator = res.data.filter((r) => {
+            const rInd = String(r.indicator || r.Indicator || '');
+            const normR = rInd.toLowerCase().replace(/[^a-z0-9]/g, '');
+            return rInd === indicator || normR === normTarget || (normR && normTarget && (normR.includes(normTarget) || normTarget.includes(normR)));
+          });
+          setSiteBreakdownMap((prev) => ({ ...prev, [key]: siteRowsForIndicator }));
+        }
+      } catch (e) {
+        console.error('Failed to load site breakdown for province:', e);
+      } finally {
+        setLoadingProvinceSites((prev) => ({ ...prev, [key]: false }));
+      }
+    }
+  };
+
+  // Sync Specific Indicators state
+  const [selectedSyncIndicators, setSelectedSyncIndicators] = useState([]);
+  const [syncIndicatorsModalOpen, setSyncIndicatorsModalOpen] = useState(false);
+  const [syncIndicatorSearch, setSyncIndicatorSearch] = useState('');
+
+  // SQL Inspection state
+  const [sqlModalOpen, setSqlModalOpen] = useState(false);
+  const [viewingSqlItem, setViewingSqlItem] = useState(null);
+  const [loadingSql, setLoadingSql] = useState(false);
+
+  const handleInspectSql = async (indicatorRow) => {
+    setLoadingSql(true);
+    setSqlModalOpen(true);
+    try {
+      const res = await getIndicatorReference();
+      if (res.success && Array.isArray(res.data)) {
+        const match = res.data.find(d => {
+          const sql = d.aggregateSql || '';
+          const m = sql.match(/['"]([^'"]+)['"]\s+AS\s+Indicator/i);
+          const label = m ? m[1].trim() : d.indicatorId;
+          return label === indicatorRow.indicator || d.indicatorId === indicatorRow.indicator || d.indicatorId === indicatorRow.rawIndicator;
+        });
+        setViewingSqlItem(match || { indicatorId: indicatorRow.indicator, aggregateSql: '-- SQL query reference not available.' });
+      }
+    } catch (e) {
+      toast.error('Failed to load SQL reference: ' + e.message);
+    } finally {
+      setLoadingSql(false);
+    }
+  };
 
   // Delete a single indicator row from the warehouse for the current period
   const handleDeleteIndicator = async (indicatorText) => {
@@ -218,7 +360,8 @@ export default function CountryAnalyticsPage({ onLogout }) {
     try {
       const payload = {
         ...currentPeriod,
-        siteCodes: [siteCode]
+        siteCodes: [siteCode],
+        ...(selectedSyncIndicators.length > 0 ? { indicators: selectedSyncIndicators } : {})
       };
       const res = await triggerAnalyticsRefresh(payload);
       if (res.success) {
@@ -329,12 +472,18 @@ export default function CountryAnalyticsPage({ onLogout }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPeriod.periodLabel]);
 
+  const wasEtlRunningRef = useRef(false);
+
   useEffect(() => {
     let timer = null;
     if (warehouseStatus.etlRunning) {
+      wasEtlRunningRef.current = true;
       timer = setInterval(() => {
         fetchWarehouseStatus(true);
-      }, 4000);
+      }, 3000);
+    } else if (wasEtlRunningRef.current) {
+      wasEtlRunningRef.current = false;
+      runAnalytics();
     }
     return () => {
       if (timer) clearInterval(timer);
@@ -380,7 +529,11 @@ export default function CountryAnalyticsPage({ onLogout }) {
       return;
     }
     try {
-      const res = await triggerAnalyticsRefresh(currentPeriod);
+      const payload = {
+        ...currentPeriod,
+        ...(selectedSyncIndicators.length > 0 ? { indicators: selectedSyncIndicators } : {})
+      };
+      const res = await triggerAnalyticsRefresh(payload);
       if (res.success) {
         toast.success(res.message || 'Warehouse pre-aggregation started.');
         setWarehouseStatus(prev => ({ ...prev, etlRunning: true }));
@@ -399,7 +552,11 @@ export default function CountryAnalyticsPage({ onLogout }) {
       return;
     }
     try {
-      const res = await triggerAnalyticsRefresh({ periods: keys });
+      const payload = {
+        periods: keys,
+        ...(selectedSyncIndicators.length > 0 ? { indicators: selectedSyncIndicators } : {})
+      };
+      const res = await triggerAnalyticsRefresh(payload);
       if (res.success) {
         toast.success(res.message || `Batch sync started for ${keys.length} periods.`);
         setWarehouseStatus(prev => ({ ...prev, etlRunning: true }));
@@ -704,6 +861,17 @@ export default function CountryAnalyticsPage({ onLogout }) {
           }
         />
 
+        {/* Indicator Sync Filter Button */}
+        <VizToolbarBtn
+          icon={RiFilter3Line}
+          iconClassName={selectedSyncIndicators.length > 0 ? 'text-purple-600 font-bold' : TOOLBAR_ICON.purple}
+          label={selectedSyncIndicators.length === 0 ? 'Indicators: All' : `Indicators (${selectedSyncIndicators.length})`}
+          showLabel={true}
+          disabled={warehouseStatus.etlRunning || statusLoading}
+          onClick={() => setSyncIndicatorsModalOpen(true)}
+          title="Select specific indicators to sync in warehouse"
+        />
+
         {/* Refresh Warehouse Button */}
         <VizToolbarBtn
           icon={warehouseStatus.etlRunning ? RiLoader4Line : RiRefreshLine}
@@ -805,19 +973,62 @@ export default function CountryAnalyticsPage({ onLogout }) {
           <Card className={cn(p360CardClass, 'flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col bg-card')}>
             <CardContent className="relative flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col p-0">
               
-              {/* Spinner loader layout */}
+              {/* Spinner loader overlay */}
               {loading && !countryRows.length ? (
-                <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/35 backdrop-blur-[2px]">
-                  <div className="inline-flex items-center gap-2 text-xs text-muted-foreground bg-card px-4 py-3 border shadow-md">
-                    <RiLoader4Line className="size-4 animate-spin text-primary" />
-                    កំពុងផ្ទុកទិន្នន័យវិភាគ...
-                  </div>
-                </div>
+                <AppLoadingOverlay message="កំពុងផ្ទុកទិន្នន័យវិភាគ..." submessage="Loading warehouse analytics reports..." />
               ) : null}
 
               {/* Main content scrollable panel */}
               <div className="flex-1 overflow-auto p-4 space-y-4">
                 
+                {/* Smart Missing Data / Quick Sync Action Banner */}
+                {(!warehouseStatus.hasData || (missingIndicatorsList && missingIndicatorsList.length > 0)) && (
+                  <div className="bg-purple-500/10 border border-purple-500/30 p-3 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-foreground animate-in fade-in duration-150">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-purple-500/20 text-purple-600 font-bold">
+                        <RiAlertLine className="size-4" />
+                      </div>
+                      <div>
+                        <div className="font-bold text-foreground">
+                          {!warehouseStatus.hasData
+                            ? `ឃ្លាំងទិន្នន័យមិនទាន់មានទិន្នន័យ Sync សម្រាប់ ${currentPeriod.periodLabel}`
+                            : `${missingIndicatorsList.length} សូចនាករមិនទាន់មានក្នុងឃ្លាំងទិន្នន័យ (${missingIndicatorsList.length} missing indicator(s))`}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5">
+                          {!warehouseStatus.hasData
+                            ? 'ចុច [Sync Full Period] ដើម្បីទាញទិន្នន័យ pre-aggregate ទាំងអស់ក្នុងឃ្លាំង'
+                            : `ចុច [Sync Missing] ដើម្បីទាញយកតែ ${missingIndicatorsList.length} សូចនាករដែលខ្វះ`}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {missingIndicatorsList && missingIndicatorsList.length > 0 && (
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setSelectedSyncIndicators(missingIndicatorsList);
+                            handleRefreshWarehouse();
+                          }}
+                          disabled={warehouseStatus.etlRunning}
+                          className="h-7 text-xs bg-purple-600 hover:bg-purple-700 text-white font-bold px-3 rounded cursor-pointer"
+                        >
+                          <RiRefreshLine className="size-3.5 mr-1" />
+                          Sync {missingIndicatorsList.length} Missing Indicators
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        onClick={handleRefreshWarehouse}
+                        disabled={warehouseStatus.etlRunning}
+                        className="h-7 text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-bold px-3 rounded cursor-pointer"
+                      >
+                        <RiDatabase2Line className="size-3.5 mr-1" />
+                        Sync Full Period ({currentPeriod.periodLabel})
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Sync Status / Info Bar */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-muted-foreground border-b pb-3">
                   <div>
@@ -1089,21 +1300,32 @@ export default function CountryAnalyticsPage({ onLogout }) {
                                   <td className="p-2.5 text-right tabular-nums text-report-female/95 font-medium">{formatVal(row.Female_over_14)}</td>
                                   <td className="p-2.5 text-right tabular-nums font-black text-foreground underline decoration-border/60 bg-muted/5">{formatVal(grandTotal)}</td>
                                   <td className="p-2.5 text-right tabular-nums font-medium text-muted-foreground">{formatVal(row.site_count)}</td>
-                                  {/* Delete row button */}
+                                  {/* Row Actions: Inspect SQL & Delete */}
                                   <td
                                     className="p-1 text-center"
                                     onClick={(e) => e.stopPropagation()}
                                   >
-                                    <button
-                                      title={`Delete indicator: ${row.indicator}`}
-                                      onClick={() => handleDeleteIndicator(row.indicator)}
-                                      disabled={deletingIndicator === row.indicator}
-                                      className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 p-1 rounded hover:bg-red-500/15 text-red-400 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                      {deletingIndicator === row.indicator
-                                        ? <RiLoader4Line className="size-3.5 animate-spin" />
-                                        : <RiDeleteBinLine className="size-3.5" />}
-                                    </button>
+                                    <div className="inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                                      <button
+                                        type="button"
+                                        title={`Inspect SQL query for: ${row.indicator}`}
+                                        onClick={() => handleInspectSql(row)}
+                                        className="p-1 rounded hover:bg-purple-500/15 text-purple-400 hover:text-purple-600 transition-colors cursor-pointer"
+                                      >
+                                        <RiCodeSSlashLine className="size-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        title={`Delete indicator: ${row.indicator}`}
+                                        onClick={() => handleDeleteIndicator(row.indicator)}
+                                        disabled={deletingIndicator === row.indicator}
+                                        className="p-1 rounded hover:bg-red-500/15 text-red-400 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                      >
+                                        {deletingIndicator === row.indicator
+                                          ? <RiLoader4Line className="size-3.5 animate-spin" />
+                                          : <RiDeleteBinLine className="size-3.5" />}
+                                      </button>
+                                    </div>
                                   </td>
                                 </tr>
 
@@ -1146,19 +1368,102 @@ export default function CountryAnalyticsPage({ onLogout }) {
                                               </thead>
                                               <tbody className="divide-y divide-border/60">
                                                 {matchingProvinces.map((prov, pIdx) => {
+                                                  const provKey = `${row.indicator}:${prov.province_id}`;
+                                                  const isProvExpanded = expandedProvinces.has(provKey);
+                                                  const siteRows = siteBreakdownMap[provKey] || [];
+                                                  const isLoadingSites = loadingProvinceSites[provKey];
                                                   const provTotal = Number(prov.Male_0_14 || 0) + Number(prov.Female_0_14 || 0) + Number(prov.Male_over_14 || 0) + Number(prov.Female_over_14 || 0);
                                                   const pct = grandTotal > 0 ? (provTotal / grandTotal) * 100 : 0;
+
                                                   return (
-                                                    <tr key={`${prov.province_id}-${pIdx}`} className="hover:bg-muted/20 transition-colors duration-150">
-                                                      <td className="p-2 pl-3 font-semibold text-foreground">{prov.province_name || `Province ${prov.province_id}`}</td>
-                                                      <td className="p-2 text-right tabular-nums">{formatVal(prov.Male_0_14)}</td>
-                                                      <td className="p-2 text-right tabular-nums">{formatVal(prov.Female_0_14)}</td>
-                                                      <td className="p-2 text-right tabular-nums">{formatVal(prov.Male_over_14)}</td>
-                                                      <td className="p-2 text-right tabular-nums">{formatVal(prov.Female_over_14)}</td>
-                                                      <td className="p-2 text-right tabular-nums font-bold text-foreground bg-muted/5">{formatVal(provTotal)}</td>
-                                                      <td className="p-2 text-right tabular-nums font-medium text-primary bg-primary/5">{pct.toFixed(1)}%</td>
-                                                      <td className="p-2 text-right tabular-nums pr-3 text-muted-foreground">{formatVal(prov.site_count)}</td>
-                                                    </tr>
+                                                    <Fragment key={`${prov.province_id}-${pIdx}`}>
+                                                      <tr
+                                                        onClick={() => toggleProvinceRow(row.indicator, prov.province_id)}
+                                                        className="hover:bg-muted/30 transition-colors duration-150 cursor-pointer group/prov"
+                                                        title="Click to view facility site breakdown for this province"
+                                                      >
+                                                        <td className="p-2 pl-3 font-semibold text-foreground flex items-center gap-1.5">
+                                                          {isProvExpanded ? (
+                                                            <RiArrowUpSLine className="size-3.5 text-primary" />
+                                                          ) : (
+                                                            <RiArrowDownSLine className="size-3.5 text-muted-foreground group-hover/prov:text-foreground" />
+                                                          )}
+                                                          <span>{prov.province_name || `Province ${prov.province_id}`}</span>
+                                                        </td>
+                                                        <td className="p-2 text-right tabular-nums">{formatVal(prov.Male_0_14)}</td>
+                                                        <td className="p-2 text-right tabular-nums">{formatVal(prov.Female_0_14)}</td>
+                                                        <td className="p-2 text-right tabular-nums">{formatVal(prov.Male_over_14)}</td>
+                                                        <td className="p-2 text-right tabular-nums">{formatVal(prov.Female_over_14)}</td>
+                                                        <td className="p-2 text-right tabular-nums font-bold text-foreground bg-muted/5">{formatVal(provTotal)}</td>
+                                                        <td className="p-2 text-right tabular-nums font-medium text-primary bg-primary/5">{pct.toFixed(1)}%</td>
+                                                        <td className="p-2 text-right tabular-nums pr-3 text-muted-foreground">
+                                                          <span className="inline-flex items-center gap-1 text-sky-600 font-semibold bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200 group-hover/prov:bg-sky-100 transition-colors">
+                                                            {formatVal(prov.site_count)} sites
+                                                          </span>
+                                                        </td>
+                                                      </tr>
+
+                                                      {/* Level 2 Sub-Drilldown: Facility Sites Table */}
+                                                      {isProvExpanded && (
+                                                        <tr>
+                                                          <td colSpan={8} className="bg-sky-50/25 p-2 pl-6 border-b border-t border-sky-100">
+                                                            <div className="space-y-1.5">
+                                                              <div className="flex items-center justify-between text-[9px] font-bold text-sky-800 uppercase tracking-wider">
+                                                                <span>Facility Sites Breakdown — {prov.province_name || prov.province_id}</span>
+                                                                <span>{isLoadingSites ? 'Loading sites...' : `${siteRows.length} facility sites reporting`}</span>
+                                                              </div>
+
+                                                              {isLoadingSites ? (
+                                                                <div className="p-3 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+                                                                  <AppSpinner size="xs" />
+                                                                  Loading facility site breakdown for {prov.province_name}...
+                                                                </div>
+                                                              ) : siteRows.length === 0 ? (
+                                                                <div className="p-2 text-center text-[10px] text-muted-foreground italic bg-background/50 border rounded">
+                                                                  No individual facility site records found for this indicator in {prov.province_name}.
+                                                                </div>
+                                                              ) : (
+                                                                <div className="border border-sky-200/80 rounded overflow-hidden bg-background shadow-xs">
+                                                                  <table className="w-full text-[9px] border-collapse">
+                                                                    <thead>
+                                                                      <tr className="bg-sky-100/60 border-b border-sky-200 text-sky-900 font-bold uppercase tracking-wider text-left">
+                                                                        <th className="p-1.5 pl-2.5 w-20">Code</th>
+                                                                        <th className="p-1.5">Facility Site Name</th>
+                                                                        <th className="p-1.5 text-right">Male 0-14</th>
+                                                                        <th className="p-1.5 text-right">Female 0-14</th>
+                                                                        <th className="p-1.5 text-right">Male &gt;14</th>
+                                                                        <th className="p-1.5 text-right">Female &gt;14</th>
+                                                                        <th className="p-1.5 text-right font-black text-foreground pr-2.5">Total</th>
+                                                                      </tr>
+                                                                    </thead>
+                                                                    <tbody className="divide-y divide-sky-100">
+                                                                      {siteRows.map((siteRow, sIdx) => {
+                                                                        const siteTotal = Number(siteRow.male_0_14 || siteRow.Male_0_14 || 0) +
+                                                                          Number(siteRow.female_0_14 || siteRow.Female_0_14 || 0) +
+                                                                          Number(siteRow.male_over_14 || siteRow.Male_over_14 || 0) +
+                                                                          Number(siteRow.female_over_14 || siteRow.Female_over_14 || 0);
+
+                                                                        return (
+                                                                          <tr key={`${siteRow.site_code}-${sIdx}`} className="hover:bg-sky-50/50 transition-colors">
+                                                                            <td className="p-1.5 pl-2.5 font-mono text-muted-foreground font-semibold">{siteRow.site_code}</td>
+                                                                            <td className="p-1.5 font-medium text-foreground">{siteRow.site_name || `Site ${siteRow.site_code}`}</td>
+                                                                            <td className="p-1.5 text-right tabular-nums">{formatVal(siteRow.male_0_14 || siteRow.Male_0_14)}</td>
+                                                                            <td className="p-1.5 text-right tabular-nums">{formatVal(siteRow.female_0_14 || siteRow.Female_0_14)}</td>
+                                                                            <td className="p-1.5 text-right tabular-nums">{formatVal(siteRow.male_over_14 || siteRow.Male_over_14)}</td>
+                                                                            <td className="p-1.5 text-right tabular-nums">{formatVal(siteRow.female_over_14 || siteRow.Female_over_14)}</td>
+                                                                            <td className="p-1.5 text-right tabular-nums font-bold text-foreground bg-muted/10 pr-2.5">{formatVal(siteTotal)}</td>
+                                                                          </tr>
+                                                                        );
+                                                                      })}
+                                                                    </tbody>
+                                                                  </table>
+                                                                </div>
+                                                              )}
+                                                            </div>
+                                                          </td>
+                                                        </tr>
+                                                      )}
+                                                    </Fragment>
                                                   );
                                                 })}
                                               </tbody>
@@ -1335,7 +1640,7 @@ export default function CountryAnalyticsPage({ onLogout }) {
 
               {cleanOption === 'all' && (
                 <div className="p-2.5 bg-rose-50 border border-rose-100 text-rose-800 text-[10px] leading-snug">
-                  <strong>⚠️ ព្រមាន (Warning):</strong> ជម្រើសនេះនឹងលុបគ្រប់ត្រីមាស និងគ្រប់ខែទាំងអស់ពីឃ្លាំងទិន្នន័យ។
+                  <strong>ព្រមាន (Warning):</strong> ជម្រើសនេះនឹងលុបគ្រប់ត្រីមាស និងគ្រប់ខែទាំងអស់ពីឃ្លាំងទិន្នន័យ។
                 </div>
               )}
             </div>
@@ -1540,6 +1845,255 @@ export default function CountryAnalyticsPage({ onLogout }) {
                 className="text-[11px] h-8 rounded-none px-4 font-medium bg-background"
               >
                 បិទ (Close)
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Indicator Selection Modal for Warehouse Sync */}
+      {syncIndicatorsModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 p-4 animate-in fade-in duration-200" role="dialog" aria-modal="true">
+          <div className="flex max-h-[min(90vh,42rem)] w-full max-w-xl flex-col overflow-hidden bg-card shadow-2xl border" onClick={(e) => e.stopPropagation()}>
+            <div className="flex shrink-0 items-center justify-between border-b border-border bg-muted/30 px-5 py-3.5">
+              <div>
+                <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+                  <RiFilter3Line className="size-5 text-purple-600" />
+                  ជ្រើសរើសសូចនាករសម្រាប់ Sync (Select Indicators)
+                </h2>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {selectedSyncIndicators.length === 0
+                    ? 'Currently syncing ALL indicators. Select specific indicators below to target.'
+                    : `Targeted ${selectedSyncIndicators.length} of ${ALL_WAREHOUSE_INDICATORS.length} indicators for sync.`}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center border border-border/80 bg-background/80 hover:bg-muted text-muted-foreground hover:text-foreground"
+                onClick={() => setSyncIndicatorsModalOpen(false)}
+                aria-label="Close"
+              >
+                <RiCloseCircleLine className="size-5" />
+              </button>
+            </div>
+
+            <div className="p-4 border-b border-border bg-muted/10 flex flex-col gap-2.5">
+              <div className="relative flex items-center">
+                <RiSearchLine className="absolute left-3 size-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={syncIndicatorSearch}
+                  onChange={(e) => setSyncIndicatorSearch(e.target.value)}
+                  placeholder="Search indicators..."
+                  className="w-full bg-background border border-border rounded-none py-1.5 pl-9 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+
+              {/* Quick Category Preset Pills */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mr-0.5">Presets:</span>
+                {INDICATOR_PRESET_BUNDLES.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => setSelectedSyncIndicators(preset.ids)}
+                    className="text-[10px] font-semibold bg-card hover:bg-purple-500/20 hover:text-purple-600 text-foreground px-2 py-0.5 rounded border border-border/70 transition-colors cursor-pointer"
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between text-xs pt-1">
+                <span className="text-[11px] text-muted-foreground font-medium">
+                  {selectedSyncIndicators.length === 0 ? 'Status: All Indicators (Default)' : `Status: ${selectedSyncIndicators.length} Selected`}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSyncIndicators(ALL_WAREHOUSE_INDICATORS.map(ind => ind.id))}
+                    className="text-[11px] font-bold text-primary hover:underline cursor-pointer"
+                  >
+                    Select All
+                  </button>
+                  <span className="text-muted-foreground">|</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSyncIndicators([])}
+                    className="text-[11px] font-bold text-rose-500 hover:underline cursor-pointer"
+                  >
+                    Clear (All)
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 flex flex-col gap-2">
+              {ALL_WAREHOUSE_INDICATORS.filter(ind =>
+                ind.name.toLowerCase().includes(syncIndicatorSearch.toLowerCase()) ||
+                ind.id.toLowerCase().includes(syncIndicatorSearch.toLowerCase())
+              ).map((ind) => {
+                const isChecked = selectedSyncIndicators.includes(ind.id);
+                return (
+                  <label
+                    key={ind.id}
+                    className={cn(
+                      "flex items-start gap-3 p-2.5 rounded border transition-all cursor-pointer select-none",
+                      isChecked ? "bg-purple-500/10 border-purple-500/40 text-foreground font-semibold" : "bg-card border-border/60 hover:bg-muted/40 text-foreground/85"
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => {
+                        if (isChecked) {
+                          setSelectedSyncIndicators(selectedSyncIndicators.filter(id => id !== ind.id));
+                        } else {
+                          setSelectedSyncIndicators([...selectedSyncIndicators, ind.id]);
+                        }
+                      }}
+                      className="mt-0.5 rounded border-border text-primary focus:ring-primary focus:ring-offset-0 cursor-pointer"
+                    />
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="text-xs leading-snug">{ind.name}</span>
+                      <span className="text-[10px] text-muted-foreground font-mono mt-0.5">{ind.id}.sql</span>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+
+            <div className="flex shrink-0 items-center justify-between border-t border-border bg-muted/20 px-5 py-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setSyncIndicatorsModalOpen(false)}
+                className="text-[11px] h-8 rounded-none px-3 font-medium bg-background"
+              >
+                Close
+              </Button>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSyncIndicatorsModalOpen(false)}
+                  className="text-[11px] h-8 rounded-none px-3 font-medium"
+                >
+                  Save Selection
+                </Button>
+
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={warehouseStatus.etlRunning}
+                  onClick={() => {
+                    setSyncIndicatorsModalOpen(false);
+                    handleRefreshWarehouse();
+                  }}
+                  className="text-[11px] h-8 rounded-none px-4 font-bold bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1.5 cursor-pointer"
+                >
+                  {warehouseStatus.etlRunning ? (
+                    <RiLoader4Line className="size-3.5 animate-spin" />
+                  ) : (
+                    <RiRefreshLine className="size-3.5" />
+                  )}
+                  {selectedSyncIndicators.length === 0
+                    ? 'Sync All Indicators'
+                    : `Sync Selected (${selectedSyncIndicators.length})`}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SQL Inspection Audit Modal */}
+      {sqlModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 p-4 animate-in fade-in duration-200" role="dialog" aria-modal="true">
+          <div className="flex max-h-[min(90vh,46rem)] w-full max-w-3xl flex-col overflow-hidden bg-card shadow-2xl border" onClick={(e) => e.stopPropagation()}>
+            <div className="flex shrink-0 items-center justify-between border-b border-border bg-muted/30 px-5 py-3.5">
+              <div>
+                <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+                  <RiCodeSSlashLine className="size-5 text-purple-600" />
+                  SQL Query Reference Inspection
+                </h2>
+                <p className="text-[11px] text-muted-foreground mt-0.5 font-mono">
+                  {viewingSqlItem?.indicatorId || 'SQL Reference'}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center border border-border/80 bg-background/80 hover:bg-muted text-muted-foreground hover:text-foreground"
+                onClick={() => setSqlModalOpen(false)}
+                aria-label="Close"
+              >
+                <RiCloseCircleLine className="size-5" />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-4">
+              {loadingSql ? (
+                <div className="flex min-h-48 items-center justify-center text-xs text-muted-foreground">
+                  <RiLoader4Line className="size-4 animate-spin mr-2 text-primary" />
+                  Loading SQL query reference...
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-foreground">Aggregate SQL Query (`{viewingSqlItem?.aggregatePath || `${viewingSqlItem?.indicatorId}.sql`}`)</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(viewingSqlItem?.aggregateSql || '');
+                          toast.success('SQL query copied to clipboard!');
+                        }}
+                        className="text-[10px] font-bold text-primary hover:underline cursor-pointer"
+                      >
+                        Copy SQL
+                      </button>
+                    </div>
+                    <pre className="p-3 bg-muted/40 border border-border text-[11px] font-mono text-foreground overflow-x-auto rounded leading-relaxed select-all max-h-72">
+                      {viewingSqlItem?.aggregateSql || '-- Aggregate SQL reference not available.'}
+                    </pre>
+                  </div>
+
+                  {viewingSqlItem?.detailSql && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-foreground">Detail Drill-Down SQL Query (`{viewingSqlItem?.detailPath || `${viewingSqlItem?.indicatorId}_details.sql`}`)</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(viewingSqlItem?.detailSql || '');
+                            toast.success('Detail SQL query copied to clipboard!');
+                          }}
+                          className="text-[10px] font-bold text-primary hover:underline cursor-pointer"
+                        >
+                          Copy Detail SQL
+                        </button>
+                      </div>
+                      <pre className="p-3 bg-muted/40 border border-border text-[11px] font-mono text-foreground overflow-x-auto rounded leading-relaxed select-all max-h-72">
+                        {viewingSqlItem?.detailSql}
+                      </pre>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div className="flex shrink-0 justify-end gap-2 border-t border-border bg-muted/20 px-5 py-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setSqlModalOpen(false)}
+                className="text-[11px] h-8 rounded-none px-4 font-medium bg-background"
+              >
+                Close
               </Button>
             </div>
           </div>

@@ -14,6 +14,7 @@ export function buildVisualizeTableModel(results = [], catalog = [], scopeMode =
 
   const rows = results.map((r, idx) => ({
     _key: idx,
+    _raw: r,
     periodLabel: r.periodLabel || r.periodKey,
     facilityLabel: r.facilityLabel || r.facilityCode || (r.aggregated ? r.scopeLabel : '') || '—',
     scopeLabel: r.scopeLabel || '—',
@@ -58,9 +59,22 @@ export function buildVisualizeTableModel(results = [], catalog = [], scopeMode =
     }
 
     if (anyHasTotal) {
+      const firstRaw = results[0] || {};
       rows.push({
         _key: 'grand-total',
         isTotal: true,
+        _raw: {
+          ...firstRaw,
+          facilityCode: 'all',
+          facilityLabel: VIZ_KH.grandTotal || 'សរុបរួម',
+          scopeLabel: 'Cambodia',
+          total: sumTotal,
+          male014: sumMale014,
+          female014: sumFemale014,
+          maleOver14: sumMaleOver14,
+          femaleOver14: sumFemaleOver14,
+          hasBreakdown: anyHasBreakdown
+        },
         periodLabel: VIZ_KH.grandTotal || 'សរុបរួម',
         facilityLabel: '—',
         scopeLabel: '—',

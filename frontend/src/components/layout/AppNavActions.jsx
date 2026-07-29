@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import api from '../../services/api';
 import {
   RiBarChartBoxLine,
   RiBarChartGroupedLine,
@@ -10,7 +11,9 @@ import {
   RiUserSettingsLine,
   RiDatabase2Line,
   RiApps2Line,
-  RiDashboard3Line
+  RiDashboard3Line,
+  RiHeartPulseLine,
+  RiUserHeartLine
 } from '@remixicon/react';
 import { 
   LogOut, 
@@ -84,7 +87,8 @@ const ACCENT_COLORS = [
     gradientEndDark: 'oklch(0.75 0.12 200)',
     hex: '#3b82f6',
     name: 'Blue',
-    navBg: '#090d16'
+    navBg: '#090d16',
+    navGradient: 'linear-gradient(135deg, #090d16 0%, #1e3a8a 50%, #1d4ed8 100%)'
   },
   { 
     id: 'purple', 
@@ -96,7 +100,8 @@ const ACCENT_COLORS = [
     gradientEndDark: 'oklch(0.75 0.15 330)',
     hex: '#8b5cf6',
     name: 'Purple',
-    navBg: '#110e1b'
+    navBg: '#110e1b',
+    navGradient: 'linear-gradient(135deg, #110e1b 0%, #4c1d95 50%, #6d28d9 100%)'
   },
   { 
     id: 'pink', 
@@ -108,7 +113,8 @@ const ACCENT_COLORS = [
     gradientEndDark: 'oklch(0.7 0.18 20)',
     hex: '#ec4899',
     name: 'Pink',
-    navBg: '#160e14'
+    navBg: '#160e14',
+    navGradient: 'linear-gradient(135deg, #160e14 0%, #831843 50%, #be185d 100%)'
   },
   { 
     id: 'orange', 
@@ -120,7 +126,8 @@ const ACCENT_COLORS = [
     gradientEndDark: 'oklch(0.72 0.16 345)',
     hex: '#f97316',
     name: 'Orange',
-    navBg: '#141210'
+    navBg: '#141210',
+    navGradient: 'linear-gradient(135deg, #141210 0%, #7c2d12 50%, #c2410c 100%)'
   },
   { 
     id: 'yellow', 
@@ -132,7 +139,8 @@ const ACCENT_COLORS = [
     gradientEndDark: 'oklch(0.74 0.13 140)',
     hex: '#eab308',
     name: 'Yellow',
-    navBg: '#141310'
+    navBg: '#141310',
+    navGradient: 'linear-gradient(135deg, #141310 0%, #78350f 50%, #b45309 100%)'
   },
   { 
     id: 'green', 
@@ -144,7 +152,8 @@ const ACCENT_COLORS = [
     gradientEndDark: 'oklch(0.82 0.14 75)',
     hex: '#22c55e',
     name: 'Green',
-    navBg: '#0c1510'
+    navBg: '#0c1510',
+    navGradient: 'linear-gradient(135deg, #0c1510 0%, #065f46 50%, #047857 100%)'
   },
 ];
 
@@ -228,10 +237,26 @@ export default function AppNavActions({ onLogout, hideNav }) {
     {
       label: 'Dashboard',
       path: '/dashboard',
-      desc: 'ផ្ទាំងគ្រប់គ្រងទិន្នន័យ',
+      desc: 'ផ្ទាំងគ្រប់គ្រងទិន្នន័យ ART',
       Icon: RiDashboard3Line,
       allowed: true,
       gradient: 'bg-gradient-to-tr from-emerald-600 to-teal-500',
+    },
+    {
+      label: 'PNTT Services',
+      path: '/reports?reportType=pntt',
+      desc: 'ផ្ទាំងព័ត៌មាន PNTT (Partner Testing)',
+      Icon: RiUserHeartLine,
+      allowed: true,
+      gradient: 'bg-gradient-to-tr from-cyan-600 to-blue-500',
+    },
+    {
+      label: 'Infant EID',
+      path: '/pmtct-infant',
+      desc: 'ទារក & បង្ការពីម្តាយទៅកូន',
+      Icon: RiHeartPulseLine,
+      allowed: true,
+      gradient: 'bg-gradient-to-tr from-pink-500 to-rose-400',
     },
     {
       label: 'ART Reports',
@@ -383,11 +408,13 @@ export default function AppNavActions({ onLogout, hideNav }) {
     const primaryVal = isDark ? colorObj.dark : colorObj.light;
     const ringVal = isDark ? colorObj.ringDark : colorObj.ringLight;
     const gradientEndVal = isDark ? colorObj.gradientEndDark : colorObj.gradientEndLight;
-    
+
+    document.documentElement.classList.remove('theme-gradient-flavor');
     document.documentElement.style.setProperty('--primary', primaryVal);
     document.documentElement.style.setProperty('--ring', ringVal);
     document.documentElement.style.setProperty('--sidebar-primary', primaryVal);
     document.documentElement.style.setProperty('--gradient-end', gradientEndVal);
+    
     localStorage.setItem('app-accent-color', selectedColor);
     window.dispatchEvent(new Event('app-accent-color-changed'));
   }, [selectedColor, theme]);
@@ -435,6 +462,33 @@ export default function AppNavActions({ onLogout, hideNav }) {
     setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
   };
 
+  const handleClearCache = async () => {
+    setIsDropdownOpen(false);
+    toast.loading('Clearing application cache and reloading queries...');
+    try {
+      try {
+        await api.get('/apiv1/indicators-optimized/reload-queries');
+      } catch (_) { /* ignore if backend endpoint not available */ }
+
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+      }
+
+      sessionStorage.clear();
+
+      toast.dismiss();
+      toast.success('Cache cleared successfully! Refreshing...');
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 400);
+    } catch (e) {
+      toast.dismiss();
+      toast.error('Failed to clear cache: ' + e.message);
+    }
+  };
+
   const getInitials = (name) => {
     const cleanName = String(name || '').trim();
     if (!cleanName) return 'U';
@@ -453,17 +507,19 @@ export default function AppNavActions({ onLogout, hideNav }) {
   };
 
   const activeColorObj = ACCENT_COLORS.find(c => c.id === selectedColor) || ACCENT_COLORS[3];
-  const headerBg = isIncognito ? '#181617' : activeColorObj.navBg;
+  const headerBgStyle = isIncognito
+    ? { backgroundColor: '#181617' }
+    : { backgroundColor: activeColorObj.navBg };
 
   return (
     <header
-      className="sticky top-0 z-50 flex h-10 shrink-0 items-end justify-between border-b border-border/80 px-2 pt-1 transition-all duration-300"
-      style={{ backgroundColor: headerBg }}
+      className="sticky top-0 z-50 flex h-10 shrink-0 items-end justify-between border-b border-border/80 px-2 pt-1 transition-all duration-300 shadow-md"
+      style={headerBgStyle}
       aria-label="Global"
     >
       {!hideNav && (
         <div className="flex shrink-0 items-center h-8 mb-[2px] mr-2">
-          <span className="bg-teal-600 text-white text-[10px] font-black px-2 py-0.5 rounded tracking-wider select-none">
+          <span className="bg-primary text-primary-foreground text-[10px] font-black px-2 py-0.5 rounded tracking-wider select-none shadow-xs">
             ART
           </span>
           <span className="text-xs font-bold text-white ml-2 tracking-tight">
@@ -645,8 +701,8 @@ export default function AppNavActions({ onLogout, hideNav }) {
             </Button>
 
             {isAppMenuOpen && (
-              <div className="absolute right-0 top-8.5 z-50 w-72 sm:w-80 rounded-xl border border-border bg-card p-2.5 shadow-2xl backdrop-blur-xl animate-in fade-in-50 zoom-in-95">
-                <div className="px-2 py-1.5 mb-1.5 border-b border-border/60 flex items-center justify-between">
+              <div className="absolute right-0 top-8.5 z-50 w-[350px] sm:w-[410px] rounded-2xl border border-border bg-card/95 p-3 shadow-2xl backdrop-blur-xl animate-in fade-in-50 zoom-in-95">
+                <div className="px-2 py-1.5 mb-2 border-b border-border/60 flex items-center justify-between">
                   <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
                     <RiApps2Line className="size-4 text-primary" />
                     App Menu (កម្មវិធីប្រព័ន្ធ)
@@ -654,7 +710,7 @@ export default function AppNavActions({ onLogout, hideNav }) {
                   <span className="text-[10px] text-muted-foreground font-medium">ART Portal</span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[75vh] overflow-y-auto p-0.5">
+                <div className="grid grid-cols-2 gap-2 max-h-[75vh] overflow-y-auto p-0.5">
                   {appMenuItems.map((item) => (
                     <NavLink
                       key={item.path}
@@ -662,7 +718,7 @@ export default function AppNavActions({ onLogout, hideNav }) {
                       onClick={() => setIsAppMenuOpen(false)}
                       className={({ isActive }) =>
                         cn(
-                          "flex items-center gap-3 p-2.5 rounded-2xl text-xs font-medium transition-all border group",
+                          "flex items-center gap-2.5 p-2 rounded-xl text-xs font-medium transition-all border group",
                           isActive
                             ? "bg-primary/10 text-foreground font-semibold border-primary/35"
                             : "border-transparent text-foreground/85 hover:bg-muted/80 hover:border-border/60 hover:text-foreground"
@@ -675,7 +731,7 @@ export default function AppNavActions({ onLogout, hideNav }) {
                       </div>
                       <div className="flex flex-col min-w-0">
                         <span className="truncate font-bold text-xs leading-snug">{item.label}</span>
-                        <span className="text-[10px] text-muted-foreground truncate font-normal">{item.desc}</span>
+                        <span className="text-[10px] text-muted-foreground truncate font-normal leading-tight">{item.desc}</span>
                       </div>
                     </NavLink>
                   ))}
@@ -694,12 +750,13 @@ export default function AppNavActions({ onLogout, hideNav }) {
               <IncognitoIcon className="size-3.5" />
             </div>
           )}
+          {/* Profile Dropdown Toggle Trigger Button */}
           <button
             type="button"
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             className={cn(
-              "flex size-6 shrink-0 select-none items-center justify-center rounded-full text-white font-bold text-[10px] cursor-pointer hover:ring-2 hover:ring-white/20 transition-all duration-150 outline-none focus:outline-none",
-              user?.avatarColor || "bg-amber-500"
+              "flex size-6 shrink-0 select-none items-center justify-center rounded-full text-primary-foreground font-black text-[10px] shadow-sm hover:scale-105 transition-transform cursor-pointer border border-white/20 bg-primary",
+              user?.avatarColor
             )}
             title={displayName}
           >
@@ -711,8 +768,8 @@ export default function AppNavActions({ onLogout, hideNav }) {
               {/* Account Info */}
               <div className="flex items-center gap-3 px-1 py-1.5 mb-0.5">
                 <div className={cn(
-                  "flex size-8 shrink-0 select-none items-center justify-center rounded-full text-white font-bold text-xs shadow-inner",
-                  user?.avatarColor ? `${user.avatarColor} bg-none` : "bg-gradient-to-br from-amber-400 to-amber-600"
+                  "flex size-8 shrink-0 select-none items-center justify-center rounded-full text-primary-foreground font-bold text-xs shadow-inner bg-primary",
+                  user?.avatarColor
                 )}>
                   {getInitials(displayName)}
                 </div>
@@ -819,6 +876,15 @@ export default function AppNavActions({ onLogout, hideNav }) {
                 <span className="flex-1 font-medium">Settings</span>
               </button>
 
+              <button 
+                type="button"
+                onClick={handleClearCache}
+                className="flex w-full items-center gap-3 px-2 py-1.5 rounded-lg text-left text-xs text-amber-400/90 hover:bg-white/[0.06] hover:text-amber-300 transition-all duration-150 group cursor-pointer"
+              >
+                <Trash2 className="size-4 text-amber-400/80 group-hover:text-amber-300 transition-colors" />
+                <span className="flex-1 font-medium">Clear Cache</span>
+              </button>
+
               <div className="h-px bg-white/[0.06] my-1" />
 
               {/* Incognito */}
@@ -870,15 +936,16 @@ export default function AppNavActions({ onLogout, hideNav }) {
 
               {/* Accent Color Picker */}
               <div className="px-2 py-1">
-                <span className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2 block">
-                  Accent Color
-                </span>
+                <div className="flex items-center justify-between text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2">
+                  <span>Accent Color</span>
+                  <span className="text-primary font-bold">{ACCENT_COLORS.find(c => c.id === selectedColor)?.name || 'Gradient Flavor'}</span>
+                </div>
                 
                 {/* Custom Gradient Slider */}
                 <div className="relative w-full h-[6px] rounded-full bg-gradient-to-r from-[#3b82f6] via-[#8b5cf6] via-[#ec4899] via-[#f97316] via-[#eab308] to-[#22c55e] my-3">
                   {ACCENT_COLORS.map((color, index) => {
                     const isSelected = selectedColor === color.id;
-                    const leftPct = 5 + index * 18;
+                    const leftPct = 5 + (index / (ACCENT_COLORS.length - 1)) * 90;
                     return (
                       <button
                         key={color.id}
@@ -892,7 +959,7 @@ export default function AppNavActions({ onLogout, hideNav }) {
                         title={color.name}
                       >
                         {isSelected ? (
-                          <div className="size-3.5 bg-white rounded-full shadow-[0_2px_5px_rgba(0,0,0,0.6)] border border-white/20 scale-110 transition-all duration-200" />
+                          <div className={`size-3.5 rounded-full shadow-[0_2px_5px_rgba(0,0,0,0.6)] border border-white/40 scale-110 transition-all duration-200 ${color.isGradient ? 'bg-gradient-to-tr from-blue-500 via-pink-500 to-amber-400 ring-2 ring-white' : 'bg-white'}`} />
                         ) : (
                           <div className="size-1.5 bg-[#181617]/70 rounded-full hover:scale-125 transition-all duration-150" />
                         )}

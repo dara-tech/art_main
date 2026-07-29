@@ -66,7 +66,9 @@ export async function fetchVisualizePatientRecords({
   limit = 25,
   search = '',
   minAge = '',
-  maxAge = ''
+  maxAge = '',
+  gender = '',
+  ageGroup = ''
 }) {
   const base = buildVisualizeDetailRequest(raw, pageContext, periods);
   const entry = catalogEntryFor(catalog, raw?.indicatorId);
@@ -83,7 +85,7 @@ export async function fetchVisualizePatientRecords({
       scriptId: detailScriptId
     });
     const all = (Array.isArray(res?.data) ? res.data : []).map(normalizeDetailRecord);
-    const filtered = filterDetailRowsClient(all, search);
+    const filtered = filterDetailRowsClient(all, search, { gender, minAge, maxAge });
     const paged = paginateDetailRowsClient(filtered, { page, limit });
     return { rows: paged.data, pagination: paged.pagination, serverPaged: false };
   }
@@ -94,7 +96,7 @@ export async function fetchVisualizePatientRecords({
       scriptId: detailScriptId
     });
     const all = (Array.isArray(res?.data) ? res.data : []).map(normalizeDetailRecord);
-    const filtered = filterDetailRowsClient(all, search);
+    const filtered = filterDetailRowsClient(all, search, { gender, minAge, maxAge });
     const paged = paginateDetailRowsClient(filtered, { page, limit });
     return { rows: paged.data, pagination: paged.pagination, serverPaged: false };
   }
@@ -109,8 +111,12 @@ export async function fetchVisualizePatientRecords({
 
   const minA = String(minAge || '').trim();
   const maxA = String(maxAge || '').trim();
+  const gen = String(gender || '').trim();
+  const ageG = String(ageGroup || '').trim();
   if (minA) params.minAge = minA;
   if (maxA) params.maxAge = maxA;
+  if (gen) params.gender = gen;
+  if (ageG) params.ageGroup = ageG;
 
   const response = await reportingApi.getIndicatorDetails(detailScriptId, params);
   const list = Array.isArray(response?.data) ? response.data : [];

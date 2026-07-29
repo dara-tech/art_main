@@ -1,11 +1,12 @@
 import { Fragment } from 'react';
+import { AppSpinner } from '../ui/AppLoadingOverlay';
 
 export default function InfantReportTable({ sections = [], loading = false, formatValue, onCellClick }) {
   if (loading && !sections.length) {
     return (
-      <div className="border border-border p-10 text-center">
-        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
-        <p className="mt-3 text-xs text-muted-foreground">Loading infant report...</p>
+      <div className="border border-border p-10 text-center flex flex-col items-center justify-center gap-3 select-none">
+        <AppSpinner size="md" />
+        <p className="text-xs font-bold text-foreground">Loading infant report...</p>
       </div>
     );
   }

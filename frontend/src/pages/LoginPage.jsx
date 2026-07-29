@@ -7,8 +7,8 @@ import {
   RiEyeOffLine,
   RiLockPasswordLine,
   RiUser3Line,
-  RiPulseLine,
   RiInformationLine,
+  RiShieldCheckLine
 } from '@remixicon/react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -53,59 +53,65 @@ export default function LoginPage() {
   };
 
   return (
-    <div
-      className="relative flex min-h-screen w-full items-center justify-center bg-background p-4 sm:p-6 bg-repeat"
-      style={{
-        backgroundImage: 'url(/khmer_pattern.png)',
-        backgroundSize: '420px',
-      }}
-    >
-      {/* Soft overlay tint for contrast & readability */}
-      <div className="absolute inset-0 bg-background/85 backdrop-blur-[1px]" />
+    <div className="relative flex min-h-screen w-full items-center justify-center bg-[#070b14] p-4 sm:p-6 overflow-hidden select-none font-sans">
+      {/* Background Ambient Radial Glow & Mesh Gradients */}
+      <div className="absolute -top-40 -left-40 size-[500px] rounded-full bg-blue-600/15 blur-[120px] pointer-events-none" />
+      <div className="absolute -bottom-40 -right-40 size-[500px] rounded-full bg-indigo-600/15 blur-[120px] pointer-events-none" />
+
+      {/* Subtle Geometric Background Grid Lines */}
+      <div
+        className="absolute inset-0 opacity-[0.03] pointer-events-none"
+        style={{
+          backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.4) 1px, transparent 0)`,
+          backgroundSize: '24px 24px'
+        }}
+      />
 
       <div className="relative z-10 w-full max-w-sm">
-        {/* Header Branding */}
+        {/* Header Branding with Prominent Official NCHADS Logo */}
         <div className="mb-6 flex flex-col items-center text-center">
           <img
             src="/logo.png"
-            alt="ART Reporting Portal Logo"
-            className="mb-4 h-20 sm:h-24 w-auto rounded-none object-contain drop-shadow-xs"
+            alt="NCHADS ART Reporting Portal Logo"
+            className="h-24 sm:h-28 w-auto object-contain mb-3"
           />
-          <h1 className="text-xl font-bold tracking-tight text-foreground">ART Reporting Portal</h1>
-          <p className="mt-1 text-xs font-medium text-muted-foreground">Sign in to access your clinical dashboard</p>
+          <h1 className="text-2xl font-black tracking-tight text-white font-khmer">ART Reporting Portal</h1>
+          <p className="mt-1 text-xs font-medium text-slate-400">
+            Sign in to access national clinical HIV/ART dashboard
+          </p>
         </div>
 
-        {/* Form Card */}
-        <div className="rounded-xl border border-border/80 bg-card/95 p-6 shadow-md backdrop-blur-md">
+        {/* Clean Glassmorphic Form Card (Zero Shadows) */}
+        <div className="rounded-2xl border border-white/10 bg-slate-900/90 p-6 backdrop-blur-xl">
           <form className="space-y-4" onSubmit={handleLogin}>
             {/* Username Field */}
             <div className="space-y-1.5">
-              <label htmlFor="login-username" className="block text-xs font-medium text-foreground">
+              <label htmlFor="login-username" className="block text-xs font-bold text-slate-300">
                 Username
               </label>
               <div className="relative">
-                <RiUser3Line className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/70" />
+                <RiUser3Line className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                 <input
                   id="login-username"
                   autoFocus={!username}
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Username"
+                  placeholder="Enter username"
                   autoComplete="username"
                   required
-                  className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm text-foreground shadow-xs placeholder:text-muted-foreground/50 transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="h-10 w-full rounded-lg border border-slate-700/80 bg-slate-800/80 pl-10 pr-3.5 text-sm text-white placeholder:text-slate-500 transition-all focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
                 />
               </div>
             </div>
 
             {/* Password Field */}
             <div className="space-y-1.5">
-              <label htmlFor="login-password" className="block text-xs font-medium text-foreground">
+              <label htmlFor="login-password" className="block text-xs font-bold text-slate-300">
                 Password
               </label>
               <div className="relative">
-                <RiLockPasswordLine className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/70" />
+                <RiLockPasswordLine className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                 <input
                   id="login-password"
                   type={showPassword ? 'text' : 'password'}
@@ -113,14 +119,14 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   onKeyDown={checkCapsLock}
                   onKeyUp={checkCapsLock}
-                  placeholder="Password"
+                  placeholder="Enter password"
                   autoComplete="current-password"
                   required
-                  className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-9 text-sm text-foreground shadow-xs placeholder:text-muted-foreground/50 transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="h-10 w-full rounded-lg border border-slate-700/80 bg-slate-800/80 pl-10 pr-10 text-sm text-white placeholder:text-slate-500 transition-all focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
                 />
                 <button
                   type="button"
-                  className="absolute right-0 top-0 flex h-9 w-9 items-center justify-center text-muted-foreground/70 hover:text-foreground"
+                  className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer"
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                   aria-pressed={showPassword}
@@ -131,51 +137,46 @@ export default function LoginPage() {
 
               {/* CapsLock Warning */}
               {isCapsLock && (
-                <div className="flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
-                  <RiInformationLine className="size-3.5" />
+                <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-400 pt-0.5">
+                  <RiInformationLine className="size-3.5 shrink-0" />
                   <span>Caps Lock is active</span>
                 </div>
               )}
             </div>
 
             {/* Remember Username */}
-            <div className="flex items-center justify-between pt-0.5">
-              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+            <div className="flex items-center justify-between pt-1">
+              <label className="flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-slate-300 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="size-3.5 rounded border-input bg-background text-primary focus:ring-1 focus:ring-primary/50"
+                  className="size-4 rounded border-slate-700 bg-slate-800 text-blue-600 focus:ring-1 focus:ring-blue-500/50"
                 />
                 <span>Remember username</span>
               </label>
             </div>
 
-            {/* Submit Button */}
+            {/* Clean Submit Button (Zero Shadow & Zero Icon on Loading) */}
             <Button
               type="submit"
               disabled={loading}
-              className="h-9 w-full rounded-md bg-primary text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors"
+              className="h-10 w-full rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white transition-all cursor-pointer flex items-center justify-center mt-2"
             >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="size-3.5 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
-                  Signing in...
-                </span>
-              ) : (
-                'Sign In'
-              )}
+              {loading ? 'Signing In...' : 'Sign In'}
             </Button>
           </form>
         </div>
 
-        {/* Footer Note */}
-        <p className="mt-4 text-center text-[11px] text-muted-foreground/70">
-          Admin-provided account • Contact IT helpdesk for access reset
-        </p>
+        {/* Footer Subtext */}
+        <div className="mt-6 flex flex-col items-center gap-1.5 text-center text-[11px] text-slate-500 font-medium">
+          <div className="flex items-center gap-1 text-slate-400">
+            <RiShieldCheckLine className="size-3.5 text-blue-500" />
+            <span>NCHADS National Health Information System</span>
+          </div>
+          <p>Contact IT helpdesk for access reset</p>
+        </div>
       </div>
     </div>
   );
 }
-
-

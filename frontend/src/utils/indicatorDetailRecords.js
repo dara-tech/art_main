@@ -13,6 +13,7 @@ export const DETAIL_COLUMN_LABELS = {
   Age: 'Age',
   patient_type: 'Patient Type',
   typepatients: 'Patient Type',
+  patient_status: 'Patient Status',
   DaBirth: 'Date of Birth',
   DafirstVisit: 'First Visit Date',
   DaArt: 'ART Start Date',
@@ -83,8 +84,6 @@ const EXCLUDE_BY_DEFAULT = new Set([
   'death_status',
   'death_place',
   'DatLost',
-  'transfer_status',
-  'Status',
   'DafirstVisit',
   'DaArt',
   'datevisit',
@@ -113,46 +112,49 @@ function indicatorSpecificColumnHints(indicatorId) {
       'eac1_date',
       'eac2_date',
       'eac3_date',
-      'last_eac_date'
+      'last_eac_date',
+      'patient_status',
+      'transfer_status',
+      'Status'
     ];
   }
   if (/^10\.(6|7|8)|eligible_vl|vl_tested|vl_suppression/.test(key)) {
-    return ['DateResult', 'HIVLoad', 'VLdostatus', 'vlresultstatus', 'VLDate', 'VLValue'];
+    return ['DateResult', 'HIVLoad', 'VLdostatus', 'vlresultstatus', 'VLDate', 'VLValue', 'patient_status', 'transfer_status', 'Status'];
   }
   if (/tld|05\.2_art_with_tld/.test(key)) {
-    return ['TLDStatus', 'DaArt'];
+    return ['TLDStatus', 'DaArt', 'patient_status', 'transfer_status', 'Status'];
   }
   if (/^10\.(1|2)|eligible_mmd|_mmd/.test(key)) {
-    return ['MMDStatus', 'datevisit', 'DatVisit', 'DaArt'];
+    return ['MMDStatus', 'datevisit', 'DatVisit', 'DaArt', 'patient_status', 'transfer_status', 'Status'];
   }
   if (/tpt|10\.4|10\.5/.test(key)) {
-    return ['Tptdrugname', 'dateStart', 'Datestop', 'duration', 'tptstatus', 'tpt_source'];
+    return ['Tptdrugname', 'dateStart', 'Datestop', 'duration', 'tptstatus', 'tpt_source', 'patient_status', 'transfer_status', 'Status'];
   }
   if (/08\.1|dead/.test(key)) {
-    return ['death_date', 'death_status', 'death_place', 'Status'];
+    return ['death_date', 'death_status', 'death_place', 'patient_status', 'Status', 'transfer_status'];
   }
   if (/08\.2|ltfu|lost_to_followup/.test(key)) {
-    return ['DatLost', 'Status', 'transfer_status'];
+    return ['DatLost', 'patient_status', 'Status', 'transfer_status'];
   }
   if (/08\.3|transfer_out/.test(key)) {
-    return ['transfer_status', 'Status', 'DaArt'];
+    return ['transfer_status', 'patient_status', 'Status', 'DaArt'];
   }
   if (/06_transfer|transfer_in/.test(key)) {
-    return ['transfer_status', 'DaArt', 'DafirstVisit', 'TypeofReturn'];
+    return ['transfer_status', 'patient_status', 'DaArt', 'DafirstVisit', 'TypeofReturn', 'Status'];
   }
   if (/07_lost|lost_and_return/.test(key)) {
-    return ['TypeofReturn', 'DaArt', 'Status'];
+    return ['TypeofReturn', 'DaArt', 'patient_status', 'Status', 'transfer_status'];
   }
   if (/^05\.|newly_initiated|art_same_day|art_1_7|art_over_7/.test(key)) {
-    return ['DaArt', 'Startartstatus', 'days_to_art'];
+    return ['DaArt', 'Startartstatus', 'days_to_art', 'patient_status', 'transfer_status', 'Status'];
   }
   if (/03_newly_enrolled|04_retested/.test(key)) {
-    return ['DafirstVisit', 'DaArt', 'Status'];
+    return ['DafirstVisit', 'DaArt', 'patient_status', 'transfer_status', 'Status'];
   }
   if (/^10_active|^01_active|^09_active|active_pre_art|active_art/.test(key)) {
-    return ['Startartstatus', 'Status', 'DaArt'];
+    return ['Startartstatus', 'patient_status', 'Status', 'transfer_status', 'DaArt'];
   }
-  return ['Status', 'DaArt'];
+  return ['patient_status', 'transfer_status', 'Status', 'DaArt'];
 }
 
 function firstAvailableKey(available, keys) {
@@ -262,22 +264,55 @@ export function pickDetailColumnKeys(rows = [], { includeSite = false, indicator
   ).slice(0, 10);
 }
 
-export function formatDetailCellValue(v) {
+export function formatDetailCellValue(v, key = '') {
   if (v == null || v === '') return '—';
-  if (typeof v === 'number') return Number.isFinite(v) ? String(v) : '—';
   const raw = String(v).trim();
+  if (raw === '-1' || raw === 'Status: -1' || raw === 'Status: 0' || raw === '0') {
+    if (key === 'transfer_status' || key === 'OffIn' || key === 'Status' || key === 'Startartstatus') {
+      return 'Not Transferred';
+    }
+  }
+  if (typeof v === 'number') return Number.isFinite(v) ? String(v) : '—';
   if (!raw) return '—';
   const n = Number(raw.replace(/,/g, ''));
   if (Number.isFinite(n) && /^-?\d+(\.\d+)?$/.test(raw.replace(/,/g, ''))) return String(n);
   return raw;
 }
 
-export function filterDetailRowsClient(rows = [], search = '') {
+export function filterDetailRowsClient(rows = [], search = '', { gender = '', minAge = '', maxAge = '' } = {}) {
+  let list = rows;
+
   const q = String(search || '').trim().toLowerCase();
-  if (!q) return rows;
-  return rows.filter((row) =>
-    Object.values(row || {}).some((v) => String(v ?? '').toLowerCase().includes(q))
-  );
+  if (q) {
+    list = list.filter((row) =>
+      Object.values(row || {}).some((v) => String(v ?? '').toLowerCase().includes(q))
+    );
+  }
+
+  const gen = String(gender || '').trim().toLowerCase();
+  if (gen) {
+    list = list.filter((row) => {
+      const s = String(row.Sex || row.sex || row.sex_display || '').trim().toLowerCase();
+      if (gen === 'male' || gen === 'm') return s === 'male' || s === 'm' || s === 'ប្រុស' || s.startsWith('m');
+      if (gen === 'female' || gen === 'f') return s === 'female' || s === 'f' || s === 'ស្រី' || s.startsWith('f');
+      return true;
+    });
+  }
+
+  const minA = minAge !== '' && minAge != null ? Number(minAge) : null;
+  const maxA = maxAge !== '' && maxAge != null ? Number(maxAge) : null;
+
+  if (minA != null || maxA != null) {
+    list = list.filter((row) => {
+      const a = Number(row.Age ?? row.age);
+      if (!Number.isFinite(a)) return true;
+      if (minA != null && a < minA) return false;
+      if (maxA != null && a > maxA) return false;
+      return true;
+    });
+  }
+
+  return list;
 }
 
 export function paginateDetailRowsClient(rows = [], { page = 1, limit = 25 } = {}) {

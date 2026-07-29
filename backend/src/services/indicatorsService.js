@@ -60,6 +60,16 @@ class IndicatorsService {
     });
   }
 
+  getQuery(id) {
+    const filePath = path.join(BASE_DIR, `${id}.sql`);
+    if (fs.existsSync(filePath)) {
+      const sql = fs.readFileSync(filePath, 'utf8');
+      this.queries.set(id, sql);
+      return sql;
+    }
+    return this.queries.get(id) || null;
+  }
+
   /** Load a detail-only SQL file added after server start (e.g. viz_compare_patient_status). */
   loadDetailQueryIfPresent(id) {
     if (this.detailQueries.has(id)) return true;
@@ -71,6 +81,12 @@ class IndicatorsService {
   }
 
   getDetailQuery(id) {
+    const filePath = path.join(BASE_DIR, `${id}_details.sql`);
+    if (fs.existsSync(filePath)) {
+      const sql = fs.readFileSync(filePath, 'utf8');
+      this.detailQueries.set(id, sql);
+      return sql;
+    }
     let sql = this.detailQueries.get(id);
     if (!sql && this.loadDetailQueryIfPresent(id)) {
       sql = this.detailQueries.get(id);
@@ -78,10 +94,7 @@ class IndicatorsService {
     // Safe fallback: Map legacy 10.x detail queries to 11.x if 10.x is not found
     if (!sql && id && String(id).startsWith('10.')) {
       const fallbackId = '11.' + String(id).slice(3);
-      sql = this.detailQueries.get(fallbackId);
-      if (!sql && this.loadDetailQueryIfPresent(fallbackId)) {
-        sql = this.detailQueries.get(fallbackId);
-      }
+      sql = this.getDetailQuery(fallbackId);
     }
     return sql || null;
   }
@@ -112,7 +125,7 @@ class IndicatorsService {
 
   async executeOne(siteCode, id, params) {
     const startedAt = Date.now();
-    const sql = this.queries.get(id);
+    const sql = this.getQuery(id);
     if (!sql) throw new Error(`Indicator query not found: ${id}`);
     const scopedSql = processQuery(sql, params);
     const conn = await siteDatabaseManager.getSiteConnection(siteCode);
@@ -126,9 +139,9 @@ class IndicatorsService {
     return ids.map((id) => ({
       indicatorId: id,
       aggregatePath: `backend/queries/indicators/${id}.sql`,
-      aggregateSql: processQuery(this.queries.get(id), params),
-      detailPath: this.detailQueries.has(id) ? `backend/queries/indicators/${id}_details.sql` : null,
-      detailSql: this.detailQueries.has(id) ? processQuery(this.detailQueries.get(id), params) : null
+      aggregateSql: processQuery(this.getQuery(id) || '', params),
+      detailPath: this.detailQueries.has(id) || fs.existsSync(path.join(BASE_DIR, `${id}_details.sql`)) ? `backend/queries/indicators/${id}_details.sql` : null,
+      detailSql: (this.getDetailQuery(id) ? processQuery(this.getDetailQuery(id), params) : null)
     }));
   }
 
@@ -149,21 +162,37 @@ class IndicatorsService {
 
     let filtered = rows;
     if (gender) {
+      const targetG = String(gender).toLowerCase();
       filtered = filtered.filter((r) => {
-        const sex = String(r.sex_display || '').toLowerCase();
-        return sex === String(gender).toLowerCase();
+        const sex = String(r.sex_display || r.Sex || r.sex || '').toLowerCase();
+        if (targetG === 'female' || targetG === 'f') return sex === 'female' || sex === 'f' || sex === '0' || sex === 'ស្រី';
+        if (targetG === 'male' || targetG === 'm') return sex === 'male' || sex === 'm' || sex === '1' || sex === 'ប្រុស';
+        return sex === targetG;
       });
     }
-    if (ageGroup === '0-14') filtered = filtered.filter((r) => classifyDetailAgeGroup(r) === '0-14');
-    if (ageGroup === '15+' || ageGroup === '>14') {
+    if (ageGroup === '0-14' || ageGroup === '<=14') {
+      filtered = filtered.filter((r) => classifyDetailAgeGroup(r) === '0-14');
+    } else if (ageGroup === '15+' || ageGroup === '>14') {
       filtered = filtered.filter((r) => classifyDetailAgeGroup(r) === '>14');
+    } else {
+      if (minAge !== null && !Number.isNaN(minAge)) {
+        filtered = filtered.filter((r) => {
+          const ageClass = classifyDetailAgeGroup(r);
+          if (ageClass === '>14') return true;
+          const a = Number(r.age ?? r.Age);
+          return Number.isFinite(a) ? a >= minAge : true;
+        });
+      }
+      if (maxAge !== null && !Number.isNaN(maxAge)) {
+        filtered = filtered.filter((r) => {
+          const ageClass = classifyDetailAgeGroup(r);
+          if (ageClass === '0-14') return true;
+          const a = Number(r.age ?? r.Age);
+          return Number.isFinite(a) ? a <= maxAge : true;
+        });
+      }
     }
-    if (minAge !== null && !Number.isNaN(minAge)) {
-      filtered = filtered.filter((r) => Number(r.age ?? r.Age) >= minAge);
-    }
-    if (maxAge !== null && !Number.isNaN(maxAge)) {
-      filtered = filtered.filter((r) => Number(r.age ?? r.Age) <= maxAge);
-    }
+
     if (search) {
       filtered = filtered.filter((r) =>
         Object.values(r || {}).some((v) => String(v || '').toLowerCase().includes(search))

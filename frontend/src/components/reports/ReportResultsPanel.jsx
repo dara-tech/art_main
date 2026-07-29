@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils';
 import InfantReportTable from './InfantReportTable';
 import PnttReportTable from './PnttReportTable';
 
+import AppLoadingOverlay from '@/components/ui/AppLoadingOverlay';
+
 export default function ReportResultsPanel({
   reportHeaderMeta,
   currentPeriod,
@@ -133,11 +135,8 @@ export default function ReportResultsPanel({
 
       <div className="flex flex-1 flex-col min-h-0 border-t border-border/80 p-3 sm:p-4">
         {loading && !hasRows ? (
-          <div className="flex flex-1 min-h-[260px] h-full w-full items-center justify-center border border-border/80 bg-muted/25 shadow-inner rounded-none">
-            <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
-              <RiLoader4Line className="size-4 animate-spin" />
-              Loading report...
-            </div>
+          <div className="relative flex flex-1 min-h-[300px] h-full w-full items-center justify-center border border-border/80 bg-muted/25 shadow-inner rounded-none overflow-hidden">
+            <AppLoadingOverlay message="កំពុងផ្ទុករបាយការណ៍ (Loading Report)..." submessage="Streaming indicator queries from server..." />
           </div>
         ) : !hasRows ? (
           <div className="flex flex-1 min-h-[260px] h-full w-full items-center justify-center border border-border/80 bg-muted/20 text-xs text-muted-foreground shadow-inner rounded-none">

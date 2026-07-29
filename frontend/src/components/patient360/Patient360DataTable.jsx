@@ -260,7 +260,7 @@ export default function Patient360DataTable({
         <div
           ref={scrollRef}
           className={cn(
-            'min-w-0 w-full max-w-full overflow-auto overscroll-contain [scrollbar-gutter:stable]',
+            'min-w-0 w-full max-w-full overflow-auto overscroll-contain no-scrollbar',
             maxHeight ||
               (fillHeight
                 ? 'min-h-0 flex-1'

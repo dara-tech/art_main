@@ -19,6 +19,12 @@ import {
   RiArrowLeftSLine,
   RiArrowRightSLine,
   RiFilter3Line,
+  RiRefreshLine,
+  RiDownloadLine,
+  RiLoader4Line,
+  RiExchangeLine,
+  RiSparklingLine,
+  RiLineChartLine
 } from '@remixicon/react';
 import {
   ResponsiveContainer,
@@ -33,17 +39,20 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend
+  Legend,
+  LabelList
 } from 'recharts';
+import AppLoadingOverlay from '../components/ui/AppLoadingOverlay';
 import { useAuth } from '../contexts/AuthContext';
 import { useSites } from '../contexts/SitesContext';
-import { pickDefaultSiteCode } from '../utils/siteSelection';
 import SiteSelectModal from '../components/sites/SiteSelectModal';
 import { getCountryAnalytics, getProvinceAnalytics, getAnalyticsStatus, getAnalyticsSummary } from '../services/analyticsApi';
 import Patient360Layout from '../components/patient360/Patient360Layout';
-import AppPageShell from '../components/layout/AppPageShell';
 import QuarterSelectModal from '../components/visualize/QuarterSelectModal';
+import PeriodComparisonDashboard from '../components/dashboard/PeriodComparisonDashboard';
+import KpDashboardView from '../components/dashboard/KpDashboardView';
 import DashboardRightSidebar from '../components/dashboard/DashboardRightSidebar';
+import CambodiaPolygonMap from '../components/dashboard/CambodiaPolygonMap';
 import { listRecentQuarters, getPeriodByKey } from '../utils/visualizePeriods';
 import { Patient360NavBar, Patient360NavRow } from '../components/patient360/Patient360NavBar';
 import { VizToolbarBtn } from '../components/visualize/visualizeToolbarUi';
@@ -87,9 +96,13 @@ export default function DashboardPage({ onLogout }) {
   // Demographic & Dashboard View filters
   const [ageGroupFilter, setAgeGroupFilter] = useState('all'); // 'all', '0_14', 'over_14'
   const [sexFilter, setSexFilter] = useState('all'); // 'all', 'male', 'female'
-  const [dashboardView, setDashboardView] = useState('program'); // 'program', 'sites', 'targets', 'dqa'
+  const [dashboardView, setDashboardView] = useState('program'); // 'program', 'sites', 'targets', 'dqa', 'period_comparison'
   const [compareMetric, setCompareMetric] = useState('all'); // 'all', 'active_art', 'newly_initiated', 'mmd_patients', 'tld_patients'
   const [siteGroupBy, setSiteGroupBy] = useState('site'); // 'site', 'province', 'od'
+  const [basePeriodKey, setBasePeriodKey] = useState('2026-Q2');
+  const [comparePeriodKey, setComparePeriodKey] = useState('2026-Q3');
+  const [comparisonPeriodKeys, setComparisonPeriodKeys] = useState(['2026-Q2', '2026-Q3']);
+  const [periodCompareMetric, setPeriodCompareMetric] = useState('active_art');
 
   const handleNavigatePeriod = (direction) => {
     const match = String(selectedPeriodKey || '').match(/^(\d{4})-(Q[1-4]|M\d{2}|Y)$/i);
@@ -295,28 +308,31 @@ export default function DashboardPage({ onLogout }) {
         .reduce((acc, r) => acc + sumRow(r), 0);
     };
 
-    // --- Core KPI values using real warehouse indicator names ---
-    const dbActive  = findVal('11. active art') || provFindSum('11. active art');
-    const dbNew     = findVal('5. newly initiated') || provFindSum('5. newly initiated');
-    const dbMmd     = findVal('11.2. mmd') || provFindSum('11.2. mmd');
-    const dbTld     = findVal('11.3. tld') || provFindSum('11.3. tld');
-    const dbSameDay = findVal('5.1.1. new art started: same day') || 0;
+    // Core indicator queries
+    const dbActive   = findVal('11. active art') || provFindSum('11. active art');
+    const dbEnrolled = findVal('3. newly enrolled') || provFindSum('3. newly enrolled');
+    const dbNew      = findVal('5. newly initiated') || provFindSum('5. newly initiated');
+    const dbMmd      = findVal('11.2. mmd') || provFindSum('11.2. mmd');
+    const dbTld      = findVal('11.3. tld') || provFindSum('11.3. tld');
+    const dbSameDay  = findVal('5.1.1. new art started: same day') || 0;
 
     // VL indicators
-    const dbVlEligible  = findVal('11.6. eligible for vl test') || 0;
-    const dbVlTested    = findVal('11.7. vl tested') || 0;
+    const dbVlEligible   = findVal('11.6. eligible for vl test') || 0;
+    const dbVlTested     = findVal('11.7. vl tested') || 0;
     const dbVlSuppressed = findVal('11.8. vl suppression') || 0;
 
-    // Baseline fallbacks (only used when warehouse has no data)
-    const baseActive = Math.round(68420 * siteScale * periodScale);
-    const baseNew    = Math.round(1480  * siteScale * periodScale);
-    const baseMmd    = Math.round(62410 * siteScale * periodScale);
-    const baseTld    = Math.round(67350 * siteScale * periodScale);
+    // Baseline fallbacks
+    const baseActive   = Math.round(68420 * siteScale * periodScale);
+    const baseEnrolled = Math.round(1520  * siteScale * periodScale);
+    const baseNew      = Math.round(1480  * siteScale * periodScale);
+    const baseMmd      = Math.round(62410 * siteScale * periodScale);
+    const baseTld      = Math.round(67350 * siteScale * periodScale);
 
-    const activeArt     = dbActive  > 0 ? dbActive  : baseActive;
-    const newInitiated  = dbNew     > 0 ? dbNew     : baseNew;
-    const mmdTotal      = dbMmd     > 0 ? dbMmd     : baseMmd;
-    const tldTotal      = dbTld     > 0 ? dbTld     : baseTld;
+    const activeArt     = dbActive   > 0 ? dbActive   : baseActive;
+    const newlyEnrolled = dbEnrolled > 0 ? dbEnrolled : baseEnrolled;
+    const newInitiated  = dbNew      > 0 ? dbNew      : baseNew;
+    const mmdTotal      = dbMmd      > 0 ? dbMmd      : baseMmd;
+    const tldTotal      = dbTld      > 0 ? dbTld      : baseTld;
 
     const activeArtMale   = findMaleVal('11. active art') || Math.round(activeArt * 0.44);
     const activeArtFemale = findFemaleVal('11. active art') || Math.max(0, activeArt - activeArtMale);
@@ -347,6 +363,7 @@ export default function DashboardPage({ onLogout }) {
       activeArt,
       activeArtMale,
       activeArtFemale,
+      newlyEnrolled,
       newlyInitiated: newInitiated,
       sameDayRate,
       mmdRate,
@@ -635,14 +652,30 @@ export default function DashboardPage({ onLogout }) {
       };
     });
 
-    if (!searchQuery.trim()) return scored;
+    // Filter by siteCode if a specific province or site is selected
+    let result = scored;
+    if (siteCode && siteCode !== 'ALL' && siteCode !== '__CAMBODIA__') {
+      if (siteCode.startsWith('province:')) {
+        const targetProvId = siteCode.replace('province:', '');
+        const provObj = provinceData.find((p) => String(p.province_id || p.id) === String(targetProvId));
+        const targetProvName = provObj?.province_name;
+        if (targetProvName) {
+          result = result.filter((s) => String(s.province_name || '').toLowerCase().includes(targetProvName.toLowerCase()));
+        }
+      } else {
+        // Specific single site selected (e.g. 1201, 1202) -> Show ONLY that single site!
+        result = result.filter((s) => String(s.site_code) === String(siteCode));
+      }
+    }
+
+    if (!searchQuery.trim()) return result;
     const q = searchQuery.toLowerCase();
-    return scored.filter((s) =>
+    return result.filter((s) =>
       String(s.site_name || '').toLowerCase().includes(q) ||
       String(s.province_name || '').toLowerCase().includes(q) ||
       String(s.site_code || '').toLowerCase().includes(q)
     );
-  }, [sites, countryData, siteCode, selectedPeriodKey, ageGroupFilter, sexFilter, compareMetric, searchQuery]);
+  }, [sites, countryData, siteSummaryData, provinceData, siteCode, selectedPeriodKey, ageGroupFilter, sexFilter, compareMetric, searchQuery]);
 
   // Aggregated Performance Breakdown memo by siteGroupBy ('site', 'province', 'od')
   const groupedPerformanceData = useMemo(() => {
@@ -846,10 +879,9 @@ export default function DashboardPage({ onLogout }) {
   const dashboardToolbar = (
     <Patient360NavBar ariaLabel="Dashboard Navigation" rowCount={1}>
       <Patient360NavRow tone="filters" className="gap-2 justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-1 min-w-0 items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-0.5">
           <div className="inline-flex shrink-0 items-center justify-center gap-1.5 px-2 text-xs font-bold text-foreground">
-            <RiDashboard3Line className={cn('size-4', TOOLBAR_ICON.brand)} />
-            <span className="hidden md:inline">Dashboard (ផ្ទាំងគ្រប់គ្រង)</span>
+            <span className="hidden md:inline">ផ្ទាំងព័ត៌មាន</span>
           </div>
 
           <span className="mx-0.5 hidden h-5 w-px shrink-0 bg-border/80 md:inline" aria-hidden />
@@ -866,7 +898,7 @@ export default function DashboardPage({ onLogout }) {
             className="w-44 shrink-0 sm:w-52"
           />
 
-          {/* Period / Quarter Selector Controls (Prev, Selector, Next) */}
+          {/* Period / Quarter Selector Controls (Fully Active for All Views) */}
           <div className="flex items-center gap-0.5 shrink-0">
             <button
               type="button"
@@ -878,14 +910,50 @@ export default function DashboardPage({ onLogout }) {
               <RiArrowLeftSLine className="size-4" />
             </button>
             <QuarterSelectModal
-              value={[selectedPeriodKey]}
+              value={
+                dashboardView === 'period_comparison'
+                  ? comparisonPeriodKeys
+                  : [selectedPeriodKey]
+              }
               onChange={(keys) => {
                 if (keys && keys.length > 0) {
-                  setSelectedPeriodKey(keys[keys.length - 1]);
+                  // Sort chronologically (oldest to newest for both Quarters and Months)
+                  const parseKey = (k) => {
+                    const str = String(k || '');
+                    const qMatch = str.match(/(\d{4})-Q(\d)/i);
+                    if (qMatch) return Number(qMatch[1]) * 12 + (Number(qMatch[2]) - 1) * 3 + 1;
+                    const mMatch = str.match(/(\d{4})-M(\d+)/i);
+                    if (mMatch) return Number(mMatch[1]) * 12 + Number(mMatch[2]);
+                    const yrMatch = str.match(/(\d{4})/);
+                    if (yrMatch) return Number(yrMatch[1]) * 12 + 1;
+                    return 0;
+                  };
+                  const sortedKeys = [...keys].sort((a, b) => parseKey(a) - parseKey(b));
+                  setComparisonPeriodKeys(sortedKeys);
+
+                  if (sortedKeys.length === 1) {
+                    const newKey = sortedKeys[0];
+                    setSelectedPeriodKey(newKey);
+                    setComparePeriodKey(newKey);
+                    const match = String(newKey).match(/(\d{4})-Q(\d)/i);
+                    if (match) {
+                      let yr = Number(match[1]);
+                      let q = Number(match[2]);
+                      if (q > 1) q -= 1;
+                      else { yr -= 1; q = 4; }
+                      setBasePeriodKey(`${yr}-Q${q}`);
+                    }
+                  } else {
+                    const bKey = sortedKeys[0];
+                    const cKey = sortedKeys[sortedKeys.length - 1];
+                    setBasePeriodKey(bKey);
+                    setComparePeriodKey(cKey);
+                    setSelectedPeriodKey(cKey);
+                  }
                 }
               }}
               disabled={loading}
-              className="w-36 shrink-0 sm:w-44"
+              className="w-44 shrink-0 sm:w-56"
             />
             <button
               type="button"
@@ -899,36 +967,33 @@ export default function DashboardPage({ onLogout }) {
           </div>
 
           {/* Sex / Gender Filter Dropdown */}
-          <div className="flex items-center gap-1 shrink-0">
-            <RiGroupLine className="size-3.5 text-muted-foreground" />
+          <div className="flex items-center shrink-0">
             <select
               value={sexFilter}
               onChange={(e) => setSexFilter(e.target.value)}
               className="h-8 border border-border/80 bg-background px-2 text-xs font-semibold text-foreground outline-none cursor-pointer rounded-none hover:border-primary/50 transition-colors"
             >
-              <option value="all">គ្រប់ភេទ (All Sexes)</option>
-              <option value="male">ប្រុស (Male)</option>
-              <option value="female">ស្រី (Female)</option>
+              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="all">គ្រប់ភេទ (All Sexes)</option>
+              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="male">ប្រុស (Male)</option>
+              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="female">ស្រី (Female)</option>
             </select>
           </div>
 
           {/* Age Group Filter Dropdown */}
-          <div className="flex items-center gap-1 shrink-0">
-            <RiFilter3Line className="size-3.5 text-muted-foreground" />
+          <div className="flex items-center shrink-0">
             <select
               value={ageGroupFilter}
               onChange={(e) => setAgeGroupFilter(e.target.value)}
               className="h-8 border border-border/80 bg-background px-2 text-xs font-semibold text-foreground outline-none cursor-pointer rounded-none hover:border-primary/50 transition-colors"
             >
-              <option value="all">គ្រប់អាយុ (All Ages)</option>
-              <option value="0_14">០ - ១៤ ឆ្នាំ (0-14 Yrs)</option>
-              <option value="over_14">&gt; ១៤ ឆ្នាំ (&gt;14 Yrs)</option>
+              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="all">គ្រប់អាយុ (All Ages)</option>
+              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="0_14">០ - ១៤ ឆ្នាំ (0-14 Yrs)</option>
+              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="over_14">&gt; ១៤ ឆ្នាំ (&gt;14 Yrs)</option>
             </select>
           </div>
 
-          {/* Dashboard Type Selector (Performance Program, Sites Performance, Top Doctors, National Target, Site DQA) */}
-          <div className="flex items-center gap-1 shrink-0">
-            <RiDashboard3Line className="size-3.5 text-primary" />
+          {/* Dashboard Type Selector */}
+          <div className="flex items-center shrink-0">
             <select
               value={dashboardView === 'sites' && siteGroupBy === 'doctor' ? 'doctors' : dashboardView}
               onChange={(e) => {
@@ -945,27 +1010,30 @@ export default function DashboardPage({ onLogout }) {
               }}
               className="h-8 border border-primary/40 bg-primary/10 px-2 text-xs font-bold text-foreground outline-none cursor-pointer rounded-none hover:border-primary transition-colors"
             >
-              <option value="program">Performance Program (សកម្មភាពកម្មវិធី)</option>
-              <option value="sites">Sites Performance (សមត្ថកិច្ចមន្ទីរពេទ្យ)</option>
-              <option value="doctors">Top Doctors (គ្រូពេទ្យកំពូល)</option>
-              <option value="targets">National Target (គោលដៅជាតិ 95-95-95)</option>
-              <option value="dqa">Site DQA (គុណភាពទិន្នន័យ DQA)</option>
+              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="program">Performance Program (សកម្មភាពកម្មវិធី)</option>
+              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="kp">Key Population KP (វិភាគក្រុមប្រជាជនគន្លឹះ KP)</option>
+              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="sites">Sites Performance (សមត្ថកិច្ចមន្ទីរពេទ្យ)</option>
+              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="doctors">Top Doctors (គ្រូពេទ្យកំពូល)</option>
+              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="targets">National Target (គោលដៅជាតិ 95-95-95)</option>
+              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="dqa">Site DQA (គុណភាពទិន្នន័យ DQA)</option>
+              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="period_comparison">Period-to-Period Comparison (ការប្រៀបធៀបតាមកាលបរិច្ឆេទ)</option>
             </select>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <VizToolbarBtn
-            icon="refresh"
-            tone="teal"
+            icon={loading ? RiLoader4Line : RiRefreshLine}
+            iconClassName={loading ? TOOLBAR_ICON.brand : TOOLBAR_ICON.teal}
             label={loading ? 'កំពុងផ្ទុក...' : 'Refresh'}
             onClick={loadDashboardData}
             disabled={loading}
+            className={loading ? '[&_svg]:animate-spin' : undefined}
           />
 
           <VizToolbarBtn
-            icon="download"
-            tone="indigo"
+            icon={RiDownloadLine}
+            iconClassName={TOOLBAR_ICON.blue}
             label="Export Dashboard"
             onClick={handleExportSummary}
           />
@@ -985,90 +1053,141 @@ export default function DashboardPage({ onLogout }) {
 
 
 
+            {/* Key Population KP Dashboard View */}
+            {dashboardView === 'kp' && (
+              <KpDashboardView kpis={kpis} siteCode={siteCode} selectedPeriodKey={selectedPeriodKey} />
+            )}
+
             {/* Performance Program View */}
             {dashboardView === 'program' && (
               <>
-                {/* Top 4 Executive KPI Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
-                  <div className="border border-border/80 bg-card p-4 rounded-none shadow-xs">
+                {/* 6 Key Executive Indicator Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3 shrink-0">
+                  {/* Card 1: Active ART */}
+                  <div className="border border-border/80 bg-card p-3.5 rounded-none shadow-xs flex flex-col justify-between">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-muted-foreground">អ្នកជំងឺ ART សកម្មសរុប (Active ART)</span>
-                      <div className="flex size-8 items-center justify-center bg-blue-500/10 text-blue-500 rounded-none">
-                        <RiGroupLine className="size-4.5" />
+                      <span className="text-[11px] font-semibold text-muted-foreground truncate">អ្នកជំងឺ ART សកម្ម (Active ART)</span>
+                      <div className="flex size-7 items-center justify-center bg-blue-500/10 text-blue-500 rounded-none shrink-0">
+                        <RiGroupLine className="size-4" />
                       </div>
                     </div>
-                    <div className="mt-3 flex items-baseline justify-between">
-                      <span className="text-2xl font-black text-foreground tracking-tight">
+                    <div className="mt-2 flex items-baseline justify-between">
+                      <span className="text-xl font-black text-foreground tracking-tight">
                         {(kpis.activeArt || 0).toLocaleString()}
                       </span>
-                      <span className="inline-flex items-center gap-0.5 text-xs font-bold text-emerald-500">
-                        <RiArrowUpLine className="size-3.5" />
+                      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-500">
+                        <RiArrowUpLine className="size-3" />
                         +4.2%
                       </span>
                     </div>
-                    <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground border-t border-border/40 pt-2">
+                    <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground border-t border-border/40 pt-1.5">
                       <span>ប្រុស: <strong className="text-foreground">{(kpis.activeArtMale || 0).toLocaleString()}</strong></span>
                       <span>ស្រី: <strong className="text-foreground">{(kpis.activeArtFemale || 0).toLocaleString()}</strong></span>
                     </div>
                   </div>
 
-                  <div className="border border-border/80 bg-card p-4 rounded-none shadow-xs">
+                  {/* Card 2: Newly Enrolled */}
+                  <div className="border border-border/80 bg-card p-3.5 rounded-none shadow-xs flex flex-col justify-between">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-muted-foreground">ចាប់ផ្តើម ART ថ្មី (Newly Initiated)</span>
-                      <div className="flex size-8 items-center justify-center bg-emerald-500/10 text-emerald-500 rounded-none">
-                        <RiUserAddLine className="size-4.5" />
+                      <span className="text-[11px] font-semibold text-muted-foreground truncate">ចុះឈ្មោះថ្មី (Newly Enrolled)</span>
+                      <div className="flex size-7 items-center justify-center bg-cyan-500/10 text-cyan-500 rounded-none shrink-0">
+                        <RiUserSearchLine className="size-4" />
                       </div>
                     </div>
-                    <div className="mt-3 flex items-baseline justify-between">
-                      <span className="text-2xl font-black text-foreground tracking-tight">
-                        {(kpis.newlyInitiated || 0).toLocaleString()}
+                    <div className="mt-2 flex items-baseline justify-between">
+                      <span className="text-xl font-black text-foreground tracking-tight">
+                        {(kpis.newlyEnrolled || 0).toLocaleString()}
                       </span>
-                      <span className="inline-flex items-center gap-0.5 text-xs font-bold text-emerald-500">
-                        Same-day: {kpis.sameDayRate}%
+                      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-cyan-500">
+                        Pre-ART & ART
                       </span>
                     </div>
-                    <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground border-t border-border/40 pt-2">
-                      <span>ក្នុងថ្ងៃតែមួយ (Same day): <strong className="text-foreground">{kpis.sameDayRate}%</strong></span>
+                    <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground border-t border-border/40 pt-1.5">
+                      <span>សរុបត្រីមាស (Quarter Total)</span>
                     </div>
                   </div>
 
-                  <div className="border border-border/80 bg-card p-4 rounded-none shadow-xs">
+                  {/* Card 3: Newly Initiated */}
+                  <div className="border border-border/80 bg-card p-3.5 rounded-none shadow-xs flex flex-col justify-between">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-muted-foreground">ផ្តល់ថ្នាំរយៈពេលវែង (MMD 3M/6M)</span>
-                      <div className="flex size-8 items-center justify-center bg-amber-500/10 text-amber-500 rounded-none">
-                        <RiMedicineBottleLine className="size-4.5" />
+                      <span className="text-[11px] font-semibold text-muted-foreground truncate">ចាប់ផ្តើម ART ថ្មី (Initiated)</span>
+                      <div className="flex size-7 items-center justify-center bg-emerald-500/10 text-emerald-500 rounded-none shrink-0">
+                        <RiUserAddLine className="size-4" />
                       </div>
                     </div>
-                    <div className="mt-3 flex items-baseline justify-between">
-                      <span className="text-2xl font-black text-foreground tracking-tight">
+                    <div className="mt-2 flex items-baseline justify-between">
+                      <span className="text-xl font-black text-foreground tracking-tight">
+                        {(kpis.newlyInitiated || 0).toLocaleString()}
+                      </span>
+                      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-500">
+                        Same-day: {kpis.sameDayRate}%
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground border-t border-border/40 pt-1.5">
+                      <span>ក្នុងថ្ងៃតែមួយ: <strong className="text-foreground">{kpis.sameDayRate}%</strong></span>
+                    </div>
+                  </div>
+
+                  {/* Card 4: MMD Patients */}
+                  <div className="border border-border/80 bg-card p-3.5 rounded-none shadow-xs flex flex-col justify-between">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold text-muted-foreground truncate">ថ្នាំវែង (MMD 3M/6M)</span>
+                      <div className="flex size-7 items-center justify-center bg-amber-500/10 text-amber-500 rounded-none shrink-0">
+                        <RiMedicineBottleLine className="size-4" />
+                      </div>
+                    </div>
+                    <div className="mt-2 flex items-baseline justify-between">
+                      <span className="text-xl font-black text-foreground tracking-tight">
                         {kpis.mmdRate}%
                       </span>
-                      <span className="inline-flex items-center gap-0.5 text-xs font-bold text-amber-500">
+                      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-500">
                         Goal &gt; 90%
                       </span>
                     </div>
-                    <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground border-t border-border/40 pt-2">
+                    <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground border-t border-border/40 pt-1.5">
                       <span>អ្នកជំងឺ MMD: <strong className="text-foreground">{(kpis.mmdTotal || 0).toLocaleString()}</strong></span>
                     </div>
                   </div>
 
-                  <div className="border border-border/80 bg-card p-4 rounded-none shadow-xs">
+                  {/* Card 5: TLD Regimen */}
+                  <div className="border border-border/80 bg-card p-3.5 rounded-none shadow-xs flex flex-col justify-between">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-muted-foreground">ការព្យាបាលដោយ TLD (TLD Regimen)</span>
-                      <div className="flex size-8 items-center justify-center bg-violet-500/10 text-violet-500 rounded-none">
-                        <RiHeartPulseLine className="size-4.5" />
+                      <span className="text-[11px] font-semibold text-muted-foreground truncate">ព្យាបាល TLD (TLD Regimen)</span>
+                      <div className="flex size-7 items-center justify-center bg-violet-500/10 text-violet-500 rounded-none shrink-0">
+                        <RiHeartPulseLine className="size-4" />
                       </div>
                     </div>
-                    <div className="mt-3 flex items-baseline justify-between">
-                      <span className="text-2xl font-black text-foreground tracking-tight">
+                    <div className="mt-2 flex items-baseline justify-between">
+                      <span className="text-xl font-black text-foreground tracking-tight">
                         {kpis.tldRate}%
                       </span>
-                      <span className="inline-flex items-center gap-0.5 text-xs font-bold text-violet-500">
+                      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-violet-500">
                         Optimal
                       </span>
                     </div>
-                    <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground border-t border-border/40 pt-2">
+                    <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground border-t border-border/40 pt-1.5">
                       <span>អ្នកជំងឺ TLD: <strong className="text-foreground">{(kpis.tldTotal || 0).toLocaleString()}</strong></span>
+                    </div>
+                  </div>
+
+                  {/* Card 6: VL Suppression Rate */}
+                  <div className="border border-border/80 bg-card p-3.5 rounded-none shadow-xs flex flex-col justify-between">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold text-muted-foreground truncate">បង្ក្រាបមេរោគ (VL Suppressed)</span>
+                      <div className="flex size-7 items-center justify-center bg-teal-500/10 text-teal-500 rounded-none shrink-0">
+                        <RiShieldCheckLine className="size-4" />
+                      </div>
+                    </div>
+                    <div className="mt-2 flex items-baseline justify-between">
+                      <span className="text-xl font-black text-foreground tracking-tight">
+                        {kpis.third95}%
+                      </span>
+                      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-teal-500">
+                        Target &gt; 95%
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground border-t border-border/40 pt-1.5">
+                      <span>តេស្តសរុប (Coverage): <strong className="text-foreground">{kpis.vlCoverageRate}%</strong></span>
                     </div>
                   </div>
                 </div>
@@ -1114,7 +1233,15 @@ export default function DashboardPage({ onLogout }) {
 
                 {/* Interactive Analytics Charts */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 shrink-0">
-                  <div className="border border-border/80 bg-card p-4 rounded-none shadow-xs">
+                  <div className="relative border border-border/80 bg-card p-4 rounded-none shadow-xs overflow-hidden">
+                    {loading && (
+                      <AppLoadingOverlay
+                        show={loading}
+                        fullScreen={false}
+                        message="កំពុងផ្ទុកទិន្នន័យ Chart..."
+                        submessage="Updating province data"
+                      />
+                    )}
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-xs font-bold text-foreground">ចំនួនអ្នកជំងឺ ART តាមរាជធានី-ខេត្ត (Active ART by Province)</span>
                       <span className="text-[10px] text-muted-foreground">Top 10 Provinces</span>
@@ -1135,7 +1262,15 @@ export default function DashboardPage({ onLogout }) {
                     </div>
                   </div>
 
-                  <div className="border border-border/80 bg-card p-4 rounded-none shadow-xs flex flex-col justify-between">
+                  <div className="relative border border-border/80 bg-card p-4 rounded-none shadow-xs flex flex-col justify-between overflow-hidden">
+                    {loading && (
+                      <AppLoadingOverlay
+                        show={loading}
+                        fullScreen={false}
+                        message="កំពុងផ្ទុកទិន្នន័យ Chart..."
+                        submessage="Updating regimen breakdown"
+                      />
+                    )}
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-bold text-foreground">ការបែងចែករូបមន្តថ្នាំ (Regimen Distribution)</span>
                       <span className="text-[10px] font-bold text-blue-500">TLD 98.4%</span>
@@ -1176,8 +1311,28 @@ export default function DashboardPage({ onLogout }) {
                   </div>
                 </div>
 
+                {/* Cambodia GIS Polygon & ART Site Pins Map */}
+                <CambodiaPolygonMap
+                  provinces={filteredProvinces}
+                  sites={sites}
+                  loading={loading}
+                  selectedProvinceId={siteCode.startsWith('province:') ? siteCode.replace('province:', '') : null}
+                  selectedSiteCode={siteCode}
+                  onSelectProvince={(pid) => setSiteCode(pid ? `province:${pid}` : '')}
+                  onSelectSite={(code) => setSiteCode(code || '')}
+                  className="shrink-0"
+                />
+
                 {/* 4-Quarter Trajectory Chart */}
-                <div className="border border-border/80 bg-card p-4 rounded-none shadow-xs shrink-0">
+                <div className="relative border border-border/80 bg-card p-4 rounded-none shadow-xs shrink-0 overflow-hidden">
+                  {loading && (
+                    <AppLoadingOverlay
+                      show={loading}
+                      fullScreen={false}
+                      message="កំពុងផ្ទុកទិន្នន័យ Chart..."
+                      submessage="Updating trajectory trends"
+                    />
+                  )}
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-bold text-foreground">និន្នាការកើនឡើងរបស់អ្នកជំងឺ ៤ ត្រីមាស (4-Quarter Active ART & VL Suppression Trajectory)</span>
                     <span className="text-[10px] text-muted-foreground">Q4 2025 – Q3 2026</span>
@@ -1787,6 +1942,23 @@ export default function DashboardPage({ onLogout }) {
                   </div>
                 </div>
               </>
+            )}
+
+            {/* Period-to-Period Comparison View - Extracted Subcomponent */}
+            {dashboardView === 'period_comparison' && (
+              <PeriodComparisonDashboard
+                groupedPerformanceData={groupedPerformanceData}
+                filteredProvinces={filteredProvinces}
+                siteCode={siteCode}
+                siteGroupBy={siteGroupBy}
+                basePeriodKey={basePeriodKey}
+                setBasePeriodKey={setBasePeriodKey}
+                comparePeriodKey={comparePeriodKey}
+                setComparePeriodKey={setComparePeriodKey}
+                comparisonPeriodKeys={comparisonPeriodKeys}
+                sexFilter={sexFilter}
+                ageGroupFilter={ageGroupFilter}
+              />
             )}
 
       </div>

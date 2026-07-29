@@ -1,23 +1,21 @@
-import { RiLoader4Line } from '@remixicon/react';
+import { AppSpinner } from '../ui/AppLoadingOverlay';
 import { cn } from '@/lib/utils';
-import { APP_NAV_ICON, APP_NAV_MUTED, APP_NAV_TEXT } from '../layout/appNavStyles';
+import { APP_NAV_TEXT } from '../layout/appNavStyles';
 
 /** Centered spinner panel (aligned with P360 toolbar typography). */
 export function Patient360LoadingPanel({ label, className, minHeight = 'min-h-[11rem]' }) {
   return (
     <div
       className={cn(
-        'flex w-full items-center justify-center border-0 bg-background',
+        'flex w-full flex-col items-center justify-center gap-3 border-0 bg-background/80 backdrop-blur-xs select-none',
         minHeight,
         className
       )}
       role="status"
       aria-live="polite"
     >
-      <div className={cn('inline-flex items-center gap-2', APP_NAV_MUTED)}>
-        <RiLoader4Line className={cn(APP_NAV_ICON, 'animate-spin text-primary')} aria-hidden />
-        <span className={APP_NAV_TEXT}>{label}</span>
-      </div>
+      <AppSpinner size="md" />
+      {label && <span className={cn('text-xs font-bold text-foreground tracking-wide', APP_NAV_TEXT)}>{label}</span>}
     </div>
   );
 }
