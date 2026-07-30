@@ -11,6 +11,7 @@ import {
 import { downloadCsv, rowsToCsv, safeExportFilename } from '../../utils/exportCsv';
 import { buildPatient360Path } from '../../utils/patient360Navigation';
 import patient360Api from '../../services/patient360Api';
+import AppLoadingOverlay from '../ui/AppLoadingOverlay';
 
 const KP_CATEGORIES = [
   { id: 'msm', label: 'MSM (បុរសស្រឡាញ់បុរស)', shortLabel: 'MSM', color: '#3b82f6', icon: RiUserHeartLine },
@@ -103,7 +104,7 @@ function generateMockKpPatients(kpGroupObj, siteCode = 'ALL', count = 45) {
   return rows;
 }
 
-export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedPeriodKey = '' }) {
+export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedPeriodKey = '', loading = false }) {
   const navigate = useNavigate();
   const [selectedKp, setSelectedKp] = useState('all');
 
@@ -319,7 +320,15 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
 
           <div className="flex flex-col sm:flex-row items-center gap-4 py-2">
             {/* Pristine Donut Chart with Center Total Stat */}
-            <div className="relative h-56 w-56 shrink-0 flex items-center justify-center">
+            <div className="relative h-56 w-56 shrink-0 flex items-center justify-center overflow-hidden">
+              {loading && (
+                <AppLoadingOverlay
+                  show={loading}
+                  fullScreen={false}
+                  message="កំពុងផ្ទុកទិន្នន័យ Chart..."
+                  submessage="Updating KP distribution"
+                />
+              )}
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -410,7 +419,15 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
             </div>
           </div>
 
-          <div className="h-64 w-full pt-2">
+          <div className="h-64 w-full pt-2 relative overflow-hidden">
+            {loading && (
+              <AppLoadingOverlay
+                show={loading}
+                fullScreen={false}
+                message="កំពុងផ្ទុកទិន្នន័យ Chart..."
+                submessage="Updating VL & MMD analytics"
+              />
+            )}
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={filteredKpData} margin={{ top: 20, right: 15, left: -15, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.15} />

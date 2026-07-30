@@ -12,6 +12,7 @@ import {
 import { downloadCsv, rowsToCsv, safeExportFilename } from '../../utils/exportCsv';
 import { buildPatient360Path } from '../../utils/patient360Navigation';
 import patient360Api from '../../services/patient360Api';
+import AppLoadingOverlay from '../ui/AppLoadingOverlay';
 
 // Mock/Default PNTT Indicators for Cambodian National HIV Program
 const PNTT_CASCADE_STEPS = [
@@ -37,10 +38,11 @@ const CHILDREN_INDEX_STEPS = [
   { key: 'art_children', label: 'កូនចូល ART', value: 41, fill: '#ec4899' }
 ];
 
-function generateMockPnttRows(categoryKey, siteCode) {
+function generateMockPnttRows(categoryKey, siteCode, rowCount = 35) {
   const rows = [];
-  const siteCodeVal = (!siteCode || siteCode === 'ALL' || siteCode === '__CAMBODIA__') ? '0102' : siteCode;
-  const count = categoryKey === 'positive' || categoryKey === 'positive_children' ? 35 : 100;
+  const rawCode = (!siteCode || siteCode === 'ALL' || siteCode === '__CAMBODIA__') ? '0102' : siteCode.replace('province:', 'P-');
+  const siteNameVal = siteCode?.startsWith('province:') ? `Province ${siteCode.replace('province:', '')}` : `Site ${rawCode}`;
+  const count = Math.min(100, Math.max(10, rowCount));
 
   const referralTypes = ['Provider Referral', 'Client Referral', 'Contract Referral', 'Dual Referral'];
   const testResults = (categoryKey === 'positive' || categoryKey === 'positive_children')
@@ -49,7 +51,7 @@ function generateMockPnttRows(categoryKey, siteCode) {
 
   for (let i = 1; i <= count; i++) {
     const pId = String(i).padStart(4, '0');
-    const clinicId = `${siteCodeVal}-${pId}`;
+    const clinicId = `${rawCode}-${pId}`;
     const isChild = categoryKey.includes('child');
     const age = isChild ? Math.floor(Math.random() * 14) + 1 : Math.floor(Math.random() * 35) + 18;
     const sexVal = isChild ? (i % 2 === 0 ? 'M' : 'F') : (i % 2 === 0 ? 'M' : 'F');
@@ -58,8 +60,8 @@ function generateMockPnttRows(categoryKey, siteCode) {
 
     rows.push({
       clinicId,
-      siteCode: siteCodeVal,
-      siteName: `Site ${siteCodeVal}`,
+      siteCode: rawCode,
+      siteName: siteNameVal,
       sex: sexVal,
       age,
       interviewDate: '2026-06-15',
@@ -74,8 +76,64 @@ function generateMockPnttRows(categoryKey, siteCode) {
   return rows;
 }
 
-export default function PnttDashboardView({ kpis = {}, siteCode = 'ALL', selectedPeriodKey = '' }) {
+export default function PnttDashboardView({ kpis = {}, siteCode = 'ALL', selectedPeriodKey = '', loading = false }) {
   const navigate = useNavigate();
+
+  // Dynamic PNTT Cascade Steps scaled by kpis (activeArt / newlyInitiated) & siteCode
+  const pnttCascadeSteps = useMemo(() => {
+    const newlyVol = kpis.newlyInitiated || Math.max(15, Math.round((kpis.activeArt || 72878) * 0.0336));
+    const interviewed = Math.max(1, Math.round(newlyVol * 1.0));
+    const agreed = Math.max(1, Math.round(interviewed * 0.902));
+    const elicited = Math.max(1, Math.round(interviewed * 1.298));
+    const tested = Math.max(1, Math.round(elicited * 0.893));
+    const positive = Math.max(1, Math.round(tested * 0.109));
+    const linked = Math.max(1, Math.round(positive * 0.955));
+
+    return [
+      { key: 'interviewed', label: 'សម្ភាសន៍ PNS', value: interviewed, fill: '#3b82f6' },
+      { key: 'agreed', label: 'យល់ព្រម PNS', value: agreed, fill: '#06b6d4' },
+      { key: 'elicited', label: 'ដៃគូដែលបានផ្តល់ឈ្មោះ', value: elicited, fill: '#8b5cf6' },
+      { key: 'tested', label: 'ដៃគូបានធ្វើតេស្ត', value: tested, fill: '#10b981' },
+      { key: 'positive', label: 'ដៃគូ HIV វិជ្ជមាន', value: positive, fill: '#f59e0b' },
+      { key: 'linked', label: 'ចូលព្យាបាល ART', value: linked, fill: '#ec4899' }
+    ];
+  }, [kpis, siteCode, selectedPeriodKey]);
+
+  // Dynamic PNTT Referral Methods scaled by tested partners count
+  const pnttReferralMethods = useMemo(() => {
+    const testedVal = pnttCascadeSteps.find(s => s.key === 'tested')?.value || 2840;
+    const provider = Math.max(1, Math.round(testedVal * 0.48));
+    const contract = Math.max(1, Math.round(testedVal * 0.28));
+    const client = Math.max(1, Math.round(testedVal * 0.16));
+    const dual = Math.max(0, testedVal - (provider + contract + client));
+
+    return [
+      { key: 'provider', name: 'Provider Referral', label: 'គ្រូពេទ្យជួយទាក់ទង', value: provider, fill: '#3b82f6' },
+      { key: 'contract', name: 'Contract Referral', label: 'កិច្ចសន្យាប្រគល់ភារកិច្ច', value: contract, fill: '#10b981' },
+      { key: 'client', name: 'Client Referral', label: 'អ្នកជំងឺទាក់ទងផ្ទាល់', value: client, fill: '#f59e0b' },
+      { key: 'dual', name: 'Dual Referral', label: 'រួមគ្នាទាក់ទង', value: dual, fill: '#8b5cf6' }
+    ];
+  }, [pnttCascadeSteps]);
+
+  const totalReferrals = useMemo(() => {
+    return pnttReferralMethods.reduce((acc, curr) => acc + (curr.value || 0), 0);
+  }, [pnttReferralMethods]);
+
+  // Dynamic Biological Children Index Testing steps
+  const childrenIndexSteps = useMemo(() => {
+    const newlyVol = kpis.newlyInitiated || Math.max(15, Math.round((kpis.activeArt || 72878) * 0.0336));
+    const eligible_children = Math.max(1, Math.round(newlyVol * 0.51));
+    const tested_children = Math.max(1, Math.round(eligible_children * 0.896));
+    const positive_children = Math.max(1, Math.round(tested_children * 0.0375));
+    const art_children = Math.max(1, Math.round(positive_children * 0.976));
+
+    return [
+      { key: 'eligible_children', label: 'កូនត្រូវធ្វើតេស្ត', value: eligible_children, fill: '#6366f1' },
+      { key: 'tested_children', label: 'កូនបានធ្វើតេស្ត', value: tested_children, fill: '#10b981' },
+      { key: 'positive_children', label: 'កូន HIV វិជ្ជមាន', value: positive_children, fill: '#ef4444' },
+      { key: 'art_children', label: 'កូនចូល ART', value: art_children, fill: '#ec4899' }
+    ];
+  }, [kpis, siteCode, selectedPeriodKey]);
 
   // Line List Modal State
   const [lineListOpen, setLineListOpen] = useState(false);
@@ -98,7 +156,7 @@ export default function PnttDashboardView({ kpis = {}, siteCode = 'ALL', selecte
     setModalSearch('');
     setModalResultFilter('all');
     setTimeout(() => {
-      setModalRows(generateMockPnttRows(step.key || 'all', siteCode));
+      setModalRows(generateMockPnttRows(step.key || 'all', siteCode, step.value || 35));
       setModalLoading(false);
     }, 200);
   };
@@ -156,7 +214,7 @@ export default function PnttDashboardView({ kpis = {}, siteCode = 'ALL', selecte
     <div className="space-y-4 font-khmer">
       {/* PNTT EXECUTIVE KPI CARDS HEADER */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">
-        {PNTT_CASCADE_STEPS.map((step) => (
+        {pnttCascadeSteps.map((step) => (
           <div
             key={step.key}
             onClick={() => handleOpenLineList(step)}
@@ -209,9 +267,17 @@ export default function PnttDashboardView({ kpis = {}, siteCode = 'ALL', selecte
             </span>
           </div>
 
-          <div className="h-64 w-full">
+          <div className="h-64 w-full relative overflow-hidden">
+            {loading && (
+              <AppLoadingOverlay
+                show={loading}
+                fullScreen={false}
+                message="កំពុងផ្ទុកទិន្នន័យ Chart..."
+                submessage="Updating PNTT cascade"
+              />
+            )}
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={PNTT_CASCADE_STEPS} margin={{ top: 20, right: 15, left: -15, bottom: 5 }}>
+              <BarChart data={pnttCascadeSteps} margin={{ top: 20, right: 15, left: -15, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
                 <XAxis dataKey="label" tick={{ fontSize: 10, fontWeight: '700', fill: 'currentColor' }} className="text-muted-foreground" />
                 <YAxis tick={{ fontSize: 10, fill: 'currentColor' }} className="text-muted-foreground" />
@@ -229,7 +295,7 @@ export default function PnttDashboardView({ kpis = {}, siteCode = 'ALL', selecte
                   }}
                 />
                 <Bar dataKey="value" radius={[2, 2, 0, 0]}>
-                  {PNTT_CASCADE_STEPS.map((entry, index) => (
+                  {pnttCascadeSteps.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.fill} />
                   ))}
                   <LabelList dataKey="value" position="top" formatter={(v) => v.toLocaleString()} style={{ fontSize: '10px', fontWeight: 'bold', fill: 'currentColor' }} />
@@ -247,17 +313,25 @@ export default function PnttDashboardView({ kpis = {}, siteCode = 'ALL', selecte
               <span>ការបែងចែកតាមវិធីសាស្ត្រ PNTT (Referral Methods)</span>
             </h3>
             <span className="text-[11px] font-bold text-muted-foreground font-mono">
-              សរុប: 100 នាក់
+              សរុប: {totalReferrals.toLocaleString()} នាក់
             </span>
           </div>
 
           <div className="flex flex-col gap-3">
             {/* Donut Chart with Center Text */}
-            <div className="relative flex items-center justify-center h-44 w-full">
+            <div className="relative flex items-center justify-center h-44 w-full overflow-hidden">
+              {loading && (
+                <AppLoadingOverlay
+                  show={loading}
+                  fullScreen={false}
+                  message="កំពុងផ្ទុកទិន្នន័យ Chart..."
+                  submessage="Updating referral methods"
+                />
+              )}
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={PNTT_REFERRAL_METHODS}
+                    data={pnttReferralMethods}
                     dataKey="value"
                     nameKey="label"
                     cx="50%"
@@ -266,7 +340,7 @@ export default function PnttDashboardView({ kpis = {}, siteCode = 'ALL', selecte
                     outerRadius={75}
                     paddingAngle={3}
                   >
-                    {PNTT_REFERRAL_METHODS.map((entry, index) => (
+                    {pnttReferralMethods.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.fill} />
                     ))}
                   </Pie>
@@ -274,10 +348,11 @@ export default function PnttDashboardView({ kpis = {}, siteCode = 'ALL', selecte
                     content={({ active, payload }) => {
                       if (!active || !payload || !payload.length) return null;
                       const d = payload[0].payload;
+                      const pct = Math.round((d.value / (totalReferrals || 1)) * 100);
                       return (
                         <div className="bg-popover border border-border p-2 shadow-md text-xs font-khmer">
                           <div className="font-bold text-foreground">{d.name} ({d.label})</div>
-                          <div className="text-cyan-400 font-mono font-bold">{d.value} នាក់ ({d.value}%)</div>
+                          <div className="text-cyan-400 font-mono font-bold">{d.value.toLocaleString()} នាក់ ({pct}%)</div>
                         </div>
                       );
                     }}
@@ -288,14 +363,14 @@ export default function PnttDashboardView({ kpis = {}, siteCode = 'ALL', selecte
               {/* Donut Center Label Overlay */}
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none font-khmer text-center">
                 <span className="text-[10px] font-bold text-muted-foreground">សរុប PNTT</span>
-                <span className="text-xl font-black text-foreground font-mono leading-tight">100</span>
+                <span className="text-xl font-black text-foreground font-mono leading-tight">{totalReferrals.toLocaleString()}</span>
                 <span className="text-[10px] font-extrabold text-emerald-500 font-mono">100.0%</span>
               </div>
             </div>
 
             {/* Interactive Legend Items List */}
             <div className="space-y-1.5 font-khmer pt-1 border-t border-border/40">
-              {PNTT_REFERRAL_METHODS.map((item) => (
+              {pnttReferralMethods.map((item) => (
                 <div
                   key={item.key}
                   className="flex items-center justify-between border border-border/60 bg-muted/20 hover:bg-muted/40 px-2.5 py-1.5 transition-colors gap-2"
@@ -305,9 +380,9 @@ export default function PnttDashboardView({ kpis = {}, siteCode = 'ALL', selecte
                     <span className="text-xs font-bold text-foreground truncate" title={item.name}>{item.name}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs font-mono font-black text-foreground">{item.value}</span>
+                    <span className="text-xs font-mono font-black text-foreground">{item.value.toLocaleString()}</span>
                     <button
-                      onClick={() => handleOpenLineList({ key: item.key, label: item.name })}
+                      onClick={() => handleOpenLineList({ key: item.key, label: item.name, value: item.value })}
                       className="px-2 py-0.5 text-[10px] font-mono font-bold text-blue-400 bg-blue-500/10 hover:bg-blue-500 hover:text-white border border-blue-500/30 transition-all cursor-pointer inline-flex items-center gap-1"
                     >
                       <span>Line List</span>
@@ -333,7 +408,7 @@ export default function PnttDashboardView({ kpis = {}, siteCode = 'ALL', selecte
             </p>
           </div>
           <button
-            onClick={() => handleOpenLineList({ key: 'eligible_children', label: 'កូនជីវសាស្ត្រ' })}
+            onClick={() => handleOpenLineList({ key: 'eligible_children', label: 'កូនជីវសាស្ត្រ', value: childrenIndexSteps[0]?.value })}
             className="px-2.5 py-1 text-xs font-bold text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500 hover:text-white border border-emerald-500/20 transition-all inline-flex items-center gap-1"
           >
             <RiListCheck className="size-3.5" />
@@ -342,7 +417,7 @@ export default function PnttDashboardView({ kpis = {}, siteCode = 'ALL', selecte
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {CHILDREN_INDEX_STEPS.map((step) => (
+          {childrenIndexSteps.map((step) => (
             <div
               key={step.key}
               onClick={() => handleOpenLineList(step)}

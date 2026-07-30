@@ -301,6 +301,44 @@ export const NATIONAL_REPORT_INDICATORS = [
     category: 'EAC & High VL Management',
     category_kh: '៧. ការប្រឹក្សា EAC (VL ខ្ពស់)',
     desc: 'អ្នកជំងឺដែលបានតេស្ត VL ឡើងវិញ ៦ ខែ បន្ទាប់ពីបញ្ចប់វគ្គ EAC'
+  },
+
+  // --- Category 8: Site Performance & Evaluation ---
+  {
+    id: 'site_active_art',
+    sql_file: '11_active_art_current.sql',
+    name_kh: '០៨.១. ចំនួនអ្នកជំងឺ ART សកម្ម តាមមណ្ឌលព្យាបាល',
+    name_en: 'Active ART Patients by Facility Site',
+    category: 'Site Performance & Evaluation',
+    category_kh: '៨. សមត្ថកិច្ចមណ្ឌល (Sites Performance)',
+    desc: 'ចំនួនអ្នកជំងឺទទួលការព្យាបាល ART សកម្ម តាមមណ្ឌលព្យាបាលនីមួយៗ'
+  },
+  {
+    id: 'site_newly_initiated',
+    sql_file: '05_newly_initiated.sql',
+    name_kh: '០៨.២. ចំនួនអ្នកជំងឺចាប់ផ្តើម ART ថ្មី តាមមណ្ឌល',
+    name_en: 'Newly Initiated ART Patients by Facility Site',
+    category: 'Site Performance & Evaluation',
+    category_kh: '៨. សមត្ថកិច្ចមណ្ឌល (Sites Performance)',
+    desc: 'ចំនួនអ្នកជំងឺដែលទើបចាប់ផ្តើមទទួលការព្យាបាល ART ថ្មី តាមមណ្ឌល'
+  },
+  {
+    id: 'site_mmd_rate',
+    sql_file: '11.2_mmd_patients.sql',
+    name_kh: '០៨.៣. អត្រាផ្តល់ថ្នាំ MMD (3M/6M) តាមមណ្ឌល (%)',
+    name_en: 'MMD Coverage Rate by Facility Site (%)',
+    category: 'Site Performance & Evaluation',
+    category_kh: '៨. សមត្ថកិច្ចមណ្ឌល (Sites Performance)',
+    desc: 'សមាមាត្រអ្នកជំងឺ ART ដែលទទួលបានសេវាផ្តល់ថ្នាំ MMD តាមមណ្ឌល'
+  },
+  {
+    id: 'site_vl_suppression',
+    sql_file: '11.8_vl_suppression.sql',
+    name_kh: '០៨.៤. អត្រាបង្ក្រាបវីរុស VL តាមមណ្ឌល (%)',
+    name_en: 'VL Suppression Rate by Facility Site (%)',
+    category: 'Site Performance & Evaluation',
+    category_kh: '៨. សមត្ថកិច្ចមណ្ឌល (Sites Performance)',
+    desc: 'អត្រាបង្ក្រាបមេរោគអេដស៍ (VL Suppression < 1000 copies/mL) តាមមណ្ឌល'
   }
 ];
 

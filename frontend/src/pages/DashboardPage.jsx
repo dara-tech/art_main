@@ -251,6 +251,7 @@ export default function DashboardPage({ onLogout }) {
   const [sexFilter, setSexFilter] = useState('all'); // 'all', 'male', 'female'
   const [dashboardView, setDashboardView] = useState('program'); // 'program', 'sites', 'targets', 'dqa', 'period_comparison'
   const [compareMetric, setCompareMetric] = useState('all'); // 'all', 'active_art', 'newly_initiated', 'mmd_patients', 'tld_patients'
+  const [provinceFilterMode, setProvinceFilterMode] = useState('top10'); // 'top10', 'lowest10', 'all'
   const [siteGroupBy, setSiteGroupBy] = useState('site'); // 'site', 'province', 'od'
   const [basePeriodKey, setBasePeriodKey] = useState('2026-Q2');
   const [comparePeriodKey, setComparePeriodKey] = useState('2026-Q3');
@@ -604,9 +605,17 @@ export default function DashboardPage({ onLogout }) {
       if (ind.startsWith('11. active art')) byProv[pid].activeArt = val;
       else if (ind.startsWith('5. newly initiated')) byProv[pid].newArt = val;
     }
-    const mapped = Object.values(byProv).filter((p) => p.activeArt > 0).sort((a, b) => b.activeArt - a.activeArt).slice(0, 10);
+    const sorted = Object.values(byProv).filter((p) => p.activeArt > 0).sort((a, b) => b.activeArt - a.activeArt);
+    let mapped = sorted;
+    if (provinceFilterMode === 'lowest10') {
+      mapped = [...sorted].sort((a, b) => a.activeArt - b.activeArt).slice(0, 10);
+    } else if (provinceFilterMode === 'top10') {
+      mapped = sorted.slice(0, 10);
+    } else {
+      mapped = sorted;
+    }
     return mapped.length > 0 ? mapped : fallback;
-  }, [provinceData, siteCode, selectedPeriodKey, ageGroupFilter, sexFilter]);
+  }, [provinceData, siteCode, selectedPeriodKey, ageGroupFilter, sexFilter, provinceFilterMode]);
 
   // All Individual Health Facility Sites Breakdown Memo (for full site table listing across all 71 sites)
   const allFacilitySites = useMemo(() => {
@@ -673,7 +682,20 @@ export default function DashboardPage({ onLogout }) {
       { site_code: '2503', site_name: 'Memot Referral Hospital', province_name: 'Tboung Khmum', od_name: 'OD Memot', active_art: 1320 },
       { site_code: '2301', site_name: 'Kep Referral Hospital', province_name: 'Kep', od_name: 'OD Kep', active_art: 510 },
       { site_code: '1501', site_name: 'Pursat Provincial Hospital', province_name: 'Pursat', od_name: 'OD Sampov Meas', active_art: 2310 },
-      { site_code: '1502', site_name: 'Krakor Referral Hospital', province_name: 'Pursat', od_name: 'OD Krakor', active_art: 1080 }
+      { site_code: '1502', site_name: 'Krakor Referral Hospital', province_name: 'Pursat', od_name: 'OD Krakor', active_art: 1080 },
+      { site_code: '1208', site_name: 'Sensok Referral Hospital', province_name: 'Phnom Penh', od_name: 'OD Sensok', active_art: 1750 },
+      { site_code: '1209', site_name: 'Chbar Ampov Referral Hospital', province_name: 'Phnom Penh', od_name: 'OD Chbar Ampov', active_art: 1430 },
+      { site_code: '0205', site_name: 'Banan Referral Hospital', province_name: 'Battambang', od_name: 'OD Banan', active_art: 1290 },
+      { site_code: '1705', site_name: 'Chi Kraeng Referral Hospital', province_name: 'Siem Reap', od_name: 'OD Chi Kraeng', active_art: 1150 },
+      { site_code: '0104', site_name: 'Thmar Puok Referral Hospital', province_name: 'Banteay Meanchey', od_name: 'OD Thmar Puok', active_art: 1380 },
+      { site_code: '0304', site_name: 'Batheay Referral Hospital', province_name: 'Kampong Cham', od_name: 'OD Batheay', active_art: 1210 },
+      { site_code: '0805', site_name: 'Kien Svay Referral Hospital', province_name: 'Kandal', od_name: 'OD Kien Svay', active_art: 1050 },
+      { site_code: '0503', site_name: 'Kong Pisei Referral Hospital', province_name: 'Kampong Speu', od_name: 'OD Kong Pisei', active_art: 980 },
+      { site_code: '2104', site_name: 'Angkor Borei Referral Hospital', province_name: 'Takeo', od_name: 'OD Angkor Borei', active_art: 890 },
+      { site_code: '1403', site_name: 'Peam Ro Referral Hospital', province_name: 'Prey Veng', od_name: 'OD Peam Ro', active_art: 940 },
+      { site_code: '1404', site_name: 'Kamchay Mear Referral Hospital', province_name: 'Prey Veng', od_name: 'OD Kamchay Mear', active_art: 820 },
+      { site_code: '2504', site_name: 'Krouch Chhmar Referral Hospital', province_name: 'Tboung Khmum', od_name: 'OD Krouch Chhmar', active_art: 1040 },
+      { site_code: '0703', site_name: 'Chhouk Referral Hospital', province_name: 'Kampot', od_name: 'OD Chhouk', active_art: 790 }
     ];
 
     // Map registry sites and fullSiteRoster seamlessly with distinct baseline calculations
@@ -1344,12 +1366,12 @@ export default function DashboardPage({ onLogout }) {
               </button>
             </div>
             {dashboardView === 'kp' && (
-              <KpDashboardView kpis={kpis} siteCode={siteCode} selectedPeriodKey={selectedPeriodKey} />
+              <KpDashboardView kpis={kpis} siteCode={siteCode} selectedPeriodKey={selectedPeriodKey} loading={loading} />
             )}
 
             {/* PNTT Partner Notification & Testing Dashboard View */}
             {dashboardView === 'pntt' && (
-              <PnttDashboardView kpis={kpis} siteCode={siteCode} selectedPeriodKey={selectedPeriodKey} />
+              <PnttDashboardView kpis={kpis} siteCode={siteCode} selectedPeriodKey={selectedPeriodKey} loading={loading} />
             )}
 
             {/* Performance Program View */}
@@ -1574,49 +1596,105 @@ export default function DashboardPage({ onLogout }) {
 
                 {/* Interactive Analytics Charts */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 shrink-0">
-                  <div className="relative border border-border/80 bg-card p-4 rounded-none shadow-xs overflow-hidden">
-                    {loading && (
-                      <AppLoadingOverlay
-                        show={loading}
-                        fullScreen={false}
-                        message="កំពុងផ្ទុកទិន្នន័យ Chart..."
-                        submessage="Updating province data"
-                      />
-                    )}
+                  <div className="border border-border/80 bg-card p-4 rounded-none shadow-xs">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-xs font-bold text-foreground">ចំនួនអ្នកជំងឺ ART តាមរាជធានី-ខេត្ត (Active ART by Province)</span>
-                      <span className="text-[10px] text-muted-foreground">Top 10 Provinces</span>
+                      <div className="flex items-center gap-1 border border-border/80 bg-muted/40 p-0.5 shrink-0 font-khmer">
+                        <button
+                          type="button"
+                          onClick={() => setProvinceFilterMode('top10')}
+                          className={`px-2 py-0.5 text-[10px] font-bold transition-all cursor-pointer ${
+                            provinceFilterMode === 'top10'
+                              ? 'bg-primary text-primary-foreground shadow-2xs'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          Top 10
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setProvinceFilterMode('lowest10')}
+                          className={`px-2 py-0.5 text-[10px] font-bold transition-all cursor-pointer ${
+                            provinceFilterMode === 'lowest10'
+                              ? 'bg-rose-600 text-white shadow-2xs'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          Lowest 10
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setProvinceFilterMode('all')}
+                          className={`px-2 py-0.5 text-[10px] font-bold transition-all cursor-pointer ${
+                            provinceFilterMode === 'all'
+                              ? 'bg-primary text-primary-foreground shadow-2xs'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          Show All
+                        </button>
+                      </div>
                     </div>
-                    <div className="h-64 w-full">
+                    <div className="h-64 w-full relative overflow-hidden">
+                      {loading && (
+                        <AppLoadingOverlay
+                          show={loading}
+                          fullScreen={false}
+                          message="កំពុងផ្ទុកទិន្នន័យ Chart..."
+                          submessage="Updating province data"
+                        />
+                      )}
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={provincialChartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
                           <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
                           <XAxis dataKey="name" tick={{ fontSize: 9, fill: 'currentColor' }} angle={-25} textAnchor="end" interval={0} />
                           <YAxis tick={{ fontSize: 10, fill: 'currentColor' }} />
                           <Tooltip
-                            contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: 0, fontSize: '11px' }}
-                            formatter={(val) => Number(val).toLocaleString()}
+                            cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
+                            content={({ active, payload }) => {
+                              if (!active || !payload || !payload.length) return null;
+                              const dataObj = payload[0]?.payload || {};
+                              return (
+                                <div className="bg-slate-900 border border-slate-700 p-2.5 shadow-2xl text-xs space-y-1.5 text-white font-khmer rounded-none">
+                                  <div className="border-b border-slate-700/60 pb-1">
+                                    <span className="text-[10px] text-teal-400 font-bold block uppercase tracking-wider">ចំនួនអ្នកជំងឺ ART តាមខេត្ត</span>
+                                    <strong className="text-blue-400 font-extrabold text-sm">{dataObj.name}</strong>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-4 text-[11px]">
+                                    <span className="text-slate-400">Active ART:</span>
+                                    <strong className="text-blue-400 font-black">{Number(payload[0].value).toLocaleString()} នាក់</strong>
+                                  </div>
+                                </div>
+                              );
+                            }}
                           />
-                          <Bar dataKey="activeArt" name="Active ART" fill="#3b82f6" radius={[0, 0, 0, 0]} />
+                          <Bar dataKey="activeArt" name="Active ART" fill="#3b82f6" radius={[2, 2, 0, 0]}>
+                            <LabelList
+                              dataKey="activeArt"
+                              position="top"
+                              style={{ fontSize: '9px', fontWeight: '800', fill: '#60a5fa' }}
+                              formatter={(val) => Number(val) > 0 ? Number(val).toLocaleString() : ''}
+                            />
+                          </Bar>
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
 
-                  <div className="relative border border-border/80 bg-card p-4 rounded-none shadow-xs flex flex-col justify-between overflow-hidden">
-                    {loading && (
-                      <AppLoadingOverlay
-                        show={loading}
-                        fullScreen={false}
-                        message="កំពុងផ្ទុកទិន្នន័យ Chart..."
-                        submessage="Updating regimen breakdown"
-                      />
-                    )}
+                  <div className="border border-border/80 bg-card p-4 rounded-none shadow-xs flex flex-col justify-between">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-bold text-foreground">ការបែងចែករូបមន្តថ្នាំ (Regimen Distribution)</span>
                       <span className="text-[10px] font-bold text-blue-500">TLD 98.4%</span>
                     </div>
-                    <div className="h-44 w-full flex items-center justify-center">
+                    <div className="h-44 w-full flex items-center justify-center relative overflow-hidden">
+                      {loading && (
+                        <AppLoadingOverlay
+                          show={loading}
+                          fullScreen={false}
+                          message="កំពុងផ្ទុកទិន្នន័យ Chart..."
+                          submessage="Updating regimen breakdown"
+                        />
+                      )}
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
@@ -1665,20 +1743,20 @@ export default function DashboardPage({ onLogout }) {
                 />
 
                 {/* 4-Quarter Trajectory Chart */}
-                <div className="relative border border-border/80 bg-card p-4 rounded-none shadow-xs shrink-0 overflow-hidden">
-                  {loading && (
-                    <AppLoadingOverlay
-                      show={loading}
-                      fullScreen={false}
-                      message="កំពុងផ្ទុកទិន្នន័យ Chart..."
-                      submessage="Updating trajectory trends"
-                    />
-                  )}
+                <div className="border border-border/80 bg-card p-4 rounded-none shadow-xs shrink-0">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-bold text-foreground">និន្នាការកើនឡើងរបស់អ្នកជំងឺ ៤ ត្រីមាស (4-Quarter Active ART & VL Suppression Trajectory)</span>
                     <span className="text-[10px] text-muted-foreground">Q4 2025 – Q3 2026</span>
                   </div>
-                  <div className="h-56 w-full">
+                  <div className="h-56 w-full relative overflow-hidden">
+                    {loading && (
+                      <AppLoadingOverlay
+                        show={loading}
+                        fullScreen={false}
+                        message="កំពុងផ្ទុកទិន្នន័យ Chart..."
+                        submessage="Updating trajectory trends"
+                      />
+                    )}
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={quarterlyTrendData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                         <defs>
@@ -1845,7 +1923,15 @@ export default function DashboardPage({ onLogout }) {
                     </div>
                   </div>
 
-                  <div className="h-[680px] w-full">
+                  <div className="h-[680px] w-full relative overflow-hidden">
+                    {loading && (
+                      <AppLoadingOverlay
+                        show={loading}
+                        fullScreen={false}
+                        message="កំពុងផ្ទុកទិន្នន័យ Chart..."
+                        submessage="Updating site performance evaluation"
+                      />
+                    )}
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         layout="vertical"
@@ -1868,23 +1954,48 @@ export default function DashboardPage({ onLogout }) {
                         />
                         <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
 
-                        {(compareMetric === 'all' || compareMetric === 'active_art') && (
-                          <Bar dataKey="activeArt" name="Active ART Patients" fill="#3b82f6" barSize={compareMetric === 'all' ? 7 : 20} radius={[0, 0, 0, 0]} />
-                        )}
-                        {(compareMetric === 'all' || compareMetric === 'newly_initiated') && (
-                          <Bar dataKey="newArt" name="Newly Initiated ART" fill="#10b981" barSize={compareMetric === 'all' ? 7 : 20} radius={[0, 0, 0, 0]} />
-                        )}
-                        {(compareMetric === 'all' || compareMetric === 'mmd_patients') && (
-                          <Bar dataKey="mmd" name="MMD 3M/6M Patients" fill="#f59e0b" barSize={compareMetric === 'all' ? 7 : 20} radius={[0, 0, 0, 0]} />
-                        )}
-                        {(compareMetric === 'all' || compareMetric === 'tld_patients') && (
-                          <Bar dataKey="tld" name="TLD Regimen Patients" fill="#8b5cf6" barSize={compareMetric === 'all' ? 7 : 20} radius={[0, 0, 0, 0]} />
-                        )}
-                        {(compareMetric === 'all' || compareMetric === 'vl_tested') && (
-                          <Bar dataKey="vlTested" name="VL Tested" fill="#06b6d4" barSize={compareMetric === 'all' ? 7 : 20} radius={[0, 0, 0, 0]} />
-                        )}
-                        {(compareMetric === 'all' || compareMetric === 'vl_suppressed') && (
-                          <Bar dataKey="vlSuppressed" name="VL Suppressed" fill="#d946ef" barSize={compareMetric === 'all' ? 7 : 20} radius={[0, 0, 0, 0]} />
+                        {compareMetric === 'all' ? (
+                          <>
+                            <Bar dataKey="activeArt" name="Active ART Patients" fill="#3b82f6" barSize={7} radius={[0, 0, 0, 0]} />
+                            <Bar dataKey="newArt" name="Newly Initiated ART" fill="#10b981" barSize={7} radius={[0, 0, 0, 0]} />
+                            <Bar dataKey="mmd" name="MMD 3M/6M Patients" fill="#f59e0b" barSize={7} radius={[0, 0, 0, 0]} />
+                            <Bar dataKey="tld" name="TLD Regimen Patients" fill="#8b5cf6" barSize={7} radius={[0, 0, 0, 0]} />
+                            <Bar dataKey="vlTested" name="VL Tested" fill="#06b6d4" barSize={7} radius={[0, 0, 0, 0]} />
+                            <Bar dataKey="vlSuppressed" name="VL Suppressed" fill="#d946ef" barSize={7} radius={[0, 0, 0, 0]} />
+                          </>
+                        ) : (
+                          <>
+                            {compareMetric === 'active_art' && (
+                              <Bar dataKey="activeArt" name="Active ART Patients" fill="#3b82f6" barSize={20} radius={[0, 2, 2, 0]}>
+                                <LabelList dataKey="activeArt" position="right" style={{ fontSize: '10px', fontWeight: '800', fill: '#60a5fa' }} formatter={(v) => Number(v) > 0 ? Number(v).toLocaleString() : ''} />
+                              </Bar>
+                            )}
+                            {compareMetric === 'newly_initiated' && (
+                              <Bar dataKey="newArt" name="Newly Initiated ART" fill="#10b981" barSize={20} radius={[0, 2, 2, 0]}>
+                                <LabelList dataKey="newArt" position="right" style={{ fontSize: '10px', fontWeight: '800', fill: '#34d399' }} formatter={(v) => Number(v) > 0 ? Number(v).toLocaleString() : ''} />
+                              </Bar>
+                            )}
+                            {compareMetric === 'mmd_patients' && (
+                              <Bar dataKey="mmd" name="MMD 3M/6M Patients" fill="#f59e0b" barSize={20} radius={[0, 2, 2, 0]}>
+                                <LabelList dataKey="mmd" position="right" style={{ fontSize: '10px', fontWeight: '800', fill: '#fbbf24' }} formatter={(v) => Number(v) > 0 ? Number(v).toLocaleString() : ''} />
+                              </Bar>
+                            )}
+                            {compareMetric === 'tld_patients' && (
+                              <Bar dataKey="tld" name="TLD Regimen Patients" fill="#8b5cf6" barSize={20} radius={[0, 2, 2, 0]}>
+                                <LabelList dataKey="tld" position="right" style={{ fontSize: '10px', fontWeight: '800', fill: '#a78bfa' }} formatter={(v) => Number(v) > 0 ? Number(v).toLocaleString() : ''} />
+                              </Bar>
+                            )}
+                            {compareMetric === 'vl_tested' && (
+                              <Bar dataKey="vlTested" name="VL Tested" fill="#06b6d4" barSize={20} radius={[0, 2, 2, 0]}>
+                                <LabelList dataKey="vlTested" position="right" style={{ fontSize: '10px', fontWeight: '800', fill: '#22d3ee' }} formatter={(v) => Number(v) > 0 ? Number(v).toLocaleString() : ''} />
+                              </Bar>
+                            )}
+                            {compareMetric === 'vl_suppressed' && (
+                              <Bar dataKey="vlSuppressed" name="VL Suppressed" fill="#d946ef" barSize={20} radius={[0, 2, 2, 0]}>
+                                <LabelList dataKey="vlSuppressed" position="right" style={{ fontSize: '10px', fontWeight: '800', fill: '#e879f9' }} formatter={(v) => Number(v) > 0 ? Number(v).toLocaleString() : ''} />
+                              </Bar>
+                            )}
+                          </>
                         )}
                       </BarChart>
                     </ResponsiveContainer>
@@ -2299,6 +2410,7 @@ export default function DashboardPage({ onLogout }) {
                 comparisonPeriodKeys={comparisonPeriodKeys}
                 sexFilter={sexFilter}
                 ageGroupFilter={ageGroupFilter}
+                loading={loading}
               />
             )}
 

@@ -299,6 +299,7 @@ export default function PmtctInfantDashboardPage({ onLogout }) {
 
     const cotrimPct = totalCare > 0 ? Math.min(100, Math.round((cotrim / totalCare) * 100)) : 0;
     const earlyEnrollPct = totalCare > 0 ? Math.min(100, Math.round((newLess2m / totalCare) * 100)) : 0;
+    const pcrPct = totalCare > 0 ? Math.min(100, Math.round((pcr46w / totalCare) * 100)) : 0;
 
     return {
       totalCare,
@@ -306,6 +307,7 @@ export default function PmtctInfantDashboardPage({ onLogout }) {
       cotrim,
       cotrimPct,
       pcr46w,
+      pcrPct,
       earlyEnrollPct
     };
   }, [infantIndicators]);
@@ -695,45 +697,85 @@ export default function PmtctInfantDashboardPage({ onLogout }) {
           <div className="flex-1 min-w-0 overflow-y-auto no-scrollbar space-y-4 p-3 sm:p-4 md:p-6 pb-24">
 
             {/* SMART KPI SUMMARY METRICS HEADER CHIPS */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="border border-border/80 bg-card p-3 shadow-2xs flex items-center gap-3">
-                <div className="p-2 rounded-full bg-blue-500/10 text-blue-500 shrink-0">
-                  <RiPulseLine className="size-5" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Card 1: On Care */}
+              <div className="border border-border/80 bg-card p-3.5 shadow-2xs hover:border-blue-500/50 transition-all flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2.5 rounded-none bg-blue-500/10 text-blue-500 shrink-0 border border-blue-500/20">
+                    <RiPulseLine className="size-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">
+                      ថែទាំសរុប (On Care)
+                    </div>
+                    <div className="text-base font-black text-foreground tracking-tight">
+                      {kpiSummary.totalCare.toLocaleString()} <span className="text-xs font-bold text-muted-foreground">ទារក</span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-[10px] font-bold text-muted-foreground">ថែទាំសរុប (On Care)</div>
-                  <div className="text-sm font-extrabold text-foreground">{kpiSummary.totalCare.toLocaleString()} ទារក</div>
-                </div>
+                <span className="text-[10px] font-extrabold text-blue-400 bg-blue-500/10 px-2 py-0.5 border border-blue-500/20 shrink-0">
+                  Active EID
+                </span>
               </div>
 
-              <div className="border border-border/80 bg-card p-3 shadow-2xs flex items-center gap-3">
-                <div className="p-2 rounded-full bg-emerald-500/10 text-emerald-500 shrink-0">
-                  <RiUserAddLine className="size-5" />
+              {/* Card 2: Early Enrollment < 2M */}
+              <div className="border border-border/80 bg-card p-3.5 shadow-2xs hover:border-emerald-500/50 transition-all flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2.5 rounded-none bg-emerald-500/10 text-emerald-500 shrink-0 border border-emerald-500/20">
+                    <RiUserAddLine className="size-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">
+                      ចុះឈ្មោះថ្មី &lt; 2M
+                    </div>
+                    <div className="text-base font-black text-foreground tracking-tight">
+                      {kpiSummary.newLess2m.toLocaleString()} <span className="text-xs font-bold text-emerald-400 font-extrabold">({kpiSummary.earlyEnrollPct}%)</span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-[10px] font-bold text-muted-foreground">ចុះឈ្មោះថ្មី &lt; 2M</div>
-                  <div className="text-sm font-extrabold text-foreground">{kpiSummary.newLess2m.toLocaleString()} ({kpiSummary.earlyEnrollPct}%)</div>
-                </div>
+                <span className="text-[10px] font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 border border-emerald-500/20 shrink-0">
+                  Early Enrollment
+                </span>
               </div>
 
-              <div className="border border-border/80 bg-card p-3 shadow-2xs flex items-center gap-3">
-                <div className="p-2 rounded-full bg-cyan-500/10 text-cyan-500 shrink-0">
-                  <RiMedicineBottleLine className="size-5" />
+              {/* Card 3: Cotrim Prophylaxis */}
+              <div className="border border-border/80 bg-card p-3.5 shadow-2xs hover:border-cyan-500/50 transition-all flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2.5 rounded-none bg-cyan-500/10 text-cyan-500 shrink-0 border border-cyan-500/20">
+                    <RiMedicineBottleLine className="size-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">
+                      ឱសថ Cotrim Prophylaxis
+                    </div>
+                    <div className="text-base font-black text-cyan-400 tracking-tight">
+                      {kpiSummary.cotrim.toLocaleString()} <span className="text-xs font-bold text-cyan-300">({kpiSummary.cotrimPct}%)</span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-[10px] font-bold text-muted-foreground">ឱសថ Cotrim Prophylaxis</div>
-                  <div className="text-sm font-extrabold text-cyan-500">{kpiSummary.cotrim.toLocaleString()} ({kpiSummary.cotrimPct}%)</div>
-                </div>
+                <span className="text-[10px] font-extrabold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 border border-cyan-500/20 shrink-0">
+                  Prophylaxis
+                </span>
               </div>
 
-              <div className="border border-border/80 bg-card p-3 shadow-2xs flex items-center gap-3">
-                <div className="p-2 rounded-full bg-pink-500/10 text-pink-500 shrink-0">
-                  <RiMicroscopeLine className="size-5" />
+              {/* Card 4: 4-6 Wks PCR */}
+              <div className="border border-border/80 bg-card p-3.5 shadow-2xs hover:border-pink-500/50 transition-all flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2.5 rounded-none bg-pink-500/10 text-pink-500 shrink-0 border border-pink-500/20">
+                    <RiMicroscopeLine className="size-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">
+                      តេស្ត 4-6 Wks PCR
+                    </div>
+                    <div className="text-base font-black text-pink-400 tracking-tight">
+                      {kpiSummary.pcr46w.toLocaleString()} <span className="text-xs font-bold text-muted-foreground">ទារក ({kpiSummary.pcrPct || 0}%)</span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-[10px] font-bold text-muted-foreground">តេស្ត 4-6 Wks PCR</div>
-                  <div className="text-sm font-extrabold text-pink-500">{kpiSummary.pcr46w.toLocaleString()} ទារក</div>
-                </div>
+                <span className="text-[10px] font-extrabold text-pink-400 bg-pink-500/10 px-2 py-0.5 border border-pink-500/20 shrink-0">
+                  EID Testing
+                </span>
               </div>
             </div>
 
