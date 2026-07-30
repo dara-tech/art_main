@@ -14,7 +14,8 @@ import {
   RiGroupLine,
   RiBuilding4Line,
   RiArrowDownSLine,
-  RiArrowRightSLine
+  RiArrowRightSLine,
+  RiSparklingFill
 } from '@remixicon/react';
 import { useAuth } from '../../contexts/AuthContext';
 import { isAdmin, isGuest, hasRole } from '../../utils/authRoles';

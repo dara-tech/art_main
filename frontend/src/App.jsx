@@ -22,6 +22,7 @@ const CountryAnalyticsPage = lazy(() => import('./pages/CountryAnalyticsPage.jsx
 const ClinicalFormsListPage = lazy(() => import('./pages/ClinicalFormsListPage.jsx'));
 const PatientRegistrationPage = lazy(() => import('./pages/PatientRegistrationPage.jsx'));
 const PatientVisitPage = lazy(() => import('./pages/PatientVisitPage.jsx'));
+const VcctPage = lazy(() => import('./pages/VcctPage.jsx'));
 
 import { isGuest, hasRole } from './utils/authRoles.js';
 
@@ -112,6 +113,7 @@ function App() {
             <Route path="/documents" element={<RequireNotGuestOrPdmo><DocumentPage onLogout={logout} /></RequireNotGuestOrPdmo>} />
             <Route path="/dqa" element={<RequireNotGuestOrPdmo><DqaPage onLogout={logout} /></RequireNotGuestOrPdmo>} />
             <Route path="/patient-360" element={<RequireNotGuest><Patient360Page onLogout={logout} /></RequireNotGuest>} />
+            <Route path="/vcct" element={<RequireNotGuest><VcctPage onLogout={logout} /></RequireNotGuest>} />
             
             {/* Clinical Forms Routing */}
             <Route path="/forms/:program" element={<RequireNotGuest><ClinicalFormsListPage /></RequireNotGuest>} />
@@ -119,6 +121,7 @@ function App() {
             <Route path="/forms/:program/:clinicId/visits" element={<RequireNotGuest><PatientVisitPage /></RequireNotGuest>} />
 
             <Route path="/country-analytics" element={<RequireNotGuestOrPdmo><CountryAnalyticsPage onLogout={logout} /></RequireNotGuestOrPdmo>} />
+            <Route path="/ai-copilot" element={<Navigate to="/dashboard" replace />} />
             <Route path="/visualize" element={<RequireNotGuest><VisualizePage onLogout={logout} /></RequireNotGuest>} />
             <Route path="/event-report" element={<Navigate to="/visualize" replace />} />
             <Route

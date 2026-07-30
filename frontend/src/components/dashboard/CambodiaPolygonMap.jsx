@@ -1217,6 +1217,8 @@ export default function CambodiaPolygonMap({
               </button>
             </div>
 
+
+
             {/* Khmer / EN Label Language Switcher */}
             <button
               type="button"
@@ -1242,8 +1244,10 @@ export default function CambodiaPolygonMap({
         </div>
 
         {/* Main Vector SVG Map Viewport */}
-        <div className="relative flex-1 min-h-[460px] md:min-h-[520px] w-full flex items-center justify-center bg-background/60 border border-border/40 p-3 overflow-hidden rounded-none">
-          {mapSvgContent}
+        <div className="relative flex-1 min-h-[460px] md:min-h-[520px] w-full flex items-center justify-center bg-slate-950/90 border border-border/40 p-3 overflow-hidden rounded-none">
+          <div className="relative z-10 h-full w-full flex items-center justify-center">
+            {mapSvgContent}
+          </div>
 
           {/* Minimal Dark WHO Legend Bar */}
           <div className="absolute bottom-3 left-3 bg-card/95 border border-border/80 p-2.5 shadow-lg backdrop-blur-xs flex flex-col gap-1.5 select-none text-[10px] rounded-none pointer-events-none">

@@ -52,7 +52,7 @@ export default function VcctPage() {
     [siteOptions, siteCode]
   );
   const mappedVcctSiteCode = vcctSiteMapping.code;
-  const skipVcctLoad = vcctSiteMapping.known && !mappedVcctSiteCode;
+  const skipVcctLoad = false;
   const refreshedVcctSites = useRef(false);
 
   useEffect(() => {

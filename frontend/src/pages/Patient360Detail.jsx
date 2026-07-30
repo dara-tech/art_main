@@ -44,7 +44,13 @@ const REG_OVERVIEW_KEYS = [
   'Allergy',
   'Phone',
   'Province',
-  'Nationality'
+  'Nationality',
+  'kpType',
+  'KPType',
+  'KpType',
+  'kp_type',
+  'RiskGroup',
+  'riskGroup'
 ];
 
 function fieldLabel(dict, key) {

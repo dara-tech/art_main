@@ -176,28 +176,6 @@ export default function DashboardRightSidebar({
           >
             <RiFilter3Line className="size-4" />
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setIsOpen(true);
-              setActiveTab('ai');
-            }}
-            className="flex size-7 items-center justify-center text-primary hover:text-primary/80 hover:bg-primary/10 transition-all rounded-none cursor-pointer"
-            title="AI ជំនួយការ"
-          >
-            <RiCpuLine className="size-4 animate-pulse" />
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setIsOpen(true);
-              setActiveTab('filters');
-            }}
-            className="flex size-7 items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all rounded-none cursor-pointer"
-            title="ត្រួតពិនិត្យ DQA"
-          >
-            <RiShieldCheckLine className="size-4" />
-          </button>
         </div>
       )}
 
@@ -208,7 +186,7 @@ export default function DashboardRightSidebar({
           <div className="flex items-center justify-between border-b border-border/60 pb-3 gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-xs font-bold text-foreground truncate">
-                {activeTab === 'ai' ? 'AI វិភាគទិន្នន័យឃ្លាំងជាតិ' : 'របារបញ្ជាចំហៀង'}
+                របារតម្រងទិន្នន័យ
               </span>
             </div>
             <button
@@ -222,38 +200,8 @@ export default function DashboardRightSidebar({
             </button>
           </div>
 
-          {/* Mode Switcher Tabs */}
-          <div className="grid grid-cols-2 gap-1 bg-muted/70 p-1 border border-border/80">
-            <button
-              type="button"
-              onClick={() => setActiveTab('filters')}
-              className={cn(
-                'flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold transition-all cursor-pointer rounded-none',
-                activeTab === 'filters'
-                  ? 'bg-background text-foreground shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <RiFilter3Line className="size-3.5 text-primary" />
-              <span>តម្រងទិន្នន័យ</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('ai')}
-              className={cn(
-                'flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold transition-all cursor-pointer rounded-none',
-                activeTab === 'ai'
-                  ? 'bg-primary text-primary-foreground shadow-xs'
-                  : 'text-primary hover:bg-primary/10'
-              )}
-            >
-              <RiCpuLine className="size-3.5" />
-              <span>AI ជំនួយការ</span>
-            </button>
-          </div>
-
-          {/* TAB 1: FILTERS VIEW */}
-          {activeTab === 'filters' && (
+          {/* FILTERS VIEW */}
+          {true && (
             <>
               {/* Grouping Level Switcher */}
               {dashboardView === 'sites' && (

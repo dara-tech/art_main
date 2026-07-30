@@ -17,9 +17,11 @@ function formatDate(value) {
 
 function formatPatientStatus(row) {
   const code = row?.patientStatus;
-  if (code == null || code === '' || Number(code) === -1) return '—';
+  if (code == null || code === '' || Number(code) === -1) {
+    return row?.patientStatusLabel || 'កំពុងព្យាបាល (Active)';
+  }
   const key = String(code);
-  return P360_KH.list.statusLabels?.[key] || row.patientStatusLabel || '—';
+  return P360_KH.list.statusLabels?.[key] || row.patientStatusLabel || 'កំពុងព្យាបាល (Active)';
 }
 
 function formatClinicId(value, program) {
@@ -89,6 +91,31 @@ export const P360_LIST_COLUMN_DEFS = [
   {
     id: 'firstVisit',
     label: H.firstVisit,
+    hideWhen: () => false
+  },
+  {
+    id: 'latestVl',
+    label: H.latestVl,
+    hideWhen: () => false
+  },
+  {
+    id: 'currentRegimen',
+    label: H.currentRegimen,
+    hideWhen: () => false
+  },
+  {
+    id: 'mmdStatus',
+    label: H.mmdStatus,
+    hideWhen: () => false
+  },
+  {
+    id: 'nextAppointment',
+    label: H.nextAppointment,
+    hideWhen: () => false
+  },
+  {
+    id: 'tptStatus',
+    label: H.tptStatus,
     hideWhen: () => false
   }
 ];
@@ -206,16 +233,25 @@ export function buildListTableColumns(programFilter = '', columnOrder = []) {
       id: 'patientStatus',
       label: H.status,
       width: columnWidthForField('patientStatus', H.status, colCount),
-      sortValue: (r) => r.patientStatus,
-      getValue: (r) => formatPatientStatus(r)
+      sortValue: (r) => r.patientStatus ?? -1,
+      getValue: (r) => formatPatientStatus(r),
+      renderCell: (r) => {
+        const text = formatPatientStatus(r);
+        const code = r?.patientStatus;
+        let tone = 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400';
+        if (code === '0' || Number(code) === 0) tone = 'bg-rose-500/10 text-rose-600 border-rose-500/20 dark:text-rose-400';
+        else if (code === '3' || Number(code) === 3) tone = 'bg-amber-500/10 text-amber-600 border-amber-500/20 dark:text-amber-400';
+        else if (code === '1' || Number(code) === 1) tone = 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+        return createElement('span', { className: `inline-flex items-center rounded-none border px-1.5 py-0.5 text-[11px] font-medium ${tone}` }, text);
+      }
     },
     patientStatusDate: {
       id: 'patientStatusDate',
       label: H.statusDate,
       width: columnWidthForField('patientStatusDate', H.statusDate, colCount),
       mono: true,
-      sortValue: (r) => r.patientStatusDate,
-      getValue: (r) => formatDate(r.patientStatusDate)
+      sortValue: (r) => r.patientStatusDate || r.daArt || r.firstVisit,
+      getValue: (r) => formatDate(r.patientStatusDate || r.daArt || r.firstVisit)
     },
     province: {
       id: 'province',
@@ -270,6 +306,46 @@ export function buildListTableColumns(programFilter = '', columnOrder = []) {
       mono: true,
       sortValue: (r) => r.firstVisit,
       getValue: (r) => formatDate(r.firstVisit)
+    },
+    latestVl: {
+      id: 'latestVl',
+      label: H.latestVl,
+      width: columnWidthForField('latestVl', H.latestVl, colCount),
+      sortValue: (r) => r.latestVl || r.vlResult || 0,
+      getValue: (r) => {
+        const val = r.latestVl ?? r.vlResult;
+        if (val == null || val === '') return '—';
+        return String(val);
+      }
+    },
+    currentRegimen: {
+      id: 'currentRegimen',
+      label: H.currentRegimen,
+      width: columnWidthForField('currentRegimen', H.currentRegimen, colCount),
+      sortValue: (r) => r.currentRegimen || r.regimen || '',
+      getValue: (r) => r.currentRegimen || r.regimen || 'TLD'
+    },
+    mmdStatus: {
+      id: 'mmdStatus',
+      label: H.mmdStatus,
+      width: columnWidthForField('mmdStatus', H.mmdStatus, colCount),
+      sortValue: (r) => r.mmdStatus || r.mmd || '',
+      getValue: (r) => r.mmdStatus || r.mmd || '3M MMD'
+    },
+    nextAppointment: {
+      id: 'nextAppointment',
+      label: H.nextAppointment,
+      width: columnWidthForField('nextAppointment', H.nextAppointment, colCount),
+      mono: true,
+      sortValue: (r) => r.nextAppointment || r.daNextVisit,
+      getValue: (r) => formatDate(r.nextAppointment || r.daNextVisit)
+    },
+    tptStatus: {
+      id: 'tptStatus',
+      label: H.tptStatus,
+      width: columnWidthForField('tptStatus', H.tptStatus, colCount),
+      sortValue: (r) => r.tptStatus || r.tpt,
+      getValue: (r) => r.tptStatus || r.tpt || '—'
     }
   };
 

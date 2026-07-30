@@ -132,6 +132,7 @@ export default function PeriodComparisonDashboard({
   const [showAllLocationSites, setShowAllLocationSites] = useState(false);
   const [locationFilterMode, setLocationFilterMode] = useState('top10'); // 'top10', 'lowest10', 'all'
   const [indicatorLoading, setIndicatorLoading] = useState(false);
+  const [isAiCopilotOpen, setIsAiCopilotOpen] = useState(false);
 
   const dataset = groupedPerformanceData.length > 0 ? groupedPerformanceData : filteredProvinces;
   const isChartLoading = loading || loadingPeriods || indicatorLoading;
@@ -858,6 +859,16 @@ export default function PeriodComparisonDashboard({
                 <RiTableLine className="size-3.5" /> តារាងប្រៀបធៀប
               </button>
             </div>
+
+            {/* ART-AI Decision Co-Pilot Button */}
+            <button
+              type="button"
+              onClick={() => setIsAiCopilotOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1 text-[11px] font-extrabold bg-teal-600 hover:bg-teal-500 text-white border border-teal-500 shadow-2xs transition-all cursor-pointer"
+            >
+              <RiSparklingLine className="size-3.5 animate-pulse text-teal-200" />
+              <span>✨ ART-AI Decision Co-Pilot</span>
+            </button>
           </div>
 
           {/* Active Period Comparison Badge (Far Right Aligned) */}
@@ -1119,6 +1130,7 @@ export default function PeriodComparisonDashboard({
       {/* LOCATION COMPARATIVE BAR CHART VIEW (WITH GRADIENT ACCENT SPECTRUM & INSIGHTS) */}
       {activeTab === 'charts' && (
         <div className="space-y-4 font-khmer">
+
           {/* EXECUTIVE SITE PERFORMANCE INSIGHTS CARDS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {/* Card 1 */}
@@ -1448,7 +1460,6 @@ export default function PeriodComparisonDashboard({
             sexFilter={sexFilter}
             ageGroupFilter={ageGroupFilter}
             isChartLoading={isChartLoading}
-            onClose={() => setZoomedIndicator(null)}
           />,
           document.body
         )}

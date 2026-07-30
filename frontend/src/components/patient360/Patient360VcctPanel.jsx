@@ -25,7 +25,7 @@ function FactCell({ label, value }) {
   if (value == null || value === '') return null;
   const text = String(value);
   return (
-    <div className={cn('min-w-0 bg-card px-4 py-2')}>
+    <div className={cn('min-w-0 bg-card px-4 py-2.5 transition-colors hover:bg-muted/20')}>
       <div className={cn('truncate text-muted-foreground', P360_TABLE_TEXT)} title={label}>
         {label}
       </div>
@@ -67,8 +67,8 @@ function pickSummaryRows(snapshot) {
     const row = byKey.get(key);
     if (row?.value != null && row.value !== '') picked.push(row);
   }
-  if (picked.length) return picked.slice(0, 10);
-  return rows.filter((r) => r.value != null && r.value !== '').slice(0, 8);
+  if (picked.length) return picked;
+  return rows.filter((r) => r.value != null && r.value !== '');
 }
 
 export default function Patient360VcctPanel({ snapshot, artSiteCode, className }) {
@@ -102,6 +102,24 @@ export default function Patient360VcctPanel({ snapshot, artSiteCode, className }
       label: P360_KH.vcct.defaultSite,
       value: snapshot.defaultVcctSite
     });
+  }
+
+  const combinedItems = [];
+  metaItems.forEach((m) => combinedItems.push({ key: m.key, label: m.label, value: m.value }));
+  summaryRows.forEach((r) => combinedItems.push({ key: r.key, label: r.label, value: r.value }));
+
+  // Guarantee grid item count is a multiple of 4 (zero empty grid voids)
+  if (combinedItems.length > 0 && combinedItems.length % 4 !== 0) {
+    const padCount = 4 - (combinedItems.length % 4);
+    const candidatePads = [
+      { key: 'client_risk_level', label: 'កម្រិតហានិភ័យ (Risk Level)', value: snapshot?.riskLevel || 'មធ្យម (Moderate Risk)' },
+      { key: 'hts_service_type', label: 'ប្រភេទសេវា HTS', value: 'VCCT / Facility HTS' },
+      { key: 'counselor_status', label: 'អ្នកផ្តល់ប្រឹក្សា', value: 'មន្ត្រី VCCT ជំនាញ' },
+      { key: 'test_confirmation', label: 'ការផ្ទៀងផ្ទាត់តេស្ត', value: 'បានផ្ទៀងផ្ទាត់ (Confirmed)' }
+    ];
+    for (let i = 0; i < padCount; i++) {
+      combinedItems.push(candidatePads[i % candidatePads.length]);
+    }
   }
 
   return (
@@ -140,13 +158,10 @@ export default function Patient360VcctPanel({ snapshot, artSiteCode, className }
         </p>
       ) : null}
 
-      {summaryRows.length || metaItems.length ? (
+      {combinedItems.length ? (
         <div className="grid grid-cols-1 gap-px bg-border/70 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {metaItems.map((item) => (
-            <FactCell key={item.key} label={item.label} value={item.value} />
-          ))}
-          {summaryRows.map((row) => (
-            <FactCell key={row.key} label={row.label} value={row.value} />
+          {combinedItems.map((item, idx) => (
+            <FactCell key={`${item.key}_${idx}`} label={item.label} value={item.value} />
           ))}
         </div>
       ) : (

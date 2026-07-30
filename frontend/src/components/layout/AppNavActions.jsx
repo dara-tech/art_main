@@ -14,7 +14,8 @@ import {
   RiDashboard3Line,
   RiHeartPulseLine,
   RiUserHeartLine,
-  RiGroupLine
+  RiGroupLine,
+  RiSparklingFill
 } from '@remixicon/react';
 import { 
   LogOut, 

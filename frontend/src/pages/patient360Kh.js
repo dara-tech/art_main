@@ -79,6 +79,11 @@ export const P360_KH = {
     firstVisit: 'មកដំបូង',
     status: 'ស្ថានភាព',
     statusDate: 'ថ្ងៃស្ថានភាព',
+    latestVl: 'Viral Load ចុងក្រោយ',
+    currentRegimen: 'រូបមន្តថ្នាំ (Regimen)',
+    mmdStatus: 'ការផ្តល់ថ្នាំ MMD',
+    nextAppointment: 'ការណាត់លើកក្រោយ',
+    tptStatus: 'ថ្នាំបង្ការ TPT',
     sortAsc: 'តម្រៀបឡើង',
     sortDesc: 'តម្រៀបចុះ'
   },
