@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { RiSearchLine } from '@remixicon/react';
+import {
+  RiSearchLine,
+  RiUserLine,
+  RiShieldUserLine,
+  RiBuildingLine,
+  RiCheckLine,
+  RiCloseLine,
+  RiUserAddLine,
+  RiFilter3Line,
+  RiRefreshLine,
+  RiEditLine,
+  RiShieldCheckLine
+} from '@remixicon/react';
 import AppPageShell from '../components/layout/AppPageShell';
 import Patient360Layout from '../components/patient360/Patient360Layout';
 import Patient360DataTable from '../components/patient360/Patient360DataTable';
@@ -16,13 +28,12 @@ import {
   P360_TABLE_PAD,
   P360_TABLE_TEXT,
   p360CardClass,
-  p360ControlClass,
-  vizKpiCardClass
+  p360ControlClass
 } from '../components/layout/appNavStyles';
 
 const adminUserCellClass = cn(
   P360_TABLE_PAD,
-  'flex min-h-8 min-w-0 flex-col justify-center gap-0.5 py-1.5',
+  'flex min-h-10 min-w-0 flex-col justify-center gap-0.5 py-1.5 font-khmer',
   P360_TABLE_TEXT
 );
 
@@ -38,6 +49,8 @@ export default function AdminPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'disabled'
+  const [roleFilter, setRoleFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [usersLoading, setUsersLoading] = useState(false);
   const [error, setError] = useState('');
@@ -123,27 +136,48 @@ export default function AdminPage() {
     }
   }, [users]);
 
+  // Client-side Filtered Users
+  const filteredUsers = useMemo(() => {
+    return users.filter((u) => {
+      if (statusFilter === 'active' && !u.active) return false;
+      if (statusFilter === 'disabled' && u.active) return false;
+      if (roleFilter !== 'all') {
+        const hasRole = u.roleNames?.some((r) => r.toLowerCase().includes(roleFilter.toLowerCase()));
+        if (!hasRole) return false;
+      }
+      return true;
+    });
+  }, [users, statusFilter, roleFilter]);
+
   const roleRows = useMemo(() => stats?.roleBreakdown || [], [stats]);
 
   const roleTableColumns = useMemo(
     () => [
       { id: 'id', label: 'ID', width: 56, mono: true, getValue: (r) => r.id },
-      { id: 'name', label: 'Role', width: 160, getValue: (r) => r.name },
+      { id: 'name', label: 'ឈ្មោះ Role', width: 180, getValue: (r) => r.name },
       {
         id: 'slug',
-        label: 'Slug',
+        label: 'Slug Code',
         width: 140,
         mono: true,
         getValue: (r) => r.slug
       },
       {
         id: 'count',
-        label: 'Users',
-        width: 72,
+        label: 'ចំនួនអ្នកប្រើប្រាស់',
+        width: 120,
         mono: true,
         getValue: (r) => {
           const count = roleRows.find((x) => x.id === r.id)?.userCount ?? 0;
           return count.toLocaleString('km-KH');
+        },
+        renderCell: (row) => {
+          const count = roleRows.find((x) => x.id === row.id)?.userCount ?? 0;
+          return (
+            <span className="font-bold text-xs text-primary bg-primary/10 px-2 py-0.5 border border-primary/20">
+              {count.toLocaleString()} Users
+            </span>
+          );
         }
       }
     ],
@@ -155,61 +189,135 @@ export default function AdminPage() {
       { id: 'id', label: 'ID', width: 56, mono: true, getValue: (r) => r.id },
       {
         id: 'user',
-        label: 'User',
-        width: 180,
+        label: 'អ្នកប្រើប្រាស់ (User)',
+        width: 220,
         getValue: (r) => r.fullName,
-        renderCell: (row, text) => (
-          <div className={adminUserCellClass}>
-            <button
-              type="button"
-              className="truncate text-left font-medium text-primary underline-offset-2 hover:underline"
-              onClick={(e) => {
-                e.stopPropagation();
-                openUserEditor(row);
-              }}
-            >
-              {text}
-            </button>
-            {row.username ? (
-              <div className="truncate font-mono text-[10px] text-muted-foreground">{row.username}</div>
-            ) : null}
+        renderCell: (row, text) => {
+          const initials = (text || row.username || 'U')
+            .split(' ')
+            .map((n) => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2);
+
+          return (
+            <div className={adminUserCellClass}>
+              <div className="flex items-center gap-2.5">
+                <div className="relative flex size-7 shrink-0 items-center justify-center bg-primary/15 text-primary text-[10px] font-black border border-primary/30">
+                  {initials}
+                  <span
+                    className={cn(
+                      'absolute -bottom-0.5 -right-0.5 size-2 rounded-full border border-background',
+                      row.active ? 'bg-emerald-500' : 'bg-rose-500'
+                    )}
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <button
+                    type="button"
+                    className="truncate text-left font-bold text-xs text-foreground hover:text-primary hover:underline transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openUserEditor(row);
+                    }}
+                  >
+                    {text || row.username}
+                  </button>
+                  {row.username ? (
+                    <div className="truncate font-mono text-[10px] text-muted-foreground">@{row.username}</div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          );
+        }
+      },
+      {
+        id: 'roles',
+        label: 'តួនាទី (Roles)',
+        width: 180,
+        getValue: (r) => (r.roleNames?.length ? r.roleNames.join(', ') : 'Guest'),
+        renderCell: (row) => (
+          <div className="flex flex-wrap gap-1 py-1 font-khmer">
+            {row.roleNames?.length ? (
+              row.roleNames.map((rn) => (
+                <span
+                  key={rn}
+                  className="inline-block text-[10px] font-bold px-2 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                >
+                  {rn}
+                </span>
+              ))
+            ) : (
+              <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5">Guest</span>
+            )}
           </div>
         )
       },
       {
-        id: 'roles',
-        label: 'Roles',
+        id: 'site',
+        label: 'សិទ្ធិចូលមើល (Site Access)',
         width: 160,
-        getValue: (r) => (r.roleNames?.length ? r.roleNames.join(', ') : 'Guest'),
+        getValue: (r) =>
+          r.siteAccess === 'scoped' ? `Scoped (${r.orgUnitCount})` : 'All sites',
         renderCell: (row) => (
-          <span className={cn(P360_TABLE_BODY_ROW_INNER, 'truncate')}>
-            {row.roleNames?.length ? row.roleNames.join(', ') : (
-              <span className="text-muted-foreground">Guest</span>
+          <span className="font-khmer">
+            {row.siteAccess === 'scoped' ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 border border-amber-500/20">
+                <RiBuildingLine className="size-3" />
+                Scoped ({row.orgUnitCount || 1} Sites)
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 border border-emerald-500/20">
+                <RiShieldCheckLine className="size-3" />
+                All Sites (National)
+              </span>
             )}
           </span>
         )
       },
       {
-        id: 'site',
-        label: 'Site access',
-        width: 120,
-        getValue: (r) =>
-          r.siteAccess === 'scoped' ? `Scoped (${r.orgUnitCount})` : 'All sites'
-      },
-      {
         id: 'status',
-        label: 'Status',
-        width: 88,
+        label: 'ស្ថានភាព',
+        width: 110,
         getValue: (r) => (r.active ? 'Active' : 'Disabled'),
-        renderCell: (row, text) => (
+        renderCell: (row) => (
           <span
             className={cn(
-              P360_TABLE_BODY_ROW_INNER,
-              row.active ? 'text-emerald-800 dark:text-emerald-400' : 'text-destructive'
+              'inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 border font-khmer',
+              row.active
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
             )}
           >
-            {text}
+            {row.active ? (
+              <>
+                <RiCheckLine className="size-3" /> សកម្ម (Active)
+              </>
+            ) : (
+              <>
+                <RiCloseLine className="size-3" /> បិទ (Disabled)
+              </>
+            )}
           </span>
+        )
+      },
+      {
+        id: 'actions',
+        label: 'សកម្មភាព',
+        width: 90,
+        getValue: () => '',
+        renderCell: (row) => (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              openUserEditor(row);
+            }}
+            className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-primary bg-primary/10 hover:bg-primary hover:text-primary-foreground border border-primary/20 transition-all cursor-pointer"
+          >
+            <RiEditLine className="size-3" /> កែប្រែ
+          </button>
         )
       }
     ],
@@ -217,8 +325,8 @@ export default function AdminPage() {
   );
 
   const userTableRows = useMemo(
-    () => users.map((u) => ({ ...u, _key: String(u.id) })),
-    [users]
+    () => filteredUsers.map((u) => ({ ...u, _key: String(u.id) })),
+    [filteredUsers]
   );
 
   const roleTableRows = useMemo(
@@ -242,104 +350,183 @@ export default function AdminPage() {
       />
 
       <Patient360Layout lockViewport>
-        <AppPageShell wide className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col !p-0">
-          <Card className={cn(p360CardClass, 'flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col bg-card')}>
+        <AppPageShell wide className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col !p-0 font-khmer">
+          <Card className={cn(p360CardClass, 'flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col bg-card rounded-none border-0')}>
             <CardContent className="relative flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col p-0">
               {loading && !stats ? (
                 <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/35 backdrop-blur-[3px]">
-                  <Patient360LoadingPanel label="Loading…" className="border-0 bg-transparent" minHeight="min-h-0" />
+                  <Patient360LoadingPanel label="កំពុងផ្ទុកទិន្នន័យ Admin..." className="border-0 bg-transparent" minHeight="min-h-0" />
                 </div>
               ) : null}
 
-              <div className="flex min-h-0 flex-1 flex-col">
+              <div className="flex min-h-0 flex-1 flex-col space-y-0">
+                {/* EXECUTIVE STATS KPI CARDS HEADER */}
                 {stats ? (
-                  <div className="grid shrink-0 grid-cols-2 gap-2 border-b border-border/80 bg-muted/10 px-5 py-2 sm:grid-cols-4">
-                    <div className={vizKpiCardClass}>
-                      <p className={cn('text-muted-foreground', P360_TABLE_TEXT)}>Total users</p>
-                      <p className="text-base font-semibold tabular-nums leading-tight text-foreground">
-                        {Number(stats.totalUsers).toLocaleString('km-KH')}
-                      </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 border-b border-border/80 bg-muted/20">
+                    {/* KPI 1: Total Users */}
+                    <div className="border border-border/80 bg-card p-3 shadow-2xs space-y-1 flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          អ្នកប្រើប្រាស់សរុប (Total Users)
+                        </p>
+                        <p className="text-lg font-black text-foreground tabular-nums">
+                          {Number(stats.totalUsers).toLocaleString('km-KH')} <span className="text-xs font-bold text-muted-foreground">នាក់</span>
+                        </p>
+                      </div>
+                      <div className="p-2.5 bg-blue-500/10 text-blue-500 border border-blue-500/20 shrink-0">
+                        <RiUserLine className="size-5" />
+                      </div>
                     </div>
-                    <div className={vizKpiCardClass}>
-                      <p className={cn('text-muted-foreground', P360_TABLE_TEXT)}>Active users</p>
-                      <p className="text-base font-semibold tabular-nums leading-tight text-foreground">
-                        {Number(stats.activeUsers).toLocaleString('km-KH')}
-                      </p>
-                      <p className={cn('text-muted-foreground', P360_TABLE_TEXT)}>
-                        {stats.usersWithRoles} with roles
-                      </p>
+
+                    {/* KPI 2: Active Accounts */}
+                    <div className="border border-border/80 bg-card p-3 shadow-2xs space-y-1 flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          គណនីសកម្ម (Active Accounts)
+                        </p>
+                        <p className="text-lg font-black text-emerald-400 tabular-nums">
+                          {Number(stats.activeUsers).toLocaleString('km-KH')} <span className="text-xs font-bold text-emerald-300">({Math.round((stats.activeUsers / (stats.totalUsers || 1)) * 100)}%)</span>
+                        </p>
+                      </div>
+                      <div className="p-2.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 shrink-0">
+                        <RiShieldUserLine className="size-5" />
+                      </div>
                     </div>
-                    <div className={vizKpiCardClass}>
-                      <p className={cn('text-muted-foreground', P360_TABLE_TEXT)}>Site scoped</p>
-                      <p className="text-base font-semibold tabular-nums leading-tight text-foreground">
-                        {Number(stats.usersWithScope).toLocaleString('km-KH')}
-                      </p>
-                      <p className={cn('text-muted-foreground', P360_TABLE_TEXT)}>
-                        {stats.orgUnitRows} org unit rows
-                      </p>
+
+                    {/* KPI 3: Site Scoped Users */}
+                    <div className="border border-border/80 bg-card p-3 shadow-2xs space-y-1 flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          សិទ្ធិមន្ទីរពេទ្យ (Scoped Sites)
+                        </p>
+                        <p className="text-lg font-black text-amber-400 tabular-nums">
+                          {Number(stats.usersWithScope).toLocaleString('km-KH')} <span className="text-xs font-bold text-muted-foreground">អ្នកប្រើ</span>
+                        </p>
+                      </div>
+                      <div className="p-2.5 bg-amber-500/10 text-amber-500 border border-amber-500/20 shrink-0">
+                        <RiBuildingLine className="size-5" />
+                      </div>
                     </div>
-                    <div className={vizKpiCardClass}>
-                      <p className={cn('text-muted-foreground', P360_TABLE_TEXT)}>Role types</p>
-                      <p className="text-base font-semibold tabular-nums leading-tight text-foreground">
-                        {Number(stats.totalRoles).toLocaleString('km-KH')}
-                      </p>
-                      <p className={cn('text-muted-foreground', P360_TABLE_TEXT)}>
-                        {stats.roleAssignments} assignments
-                      </p>
+
+                    {/* KPI 4: Role Definitions */}
+                    <div className="border border-border/80 bg-card p-3 shadow-2xs space-y-1 flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          ប្រភេទតួនាទី (Role Definitions)
+                        </p>
+                        <p className="text-lg font-black text-purple-400 tabular-nums">
+                          {Number(stats.totalRoles).toLocaleString('km-KH')} <span className="text-xs font-bold text-purple-300">Roles</span>
+                        </p>
+                      </div>
+                      <div className="p-2.5 bg-purple-500/10 text-purple-500 border border-purple-500/20 shrink-0">
+                        <RiShieldCheckLine className="size-5" />
+                      </div>
                     </div>
                   </div>
                 ) : null}
 
                 {error ? (
-                  <p className={cn('shrink-0 border-b border-destructive/30 bg-destructive/10 px-5 py-2 text-destructive', P360_TABLE_TEXT)}>
+                  <p className={cn('shrink-0 border-b border-destructive/30 bg-destructive/10 px-5 py-2 text-destructive font-khmer text-xs', P360_TABLE_TEXT)}>
                     {error}
                   </p>
                 ) : null}
 
                 {tab === 'users' ? (
                   <>
+                    {/* ADVANCED MULTI-FILTER TOOLBAR */}
                     <form
-                      className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border/80 bg-muted/10 px-5 py-2"
+                      className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/80 bg-muted/10 px-4 py-2 font-khmer"
                       onSubmit={(e) => {
                         e.preventDefault();
                         setPage(1);
                         setSearch(searchInput.trim());
                       }}
                     >
-                      <div className="relative min-h-8 min-w-[12rem] flex-1">
-                        <RiSearchLine
-                          className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
-                          aria-hidden
-                        />
-                        <input
-                          value={searchInput}
-                          onChange={(e) => setSearchInput(e.target.value)}
-                          placeholder="Search username, name, email…"
-                          className={cn(adminControlClass, 'h-8 w-full pl-8')}
-                        />
+                      <div className="flex flex-1 items-center gap-2 min-w-[280px]">
+                        <div className="relative flex-1">
+                          <RiSearchLine
+                            className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+                            aria-hidden
+                          />
+                          <input
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
+                            placeholder="ស្វែងរកឈ្មោះ, Username, Email ឬ Code…"
+                            className="h-8 w-full border border-border bg-background pl-8 pr-3 text-xs font-khmer text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-primary shadow-2xs"
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          className="h-8 px-3 text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 border border-primary transition-all cursor-pointer shrink-0 shadow-2xs"
+                        >
+                          ស្វែងរក
+                        </button>
+                        {search ? (
+                          <button
+                            type="button"
+                            className="h-8 px-3 text-xs font-bold bg-muted text-muted-foreground hover:text-foreground border border-border transition-all cursor-pointer shrink-0 shadow-2xs"
+                            onClick={() => {
+                              setSearchInput('');
+                              setSearch('');
+                              setPage(1);
+                            }}
+                          >
+                            លុប
+                          </button>
+                        ) : null}
                       </div>
-                      <button type="submit" className={cn(p360ControlClass, 'h-8 shrink-0 px-3')}>
-                        Search
-                      </button>
-                      {search ? (
+
+                      {/* QUICK FILTER DROPDOWNS & ACTIONS */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* Status Filter */}
+                        <div className="h-8 flex items-center gap-1.5 bg-background border border-border px-2.5 text-xs font-bold text-foreground shadow-2xs">
+                          <RiFilter3Line className="size-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-muted-foreground text-[11px] shrink-0">ស្ថានភាព ៖</span>
+                          <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="bg-transparent text-xs font-bold outline-none cursor-pointer text-foreground h-full"
+                          >
+                            <option value="all">ទាំងអស់ (All Status)</option>
+                            <option value="active">សកម្ម (Active)</option>
+                            <option value="disabled">បិទ (Disabled)</option>
+                          </select>
+                        </div>
+
+                        {/* Role Filter */}
+                        <div className="h-8 flex items-center gap-1.5 bg-background border border-border px-2.5 text-xs font-bold text-foreground shadow-2xs">
+                          <span className="text-muted-foreground text-[11px] shrink-0">តួនាទី ៖</span>
+                          <select
+                            value={roleFilter}
+                            onChange={(e) => setRoleFilter(e.target.value)}
+                            className="bg-transparent text-xs font-bold outline-none cursor-pointer text-foreground h-full"
+                          >
+                            <option value="all">គ្រប់ Roles (All Roles)</option>
+                            {roles.map((r) => (
+                              <option key={r.id} value={r.slug || r.name}>
+                                {r.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Create User Button */}
                         <button
                           type="button"
-                          className={cn(p360ControlClass, 'h-8 shrink-0 px-3')}
-                          onClick={() => {
-                            setSearchInput('');
-                            setSearch('');
-                            setPage(1);
-                          }}
+                          onClick={() => setShowCreateUser(true)}
+                          className="h-8 flex items-center gap-1.5 px-3 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500 shadow-2xs transition-all cursor-pointer shrink-0"
                         >
-                          Clear
+                          <RiUserAddLine className="size-3.5 shrink-0" />
+                          <span>បង្កើតគណនីថ្មី</span>
                         </button>
-                      ) : null}
+                      </div>
                     </form>
 
-                    <div className="relative min-h-0 flex-1 overflow-hidden px-5 pb-2 pt-2">
+                    {/* USERS DATA TABLE CONTAINER */}
+                    <div className="relative min-h-0 flex-1 overflow-hidden px-4 pb-2 pt-2">
                       {usersLoading ? (
                         <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/40">
-                          <Patient360LoadingPanel label="Loading users…" className="border-0 bg-transparent" minHeight="min-h-0" />
+                          <Patient360LoadingPanel label="កំពុងផ្ទុកបញ្ជីអ្នកប្រើប្រាស់…" className="border-0 bg-transparent" minHeight="min-h-0" />
                         </div>
                       ) : null}
                       <Patient360DataTable
@@ -350,36 +537,37 @@ export default function AdminPage() {
                         fillHeight
                         stickyHeader
                         className="h-full min-h-0 flex-1 border border-border/80 shadow-sm"
-                        emptyMessage="No users found."
+                        emptyMessage="មិនមានអ្នកប្រើប្រាស់ត្រូវបានស្វែងរកឃើញទេ។"
                         onRowClick={(row) => openUserEditor(row)}
                       />
                     </div>
 
+                    {/* PAGINATION FOOTER */}
                     <div
                       className={cn(
-                        'flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border/80 bg-muted/10 px-5 py-2 text-muted-foreground',
+                        'flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border/80 bg-muted/10 px-5 py-2.5 text-muted-foreground font-khmer',
                         P360_TABLE_TEXT
                       )}
                     >
-                      <span className="tabular-nums">
-                        Page {page} of {totalPages} · {total.toLocaleString('km-KH')} users
+                      <span className="tabular-nums font-bold text-xs">
+                        ទំព័រ {page} នៃ {totalPages} · សរុប {total.toLocaleString('km-KH')} គណនី
                       </span>
                       <div className="flex gap-1">
                         <button
                           type="button"
-                          className={cn(p360ControlClass, 'h-7 px-2.5')}
+                          className={cn(p360ControlClass, 'h-7 px-3 text-xs font-bold')}
                           disabled={page <= 1 || usersLoading}
                           onClick={() => setPage((p) => Math.max(1, p - 1))}
                         >
-                          Previous
+                          ទំព័រមុន (Prev)
                         </button>
                         <button
                           type="button"
-                          className={cn(p360ControlClass, 'h-7 px-2.5')}
+                          className={cn(p360ControlClass, 'h-7 px-3 text-xs font-bold')}
                           disabled={page >= totalPages || usersLoading}
                           onClick={() => setPage((p) => p + 1)}
                         >
-                          Next
+                          ទំព័របន្ទាប់ (Next)
                         </button>
                       </div>
                     </div>
@@ -387,7 +575,7 @@ export default function AdminPage() {
                 ) : null}
 
                 {tab === 'roles' ? (
-                  <div className="min-h-0 flex-1 overflow-hidden px-5 py-2">
+                  <div className="min-h-0 flex-1 overflow-hidden px-4 py-3 font-khmer">
                     <Patient360DataTable
                       columns={roleTableColumns}
                       rows={roleTableRows}
@@ -397,7 +585,7 @@ export default function AdminPage() {
                       stickyHeader
                       compactBodyRows
                       className="h-full min-h-[12rem] flex-1 border border-border/80 shadow-sm"
-                      emptyMessage="No roles."
+                      emptyMessage="មិនទាន់មាន Roles ក្នុងប្រព័ន្ធនៅឡើយទេ។"
                     />
                   </div>
                 ) : null}
