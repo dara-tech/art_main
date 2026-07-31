@@ -40,34 +40,72 @@ export default function Patient360Layout({ toolbar, children, className, lockVie
     const prevBody = document.body.style.overflow;
     const prevHtmlX = document.documentElement.style.overflowX;
     const prevBodyX = document.body.style.overflowX;
+    
+    document.documentElement.style.overflow = 'hidden';
+    document.documentElement.style.overflowX = 'hidden';
     document.documentElement.style.overflow = 'hidden';
     document.documentElement.style.overflowX = 'hidden';
     document.body.style.overflow = 'hidden';
     document.body.style.overflowX = 'hidden';
+    
+    document.documentElement.classList.add('no-scrollbar');
+    document.body.classList.add('no-scrollbar');
+    
     window.scrollTo(0, 0);
     document.documentElement.scrollLeft = 0;
     document.body.scrollLeft = 0;
+
+    // Traverse up parents to lock scrollbars
+    const lockedElements = [];
+    let current = wrapRef.current?.parentElement;
+    while (current) {
+      const computed = window.getComputedStyle(current);
+      if (computed.overflowY === 'auto' || computed.overflowY === 'scroll' || computed.overflow === 'auto' || computed.overflow === 'scroll') {
+        lockedElements.push({
+          el: current,
+          prevOverflow: current.style.overflow,
+          prevOverflowY: current.style.overflowY
+        });
+        current.style.overflow = 'hidden';
+        current.style.overflowY = 'hidden';
+        current.classList.add('no-scrollbar');
+      }
+      current = current.parentElement;
+    }
+
     return () => {
       document.documentElement.style.overflow = prevHtml;
       document.documentElement.style.overflowX = prevHtmlX;
       document.body.style.overflow = prevBody;
       document.body.style.overflowX = prevBodyX;
+      
+      document.documentElement.classList.remove('no-scrollbar');
+      document.body.classList.remove('no-scrollbar');
+      
+      lockedElements.forEach(item => {
+        item.el.style.overflow = item.prevOverflow;
+        item.el.style.overflowY = item.prevOverflowY;
+        item.el.classList.remove('no-scrollbar');
+      });
     };
   }, [lockViewport]);
 
   if (lockViewport) {
     return (
-      <div
-        className={cn(
-          'fixed bottom-0 left-0 right-0 z-30 flex min-h-0 flex-col overflow-x-hidden overflow-y-hidden bg-card',
-          className
-        )}
-        style={{
-          top: 'calc(var(--app-topbar-h) + var(--p360-toolbar-h, 4.5rem))',
-          left: 'var(--sidebar-w, 0px)'
-        }}
-      >
-        {children}
+      <div className="-mx-3 flex flex-col sm:-mx-5 xl:-mx-6">
+        {toolbar ? <div ref={wrapRef}>{toolbar}</div> : null}
+        <div
+          className={cn(
+            'fixed bottom-0 left-0 right-0 z-30 flex min-h-0 flex-col overflow-x-hidden overflow-y-hidden bg-card',
+            className
+          )}
+          style={{
+            top: 'calc(var(--app-topbar-h) + var(--p360-toolbar-h, 4.5rem))',
+            left: 'var(--sidebar-w, 0px)'
+          }}
+        >
+          {children}
+        </div>
       </div>
     );
   }

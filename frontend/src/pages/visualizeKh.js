@@ -74,6 +74,7 @@ export const VIZ_KH = {
   periodKindQuarter: 'ត្រីមាស',
   periodKindMonth: 'ខែ',
   periodKindYear: 'ឆ្នាំ',
+  periodKindCustom: 'កាលបរិច្ឆេទផ្ទាល់',
   periodModal: {
     selectPlaceholder: 'ជ្រើសរើសរយៈពេល…',
     title: 'ជ្រើសរើសរយៈពេល',
@@ -84,7 +85,11 @@ export const VIZ_KH = {
     nextYear: 'ឆ្នាំបន្ទាប់',
     draft: 'ជម្រើស៖',
     cancel: 'បោះបង់',
-    apply: 'អនុវត្ត'
+    apply: 'អនុវត្ត',
+    customStart: 'ថ្ងៃចាប់ផ្តើម',
+    customEnd: 'ថ្ងៃបញ្ចប់',
+    customHint: 'ជ្រើសរើសថ្ងៃចាប់ផ្តើម និងថ្ងៃបញ្ចប់សម្រាប់ Query។',
+    customInvalid: 'ថ្ងៃចាប់ផ្តើមត្រូវតែមុន ឬស្មើថ្ងៃបញ្ចប់។'
   },
   run: 'ដំណើរការ',
   running: 'កំពុងដំណើរការ…',

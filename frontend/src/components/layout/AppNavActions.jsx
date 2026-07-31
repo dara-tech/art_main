@@ -15,7 +15,8 @@ import {
   RiHeartPulseLine,
   RiUserHeartLine,
   RiGroupLine,
-  RiSparklingFill
+  RiSparklingFill,
+  RiTestTubeLine
 } from '@remixicon/react';
 import { 
   LogOut, 
@@ -277,6 +278,14 @@ export default function AppNavActions({ onLogout, hideNav }) {
       Icon: RiUserSearchLine,
       allowed: !guestUser,
       gradient: 'bg-gradient-to-tr from-teal-600 to-emerald-400',
+    },
+    {
+      label: 'Lab App',
+      path: '/lab-app',
+      desc: 'ប្រព័ន្ធភ្ជាប់លទ្ធផលតេស្តបន្ទប់ពិសោធន៍',
+      Icon: RiTestTubeLine,
+      allowed: !guestUser,
+      gradient: 'bg-gradient-to-tr from-purple-600 to-indigo-500',
     },
     {
       label: 'KP Population',

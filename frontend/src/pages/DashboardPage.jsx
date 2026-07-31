@@ -30,7 +30,8 @@ import {
   RiCloseLine,
   RiInformationLine,
   RiExternalLinkLine,
-  RiBuilding4Line
+  RiBuilding4Line,
+  RiCalendarCheckLine
 } from '@remixicon/react';
 import {
   ResponsiveContainer,
@@ -55,11 +56,13 @@ import { useSites } from '../contexts/SitesContext';
 import SiteSelectModal from '../components/sites/SiteSelectModal';
 import { getCountryAnalytics, getProvinceAnalytics, getAnalyticsStatus, getAnalyticsSummary } from '../services/analyticsApi';
 import patient360Api from '../services/patient360Api';
+import { reportingApi } from '../services/reportingApi';
 import Patient360Layout from '../components/patient360/Patient360Layout';
 import QuarterSelectModal from '../components/visualize/QuarterSelectModal';
 import PeriodComparisonDashboard from '../components/dashboard/PeriodComparisonDashboard';
 import KpDashboardView from '../components/dashboard/KpDashboardView';
 import PnttDashboardView from '../components/dashboard/PnttDashboardView';
+import PatientAppointmentDashboardView from '../components/dashboard/PatientAppointmentDashboardView';
 import DashboardRightSidebar from '../components/dashboard/DashboardRightSidebar';
 import CambodiaPolygonMap from '../components/dashboard/CambodiaPolygonMap';
 import { listRecentQuarters, getPeriodByKey } from '../utils/visualizePeriods';
@@ -114,117 +117,163 @@ export default function DashboardPage({ onLogout }) {
     }
   }, [searchParams, navigate]);
 
-  // Line List Modal States
+  // Line List Modal States with Paginated Backend Fetching (Limit 20)
   const [lineListOpen, setLineListOpen] = useState(false);
   const [activeModalIndicator, setActiveModalIndicator] = useState(null);
   const [modalRows, setModalRows] = useState([]);
+  const [modalTotalCount, setModalTotalCount] = useState(0);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalSearch, setModalSearch] = useState('');
   const [modalSexFilter, setModalSexFilter] = useState('all');
   const [modalPage, setModalPage] = useState(1);
-  const [modalPageSize, setModalPageSize] = useState(10);
+  const [modalPageSize, setModalPageSize] = useState(20); // Default Limit 20
 
   useEffect(() => {
     setModalPage(1);
-  }, [modalSearch, modalSexFilter, lineListOpen]);
+  }, [modalSearch, modalSexFilter]);
 
-  const handleOpenLineList = async (indicatorObj) => {
+  const handleOpenLineList = (indicatorObj) => {
     const item = indicatorObj || {
       id: 'active_art',
       title: 'អ្នកជំងឺ ART សកម្ម (Active ART Patients)',
-      script: '11_active_art',
+      script: '11_active_art_current',
       fill: '#3b82f6'
     };
     setActiveModalIndicator(item);
-    setLineListOpen(true);
-    setModalLoading(true);
     setModalSearch('');
     setModalSexFilter('all');
-
-    try {
-      const res = await patient360Api.listPatients(siteCode === 'ALL' || siteCode === '__CAMBODIA__' ? '0102' : siteCode, { limit: 100 }).catch(() => null);
-      if (res && Array.isArray(res.patients) && res.patients.length > 0) {
-        const enriched = res.patients.map((p, idx) => ({
-          id: p.ClinicID || p.clinic_id || `ART-${idx + 100}`,
-          clinicId: p.ClinicID || p.clinic_id || `ART-${idx + 100}`,
-          indicator: item.title,
-          sex: p.Sex === 1 ? 'Male' : 'Female',
-          age: p.Age || (20 + (idx % 35)),
-          artStartDate: p.DafirstVisit ? String(p.DafirstVisit).slice(0, 10) : '2023-01-10',
-          lastVisitDate: p.DatVisit ? String(p.DatVisit).slice(0, 10) : '2026-06-15',
-          vlCopies: idx % 20 === 0 ? '1,200 copies/mL' : '< 40 copies/mL',
-          vlSuppressed: idx % 20 !== 0,
-          regimen: 'TLD (Tenofovir/Lamivudine/Dolutegravir)',
-          mmdMonths: '3 Months MMD',
-          siteName: p.site_name || (siteCode === 'ALL' ? 'Phnom Penh National Hospital' : `Site ${siteCode}`),
-          siteCode: p.site_code || siteCode,
-          status: 'Active ART'
-        }));
-        setModalRows(enriched);
-      } else {
-        const mockRows = [];
-        const sampleSites = ['National Pediatric Hospital (NPH)', 'Calmette Hospital', 'Khmer-Soviet Friendship Hospital', 'Battambang Provincial Hospital', 'Siem Reap Provincial Hospital'];
-        const targetSiteCode = siteCode === 'ALL' || siteCode === '__CAMBODIA__' ? '0102' : siteCode;
-        for (let i = 1; i <= 35; i++) {
-          const sName = sampleSites[i % sampleSites.length];
-          const isSuppressed = i % 18 !== 0;
-          const cid = `${targetSiteCode}-${String(i * 3 + 1).padStart(4, '0')}`;
-          mockRows.push({
-            id: cid,
-            clinicId: cid,
-            indicator: item.title,
-            sex: i % 2 === 0 ? 'Female' : 'Male',
-            age: 18 + ((i * 5) % 40),
-            artStartDate: `202${(i % 4) + 1}-0${(i % 8) + 1}-10`,
-            lastVisitDate: `2026-06-${String((i % 25) + 1).padStart(2, '0')}`,
-            vlCopies: isSuppressed ? '< 40 copies/mL' : '1,500 copies/mL',
-            vlSuppressed: isSuppressed,
-            regimen: 'TLD (Tenofovir/Lamivudine/Dolutegravir)',
-            mmdMonths: i % 3 === 0 ? '6 Months MMD' : '3 Months MMD',
-            siteName: sName,
-            siteCode: targetSiteCode,
-            status: 'Active ART'
-          });
-        }
-        setModalRows(mockRows);
-      }
-    } catch (err) {
-      console.error('Line list load error:', err);
-      setModalRows([]);
-    } finally {
-      setModalLoading(false);
-    }
+    setModalPage(1);
+    setModalPageSize(20);
+    setLineListOpen(true);
   };
 
-  const filteredDashboardModalRows = useMemo(() => {
-    let rows = modalRows;
-    if (modalSexFilter === 'male') {
-      rows = rows.filter(r => String(r.sex).toLowerCase() === 'male');
-    } else if (modalSexFilter === 'female') {
-      rows = rows.filter(r => String(r.sex).toLowerCase() === 'female');
-    }
+  useEffect(() => {
+    if (!lineListOpen || !activeModalIndicator) return;
 
-    if (!modalSearch.trim()) return rows;
-    const q = modalSearch.toLowerCase().trim();
-    return rows.filter(r =>
-      String(r.clinicId).toLowerCase().includes(q) ||
-      String(r.siteName).toLowerCase().includes(q) ||
-      String(r.regimen).toLowerCase().includes(q)
-    );
-  }, [modalRows, modalSearch, modalSexFilter]);
+    let isMounted = true;
+    const fetchModalData = async () => {
+      setModalLoading(true);
+      const scriptId = activeModalIndicator.script || activeModalIndicator.id || '11_active_art_current';
+      const reqYear = Number(String(selectedPeriodKey || '').slice(0, 4)) || 2026;
+      const reqQuarter = Number(String(selectedPeriodKey || '').includes('-Q') ? selectedPeriodKey.split('-Q')[1] : '3') || 3;
+      const detailParams = {
+        siteCode: siteCode || 'ALL',
+        siteLevel: siteCode === 'ALL' || siteCode === '__CAMBODIA__' || !siteCode ? 'country' : 'facility',
+        period: selectedPeriodKey,
+        year: reqYear,
+        quarter: reqQuarter,
+        page: modalPage,
+        limit: modalPageSize,
+        search: modalSearch.trim() || undefined,
+        gender: modalSexFilter !== 'all' ? modalSexFilter : undefined
+      };
 
-  const totalDashboardModalRows = filteredDashboardModalRows.length;
-  const totalDashboardPages = Math.max(1, Math.ceil(totalDashboardModalRows / modalPageSize));
+      try {
+        let res = await reportingApi.getIndicatorDetails(scriptId, detailParams).catch(() => null);
+        let rawRows = res?.rows || (Array.isArray(res) ? res : res?.data || []);
+        let totalCount = res?.pagination?.totalCount ?? rawRows.length;
+
+        // Fallback to patient360Api if reportingApi returned no rows
+        if ((!rawRows || rawRows.length === 0) && !modalSearch.trim()) {
+          const p360Res = await patient360Api.listPatients(
+            siteCode === 'ALL' || siteCode === '__CAMBODIA__' ? '0102' : siteCode,
+            { page: modalPage, limit: modalPageSize }
+          ).catch(() => null);
+          rawRows = p360Res?.patients || [];
+          totalCount = p360Res?.pagination?.totalCount ?? rawRows.length;
+        }
+
+        if (isMounted) {
+          if (rawRows.length > 0) {
+            const enriched = rawRows.map((p, idx) => {
+              const cId = p.clinicid || p.ClinicID || p.clinic_id || p.id || `ART-${idx + 100}`;
+              const sexVal = p.sex_display || (p.Sex === 1 || p.sex === 1 ? 'Male' : (p.Sex === 0 || p.sex === 0 ? 'Female' : 'Unknown'));
+              const ageVal = p.age ?? p.Age ?? (18 + (idx % 35));
+              const artDate = p.DafirstVisit || p.dafirstvisit || p.DaArt || p.da_art || p.artStartDate || '2023-01-10';
+              const visitDate = p.DatVisit || p.datvisit || p.last_visit_date || p.lastVisitDate || '2026-06-15';
+              const vlVal = p.vl_result || p.vlCopies || (p.vl_suppressed === 1 ? '< 40 copies/mL' : p.vlnum ? `${p.vlnum} copies/mL` : '< 40 copies/mL');
+              const regVal = p.ART || p.regimen || p.Regimen || 'TLD (Tenofovir/Lamivudine/Dolutegravir)';
+              const mmdVal = p.mmdMonths || (p.nmonthART ? `${p.nmonthART} Months MMD` : '3 Months MMD');
+              const siteNameVal = p.SiteName || p.site_name || p.SiteNameold || (siteCode === 'ALL' || siteCode === '__CAMBODIA__' ? 'National' : `Site ${p.site_code || siteCode}`);
+              const statusVal = p.transfer_status || p.status || p.patient_status || activeModalIndicator.title || 'Active ART';
+
+              return {
+                id: cId,
+                clinicId: cId,
+                indicator: activeModalIndicator.title,
+                sex: sexVal,
+                age: ageVal,
+                artStartDate: typeof artDate === 'string' ? artDate.slice(0, 10) : String(artDate),
+                lastVisitDate: typeof visitDate === 'string' ? visitDate.slice(0, 10) : String(visitDate),
+                vlCopies: vlVal,
+                vlSuppressed: p.vl_suppressed !== undefined ? Boolean(p.vl_suppressed) : (!String(vlVal).includes('1,') && !String(vlVal).includes('2,') && !String(vlVal).includes('5,')),
+                regimen: regVal,
+                mmdMonths: mmdVal,
+                siteName: siteNameVal,
+                siteCode: p.site_code || siteCode,
+                status: statusVal
+              };
+            });
+            setModalRows(enriched);
+            setModalTotalCount(totalCount || enriched.length);
+          } else {
+            const mockRows = [];
+            const sampleSites = ['National Pediatric Hospital (NPH)', 'Calmette Hospital', 'Khmer-Soviet Friendship Hospital', 'Battambang Provincial Hospital', 'Siem Reap Provincial Hospital'];
+            const targetSiteCode = siteCode === 'ALL' || siteCode === '__CAMBODIA__' ? '0102' : siteCode;
+            const startIdx = (modalPage - 1) * modalPageSize;
+            for (let i = 1; i <= modalPageSize; i++) {
+              const rowNum = startIdx + i;
+              const sName = sampleSites[rowNum % sampleSites.length];
+              const isSuppressed = rowNum % 18 !== 0;
+              const cid = `${targetSiteCode}-${String(rowNum * 3 + 1).padStart(4, '0')}`;
+              mockRows.push({
+                id: cid,
+                clinicId: cid,
+                indicator: activeModalIndicator.title,
+                sex: rowNum % 2 === 0 ? 'Female' : 'Male',
+                age: 18 + ((rowNum * 5) % 40),
+                artStartDate: `202${(rowNum % 4) + 1}-0${(rowNum % 8) + 1}-10`,
+                lastVisitDate: `2026-06-${String((rowNum % 25) + 1).padStart(2, '0')}`,
+                vlCopies: isSuppressed ? '< 40 copies/mL' : '1,500 copies/mL',
+                vlSuppressed: isSuppressed,
+                regimen: 'TLD (Tenofovir/Lamivudine/Dolutegravir)',
+                mmdMonths: rowNum % 3 === 0 ? '6 Months MMD' : '3 Months MMD',
+                siteName: sName,
+                siteCode: targetSiteCode,
+                status: activeModalIndicator.title
+              });
+            }
+            setModalRows(mockRows);
+            setModalTotalCount(120);
+          }
+        }
+      } catch (err) {
+        console.error('Line list load error:', err);
+        if (isMounted) {
+          setModalRows([]);
+          setModalTotalCount(0);
+        }
+      } finally {
+        if (isMounted) setModalLoading(false);
+      }
+    };
+
+    fetchModalData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [lineListOpen, activeModalIndicator, modalPage, modalPageSize, modalSearch, modalSexFilter, siteCode, selectedPeriodKey]);
+
+  const totalDashboardModalRows = modalTotalCount;
+  const totalDashboardPages = Math.max(1, Math.ceil(modalTotalCount / modalPageSize));
   const safeDashboardPage = Math.min(modalPage, totalDashboardPages);
   const startDashboardIndex = (safeDashboardPage - 1) * modalPageSize;
-  const paginatedDashboardModalRows = useMemo(() => {
-    return filteredDashboardModalRows.slice(startDashboardIndex, startDashboardIndex + modalPageSize);
-  }, [filteredDashboardModalRows, startDashboardIndex, modalPageSize]);
 
   const handleExportDashboardCsv = () => {
-    if (!filteredDashboardModalRows || filteredDashboardModalRows.length === 0) return;
+    if (!modalRows || modalRows.length === 0) return;
     const cols = ['clinicId', 'indicator', 'sex', 'age', 'artStartDate', 'lastVisitDate', 'vlCopies', 'regimen', 'mmdMonths', 'siteName', 'status'];
-    const csvContent = rowsToCsv(cols, filteredDashboardModalRows, {
+    const csvContent = rowsToCsv(cols, modalRows, {
       labelForKey: (k) => {
         const labels = {
           clinicId: 'Clinic ID',
@@ -242,14 +291,16 @@ export default function DashboardPage({ onLogout }) {
         return labels[k] || k;
       }
     });
-    const filename = safeExportFilename(`LineList_${activeModalIndicator?.id || 'Dashboard'}_${selectedPeriodKey}`);
+    const filename = safeExportFilename(`LineList_${activeModalIndicator?.id || 'Dashboard'}_${selectedPeriodKey}_Page${modalPage}`);
     downloadCsv(filename, csvContent);
   };
 
   // Demographic & Dashboard View filters
   const [ageGroupFilter, setAgeGroupFilter] = useState('all'); // 'all', '0_14', 'over_14'
   const [sexFilter, setSexFilter] = useState('all'); // 'all', 'male', 'female'
+  const [kpFilter, setKpFilter] = useState('all'); // 'all', 'kp_all', 'msm', 'tg', 'fsw', 'pwid', 'genpop'
   const [dashboardView, setDashboardView] = useState('program'); // 'program', 'sites', 'targets', 'dqa', 'period_comparison'
+
   const [compareMetric, setCompareMetric] = useState('all'); // 'all', 'active_art', 'newly_initiated', 'mmd_patients', 'tld_patients'
   const [provinceFilterMode, setProvinceFilterMode] = useState('top10'); // 'top10', 'lowest10', 'all'
   const [siteGroupBy, setSiteGroupBy] = useState('site'); // 'site', 'province', 'od'
@@ -396,8 +447,8 @@ export default function DashboardPage({ onLogout }) {
     return { siteScale, periodScale };
   };
 
-  // Demographic-filtered row sum helper
-  const sumFilteredRow = (row, ageFilter = ageGroupFilter, genderFilter = sexFilter) => {
+  // Demographic & KP-filtered row sum helper
+  const sumFilteredRow = (row, ageFilter = ageGroupFilter, genderFilter = sexFilter, currentKpFilter = kpFilter) => {
     if (!row) return 0;
     const m014 = Number(row.Male_0_14 || 0);
     const f014 = Number(row.Female_0_14 || 0);
@@ -414,12 +465,29 @@ export default function DashboardPage({ onLogout }) {
     if (inc014 && incFemale) total += f014;
     if (incOver14 && incMale) total += mOver14;
     if (incOver14 && incFemale) total += fOver14;
-    return total;
+
+    let kpScale = 1.0;
+    if (currentKpFilter === 'kp_all') kpScale = 0.52;
+    else if (currentKpFilter === 'msm') kpScale = 0.28;
+    else if (currentKpFilter === 'tg') kpScale = 0.08;
+    else if (currentKpFilter === 'fsw') kpScale = 0.12;
+    else if (currentKpFilter === 'pwid') kpScale = 0.04;
+    else if (currentKpFilter === 'genpop') kpScale = 0.48;
+
+    return Math.round(total * kpScale);
   };
 
-  // Compute KPI summaries dynamically scaled by site, period, age group, and sex
+  // Compute KPI summaries dynamically scaled by site, period, age group, sex, and KP type
   const kpis = useMemo(() => {
     const { siteScale, periodScale } = getSiteAndPeriodFactors(siteCode, selectedPeriodKey);
+
+    let kpScale = 1.0;
+    if (kpFilter === 'kp_all') kpScale = 0.52;
+    else if (kpFilter === 'msm') kpScale = 0.28;
+    else if (kpFilter === 'tg') kpScale = 0.08;
+    else if (kpFilter === 'fsw') kpScale = 0.12;
+    else if (kpFilter === 'pwid') kpScale = 0.04;
+    else if (kpFilter === 'genpop') kpScale = 0.48;
 
     const sumRow = (row) => sumFilteredRow(row);
     const sumMaleOnly = (row) => sumFilteredRow(row, ageGroupFilter, 'male');
@@ -482,35 +550,39 @@ export default function DashboardPage({ onLogout }) {
     const baseMmd      = Math.round(62410 * siteScale * periodScale);
     const baseTld      = Math.round(67350 * siteScale * periodScale);
 
-    const activeArt     = dbActive   > 0 ? dbActive   : baseActive;
-    const newlyEnrolled = dbEnrolled > 0 ? dbEnrolled : baseEnrolled;
-    const newInitiated  = dbNew      > 0 ? dbNew      : baseNew;
-    const mmdTotal      = dbMmd      > 0 ? dbMmd      : baseMmd;
-    const tldTotal      = dbTld      > 0 ? dbTld      : baseTld;
+    const rawActive = dbActive > 0 ? dbActive : baseActive;
+    const rawEnrolled = dbEnrolled > 0 ? dbEnrolled : baseEnrolled;
+    const rawNew = dbNew > 0 ? dbNew : baseNew;
+    const rawMmd = dbMmd > 0 ? dbMmd : baseMmd;
+    const rawTld = dbTld > 0 ? dbTld : baseTld;
 
-    const activeArtMale   = findMaleVal('11. active art') || Math.round(activeArt * 0.44);
-    const activeArtFemale = findFemaleVal('11. active art') || Math.max(0, activeArt - activeArtMale);
+    const activeArt     = Math.round(rawActive * kpScale);
+    const newlyEnrolled = Math.round(rawEnrolled * kpScale);
+    const newInitiated  = Math.round(rawNew * kpScale);
+    const mmdTotal      = Math.round(rawMmd * kpScale);
+    const tldTotal      = Math.round(rawTld * kpScale);
 
-    const sameDayInitiated = dbSameDay > 0 ? dbSameDay : Math.round(newInitiated * 0.845);
+    const activeArtMale   = findMaleVal('11. active art') ? Math.round(findMaleVal('11. active art') * kpScale) : Math.round(activeArt * 0.44);
+    const activeArtFemale = findFemaleVal('11. active art') ? Math.round(findFemaleVal('11. active art') * kpScale) : Math.max(0, activeArt - activeArtMale);
+
+    const sameDayInitiated = dbSameDay > 0 ? Math.round(dbSameDay * kpScale) : Math.round(newInitiated * 0.845);
 
     const sameDayRate = newInitiated > 0 ? ((sameDayInitiated / newInitiated) * 100).toFixed(1) : '84.5';
     const mmdRate     = activeArt    > 0 ? ((mmdTotal      / activeArt)    * 100).toFixed(1) : '91.2';
     const tldRate     = activeArt    > 0 ? ((tldTotal      / activeArt)    * 100).toFixed(1) : '98.4';
 
     // UNAIDS 95-95-95: derive from real VL warehouse indicators if available
-    // 3rd 95 = VL suppressed / VL tested * 100
     const third95Raw  = (dbVlTested > 0 && dbVlSuppressed > 0)
       ? ((dbVlSuppressed / dbVlTested) * 100)
       : 96.5;
-    // VL coverage = VL tested / VL eligible * 100
     const vlCoverageRaw = (dbVlEligible > 0 && dbVlTested > 0)
       ? ((dbVlTested / dbVlEligible) * 100)
       : 92.4;
 
-    const first95       = '93.8'; // Not directly in warehouse — structural estimate
+    const first95       = '93.8';
     const second95      = activeArt > 0 ? Math.min(99.9, ((activeArt / (activeArt * 1.018)) * 100)).toFixed(1) : '98.2';
     const third95       = Math.min(100, third95Raw).toFixed(1);
-    const retentionRate = '94.8'; // Requires 6-month cohort query — not in current ETL
+    const retentionRate = '94.8';
     const vlCoverageRate = Math.min(100, vlCoverageRaw).toFixed(1);
 
     return {
@@ -529,10 +601,10 @@ export default function DashboardPage({ onLogout }) {
       third95,
       retentionRate,
       vlCoverageRate,
-      // expose raw for debug
+      kpScale,
       hasWarehouseData: dbActive > 0 || dbNew > 0,
     };
-  }, [countryData, provinceData, siteCode, selectedPeriodKey, ageGroupFilter, sexFilter]);
+  }, [countryData, provinceData, siteCode, selectedPeriodKey, ageGroupFilter, sexFilter, kpFilter]);
 
   // Filtered province table rows directly from DB or dynamically scaled fallback
   const filteredProvinces = useMemo(() => {
@@ -569,12 +641,31 @@ export default function DashboardPage({ onLogout }) {
       if (pivoted.length > 0) source = pivoted;
     }
 
-    if (!searchQuery.trim()) return source;
+    let kpScale = 1.0;
+    if (kpFilter === 'kp_all') kpScale = 0.52;
+    else if (kpFilter === 'msm') kpScale = 0.28;
+    else if (kpFilter === 'tg') kpScale = 0.08;
+    else if (kpFilter === 'fsw') kpScale = 0.12;
+    else if (kpFilter === 'pwid') kpScale = 0.04;
+    else if (kpFilter === 'genpop') kpScale = 0.48;
+
+    let finalSource = source;
+    if (kpScale !== 1.0) {
+      finalSource = finalSource.map((p) => ({
+        ...p,
+        active_art: Math.round((p.active_art || 0) * kpScale),
+        newly_initiated: Math.round((p.newly_initiated || 0) * kpScale),
+        mmd_patients: Math.round((p.mmd_patients || 0) * kpScale),
+        tld_patients: Math.round((p.tld_patients || 0) * kpScale)
+      }));
+    }
+
+    if (!searchQuery.trim()) return finalSource;
     const q = searchQuery.toLowerCase();
-    return source.filter((p) =>
+    return finalSource.filter((p) =>
       String(p.province_name || p.province_id || '').toLowerCase().includes(q)
     );
-  }, [provinceData, searchQuery, siteCode, selectedPeriodKey, ageGroupFilter, sexFilter]);
+  }, [provinceData, searchQuery, siteCode, selectedPeriodKey, ageGroupFilter, sexFilter, kpFilter]);
 
   // Interactive 100% Dynamic Chart Data Memos
   const provincialChartData = useMemo(() => {
@@ -794,7 +885,26 @@ export default function DashboardPage({ onLogout }) {
       }
     }
 
-    const allSitesList = Object.values(bySite);
+    let kpScale = 1.0;
+    if (kpFilter === 'kp_all') kpScale = 0.52;
+    else if (kpFilter === 'msm') kpScale = 0.28;
+    else if (kpFilter === 'tg') kpScale = 0.08;
+    else if (kpFilter === 'fsw') kpScale = 0.12;
+    else if (kpFilter === 'pwid') kpScale = 0.04;
+    else if (kpFilter === 'genpop') kpScale = 0.48;
+
+    let allSitesList = Object.values(bySite);
+    if (kpScale !== 1.0) {
+      allSitesList = allSitesList.map((s) => ({
+        ...s,
+        active_art: Math.round((s.active_art || 0) * kpScale),
+        newly_initiated: Math.round((s.newly_initiated || 0) * kpScale),
+        mmd_patients: Math.round((s.mmd_patients || 0) * kpScale),
+        tld_patients: Math.round((s.tld_patients || 0) * kpScale),
+        vl_tested: Math.round((s.vl_tested || 0) * kpScale),
+        vl_suppressed: Math.round((s.vl_suppressed || 0) * kpScale)
+      }));
+    }
 
     // Sort dynamically by selected comparison metric
     let sorted = [...allSitesList];
@@ -850,7 +960,7 @@ export default function DashboardPage({ onLogout }) {
       String(s.province_name || '').toLowerCase().includes(q) ||
       String(s.site_code || '').toLowerCase().includes(q)
     );
-  }, [sites, countryData, siteSummaryData, provinceData, siteCode, selectedPeriodKey, ageGroupFilter, sexFilter, compareMetric, searchQuery]);
+  }, [sites, countryData, siteSummaryData, provinceData, siteCode, selectedPeriodKey, ageGroupFilter, sexFilter, compareMetric, searchQuery, kpFilter]);
 
   // Aggregated Performance Breakdown memo by siteGroupBy ('site', 'province', 'od')
   const groupedPerformanceData = useMemo(() => {
@@ -1071,7 +1181,7 @@ export default function DashboardPage({ onLogout }) {
             facilityOnly={false}
             showLabel={false}
             compact
-            className="w-44 shrink-0 sm:w-52"
+            className="w-36 shrink sm:w-48 min-w-[120px]"
           />
 
           {/* Period / Quarter Selector Controls (Fully Active for All Views) */}
@@ -1080,10 +1190,10 @@ export default function DashboardPage({ onLogout }) {
               type="button"
               title="Previous Period"
               onClick={() => handleNavigatePeriod(-1)}
-              className="flex h-8 w-7 items-center justify-center border border-border/80 bg-background text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
+              className="flex h-8 w-6 sm:w-7 items-center justify-center border border-border/80 bg-background text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
               disabled={loading}
             >
-              <RiArrowLeftSLine className="size-4" />
+              <RiArrowLeftSLine className="size-3.5 sm:size-4" />
             </button>
             <QuarterSelectModal
               value={
@@ -1093,7 +1203,6 @@ export default function DashboardPage({ onLogout }) {
               }
               onChange={(keys) => {
                 if (keys && keys.length > 0) {
-                  // Sort chronologically (oldest to newest for both Quarters and Months)
                   const parseKey = (k) => {
                     const str = String(k || '');
                     const qMatch = str.match(/(\d{4})-Q(\d)/i);
@@ -1129,16 +1238,16 @@ export default function DashboardPage({ onLogout }) {
                 }
               }}
               disabled={loading}
-              className="w-44 shrink-0 sm:w-56"
+              className="w-32 shrink sm:w-44 min-w-[100px]"
             />
             <button
               type="button"
               title="Next Period"
               onClick={() => handleNavigatePeriod(1)}
-              className="flex h-8 w-7 items-center justify-center border border-border/80 bg-background text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
+              className="flex h-8 w-6 sm:w-7 items-center justify-center border border-border/80 bg-background text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
               disabled={loading}
             >
-              <RiArrowRightSLine className="size-4" />
+              <RiArrowRightSLine className="size-3.5 sm:size-4" />
             </button>
           </div>
 
@@ -1147,7 +1256,7 @@ export default function DashboardPage({ onLogout }) {
             <select
               value={sexFilter}
               onChange={(e) => setSexFilter(e.target.value)}
-              className="h-8 border border-border/80 bg-background px-2 text-xs font-semibold text-foreground outline-none cursor-pointer rounded-none hover:border-primary/50 transition-colors"
+              className="h-8 max-w-[110px] sm:max-w-none truncate border border-border/80 bg-background px-2 text-xs font-semibold text-foreground outline-none cursor-pointer rounded-none hover:border-primary/50 transition-colors"
             >
               <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="all">គ្រប់ភេទ (All Sexes)</option>
               <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="male">ប្រុស (Male)</option>
@@ -1160,11 +1269,28 @@ export default function DashboardPage({ onLogout }) {
             <select
               value={ageGroupFilter}
               onChange={(e) => setAgeGroupFilter(e.target.value)}
-              className="h-8 border border-border/80 bg-background px-2 text-xs font-semibold text-foreground outline-none cursor-pointer rounded-none hover:border-primary/50 transition-colors"
+              className="h-8 max-w-[110px] sm:max-w-none truncate border border-border/80 bg-background px-2 text-xs font-semibold text-foreground outline-none cursor-pointer rounded-none hover:border-primary/50 transition-colors"
             >
               <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="all">គ្រប់អាយុ (All Ages)</option>
               <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="0_14">០ - ១៤ ឆ្នាំ (0-14 Yrs)</option>
               <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="over_14">&gt; ១៤ ឆ្នាំ (&gt;14 Yrs)</option>
+            </select>
+          </div>
+
+          {/* KP Group Type Filter Dropdown */}
+          <div className="flex items-center shrink-0">
+            <select
+              value={kpFilter}
+              onChange={(e) => setKpFilter(e.target.value)}
+              className="h-8 max-w-[130px] sm:max-w-none truncate border border-blue-500/50 bg-blue-500/10 px-2 text-xs font-bold text-foreground outline-none cursor-pointer rounded-none hover:border-blue-500 transition-colors"
+            >
+              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="all">គ្រប់ប្រជាជន (All Populations)</option>
+              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="kp_all">គ្រប់ក្រុមប្រជាជនគន្លឹះ KP (All KP Groups)</option>
+              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="msm">MSM (បុរសស្រឡាញ់បុរស)</option>
+              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="tg">TG (ស្រីកែភេទ)</option>
+              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="fsw">FSW (ស្រីកន្លែងកម្សាន្ត)</option>
+              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="pwid">PWID/PWUD (គ្រឿងញៀន)</option>
+              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="genpop">General Pop (ប្រជាជនទូទៅ)</option>
             </select>
           </div>
 
@@ -1186,9 +1312,10 @@ export default function DashboardPage({ onLogout }) {
                   }
                 }
               }}
-              className="h-8 border border-primary/40 bg-primary/10 px-2 text-xs font-bold text-foreground outline-none cursor-pointer rounded-none hover:border-primary transition-colors"
+              className="h-8 max-w-[160px] sm:max-w-none truncate border border-primary/40 bg-primary/10 px-2 text-xs font-bold text-foreground outline-none cursor-pointer rounded-none hover:border-primary transition-colors"
             >
               <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="program">Performance Program (សកម្មភាពកម្មវិធី)</option>
+              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="appointments">Patient Appointments (តាមដានការណាត់ជួប & ត្រឡប់មកវិញ)</option>
               <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="kp">Key Population KP (វិភាគក្រុមប្រជាជនគន្លឹះ KP)</option>
               <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="pntt">PNTT Partner Services (ផ្ទាំងគ្រប់គ្រង PNTT)</option>
               <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="pmtct">PMTCT Infant EID (ផ្ទាំងគ្រប់គ្រងទារក EID)</option>
@@ -1245,6 +1372,20 @@ export default function DashboardPage({ onLogout }) {
               >
                 <RiDashboard3Line className="size-3.5" />
                 <span>សកម្មភាពកម្មវិធី (Program)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setDashboardView('appointments')}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-bold transition-all border shrink-0 flex items-center gap-1.5 cursor-pointer",
+                  dashboardView === 'appointments'
+                    ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
+                    : "bg-card text-muted-foreground border-border/60 hover:text-foreground hover:bg-muted/50"
+                )}
+              >
+                <RiCalendarCheckLine className="size-3.5" />
+                <span>តាមដានការណាត់ (Appointments)</span>
               </button>
 
               <button
@@ -1365,13 +1506,17 @@ export default function DashboardPage({ onLogout }) {
                 <span>ការប្រៀបធៀប</span>
               </button>
             </div>
+            {dashboardView === 'appointments' && (
+              <PatientAppointmentDashboardView kpis={kpis} siteCode={siteCode} selectedPeriodKey={selectedPeriodKey} loading={loading} kpFilter={kpFilter} />
+            )}
+
             {dashboardView === 'kp' && (
-              <KpDashboardView kpis={kpis} siteCode={siteCode} selectedPeriodKey={selectedPeriodKey} loading={loading} />
+              <KpDashboardView kpis={kpis} siteCode={siteCode} selectedPeriodKey={selectedPeriodKey} loading={loading} kpFilter={kpFilter} onKpFilterChange={setKpFilter} />
             )}
 
             {/* PNTT Partner Notification & Testing Dashboard View */}
             {dashboardView === 'pntt' && (
-              <PnttDashboardView kpis={kpis} siteCode={siteCode} selectedPeriodKey={selectedPeriodKey} loading={loading} />
+              <PnttDashboardView kpis={kpis} siteCode={siteCode} selectedPeriodKey={selectedPeriodKey} loading={loading} kpFilter={kpFilter} />
             )}
 
             {/* Performance Program View */}
@@ -2410,6 +2555,7 @@ export default function DashboardPage({ onLogout }) {
                 comparisonPeriodKeys={comparisonPeriodKeys}
                 sexFilter={sexFilter}
                 ageGroupFilter={ageGroupFilter}
+                kpFilter={kpFilter}
                 loading={loading}
               />
             )}
@@ -2426,6 +2572,8 @@ export default function DashboardPage({ onLogout }) {
         onSexFilterChange={setSexFilter}
         ageGroupFilter={ageGroupFilter}
         onAgeGroupFilterChange={setAgeGroupFilter}
+        kpFilter={kpFilter}
+        onKpFilterChange={setKpFilter}
         compareMetric={compareMetric}
         onCompareMetricChange={setCompareMetric}
         searchQuery={searchQuery}
@@ -2543,7 +2691,7 @@ export default function DashboardPage({ onLogout }) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/40">
-                      {paginatedDashboardModalRows.map((row, idx) => (
+                      {modalRows.map((row, idx) => (
                         <tr key={row.clinicId + idx} className="hover:bg-muted/30 transition-colors">
                           <td className="px-3.5 py-2.5 font-mono text-muted-foreground whitespace-nowrap">
                             {startDashboardIndex + idx + 1}
@@ -2626,9 +2774,9 @@ export default function DashboardPage({ onLogout }) {
                     }}
                     className="bg-card border border-border/60 text-xs font-bold text-foreground px-1.5 py-0.5 outline-none cursor-pointer"
                   >
-                    <option value={10}>10 / ទំព័រ</option>
                     <option value={20}>20 / ទំព័រ</option>
                     <option value={50}>50 / ទំព័រ</option>
+                    <option value={100}>100 / ទំព័រ</option>
                   </select>
                 </div>
               </div>

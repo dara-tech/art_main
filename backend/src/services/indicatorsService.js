@@ -82,19 +82,26 @@ class IndicatorsService {
   }
 
   getDetailQuery(id) {
-    const filePath = path.join(BASE_DIR, `${id}_details.sql`);
+    let queryId = id;
+    if (queryId === '11_active_art') queryId = '11_active_art_current';
+    else if (queryId === '08_mmd_patients') queryId = '11.2_mmd';
+    else if (queryId === '09_tld_regimen') queryId = '11.3_tld';
+    else if (queryId === '11_8_vl_suppressed' || queryId === '11_8_vl_suppressed_patients') queryId = '11.8_vl_suppression';
+
+    const filePath = path.join(BASE_DIR, `${queryId}_details.sql`);
     if (fs.existsSync(filePath)) {
       const sql = fs.readFileSync(filePath, 'utf8');
       this.detailQueries.set(id, sql);
+      this.detailQueries.set(queryId, sql);
       return sql;
     }
-    let sql = this.detailQueries.get(id);
-    if (!sql && this.loadDetailQueryIfPresent(id)) {
-      sql = this.detailQueries.get(id);
+    let sql = this.detailQueries.get(id) || this.detailQueries.get(queryId);
+    if (!sql && this.loadDetailQueryIfPresent(queryId)) {
+      sql = this.detailQueries.get(queryId);
     }
     // Safe fallback: Map legacy 10.x detail queries to 11.x if 10.x is not found
-    if (!sql && id && String(id).startsWith('10.')) {
-      const fallbackId = '11.' + String(id).slice(3);
+    if (!sql && queryId && String(queryId).startsWith('10.')) {
+      const fallbackId = '11.' + String(queryId).slice(3);
       sql = this.getDetailQuery(fallbackId);
     }
     return sql || null;

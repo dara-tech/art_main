@@ -44,6 +44,8 @@ export default function DashboardRightSidebar({
   onSexFilterChange,
   ageGroupFilter,
   onAgeGroupFilterChange,
+  kpFilter = 'all',
+  onKpFilterChange,
   compareMetric,
   onCompareMetricChange,
   searchQuery,
@@ -312,6 +314,26 @@ export default function DashboardRightSidebar({
                     <option value="all">គ្រប់អាយុ</option>
                     <option value="0_14">០-១៤ ឆ្នាំ</option>
                     <option value="over_14">&gt;១៤ ឆ្នាំ</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5 pt-1.5 border-t border-border/30">
+                  <span className="text-[10px] text-primary font-bold flex items-center gap-1">
+                    <RiGroupLine className="size-3 text-primary" />
+                    ប្រភេទប្រជាជន / KP Type:
+                  </span>
+                  <select
+                    value={kpFilter}
+                    onChange={(e) => onKpFilterChange?.(e.target.value)}
+                    className="h-8 w-full border border-primary/40 bg-primary/5 px-2.5 text-xs font-bold text-foreground outline-none cursor-pointer rounded-none hover:border-primary transition-colors"
+                  >
+                    <option value="all">គ្រប់ប្រជាជន (All Populations)</option>
+                    <option value="kp_all">គ្រប់ក្រុមប្រជាជនគន្លឹះ KP (All KP Groups)</option>
+                    <option value="msm">MSM (បុរសស្រឡាញ់បុរស)</option>
+                    <option value="tg">TG (ស្រីកែភេទ)</option>
+                    <option value="fsw">FSW (ស្រីកន្លែងកម្សាន្ត)</option>
+                    <option value="pwid">PWID/PWUD (អ្នកប្រើប្រាស់គ្រឿងញៀន)</option>
+                    <option value="genpop">General Population (ប្រជាជនទូទៅ)</option>
                   </select>
                 </div>
               </div>

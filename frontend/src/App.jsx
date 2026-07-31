@@ -23,6 +23,7 @@ const ClinicalFormsListPage = lazy(() => import('./pages/ClinicalFormsListPage.j
 const PatientRegistrationPage = lazy(() => import('./pages/PatientRegistrationPage.jsx'));
 const PatientVisitPage = lazy(() => import('./pages/PatientVisitPage.jsx'));
 const VcctPage = lazy(() => import('./pages/VcctPage.jsx'));
+const LabAppPage = lazy(() => import('./pages/LabAppPage.jsx'));
 
 import { isGuest, hasRole } from './utils/authRoles.js';
 
@@ -114,6 +115,7 @@ function App() {
             <Route path="/dqa" element={<RequireNotGuestOrPdmo><DqaPage onLogout={logout} /></RequireNotGuestOrPdmo>} />
             <Route path="/patient-360" element={<RequireNotGuest><Patient360Page onLogout={logout} /></RequireNotGuest>} />
             <Route path="/vcct" element={<RequireNotGuest><VcctPage onLogout={logout} /></RequireNotGuest>} />
+            <Route path="/lab-app" element={<RequireNotGuest><LabAppPage onLogout={logout} /></RequireNotGuest>} />
             
             {/* Clinical Forms Routing */}
             <Route path="/forms/:program" element={<RequireNotGuest><ClinicalFormsListPage /></RequireNotGuest>} />

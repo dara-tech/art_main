@@ -102,7 +102,7 @@ export default function AppLoadingOverlay({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.94, y: -4 }}
         transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-        className="relative overflow-hidden flex flex-col items-center gap-4 px-8 py-6 rounded-3xl bg-card/95 border border-border/70 shadow-[0_20px_60px_rgba(0,0,0,0.35)] max-w-sm text-center"
+        className="relative overflow-hidden flex flex-col items-center gap-4 px-8 py-6 bg-card/95 border border-border/70 shadow-[0_20px_60px_rgba(0,0,0,0.35)] max-w-sm text-center"
       >
         {/* Top ambient color bar */}
         <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-teal-500 via-sky-500 to-purple-600" />

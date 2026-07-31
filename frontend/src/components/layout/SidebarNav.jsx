@@ -15,7 +15,8 @@ import {
   RiBuilding4Line,
   RiArrowDownSLine,
   RiArrowRightSLine,
-  RiSparklingFill
+  RiSparklingFill,
+  RiTestTubeLine
 } from '@remixicon/react';
 import { useAuth } from '../../contexts/AuthContext';
 import { isAdmin, isGuest, hasRole } from '../../utils/authRoles';
@@ -154,6 +155,10 @@ export default function SidebarNav() {
                   <NavLink to="/patient-360" className={({ isActive }) => getLinkClass(isActive)}>
                     <RiUserSearchLine className={APP_NAV_ICON} />
                     <span>ព័ត៌មាន ៣៦០°</span>
+                  </NavLink>
+                  <NavLink to="/lab-app" className={({ isActive }) => getLinkClass(isActive)}>
+                    <RiTestTubeLine className={APP_NAV_ICON} />
+                    <span>លទ្ធផលតេស្ត Lab</span>
                   </NavLink>
                 </div>
               )}

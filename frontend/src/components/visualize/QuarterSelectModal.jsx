@@ -23,6 +23,8 @@ import {
 } from '../../utils/visualizePeriods';
 import { getSyncedPeriods } from '../../services/analyticsApi';
 
+const CUSTOM_KIND = 'custom';
+
 function formatPeriodSummary(periodKeys) {
   const mt = VIZ_KH.periodModal;
   if (!periodKeys?.length) return mt.selectPlaceholder;
@@ -33,6 +35,19 @@ function formatPeriodSummary(periodKeys) {
   return `${labels[0]}, ${labels[1]} +${labels.length - 2}`;
 }
 
+function formatCustomSummary(customValue) {
+  if (!customValue?.startDate || !customValue?.endDate) return null;
+  return `${customValue.startDate} → ${customValue.endDate}`;
+}
+
+function todayIso() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export default function QuarterSelectModal({
   value = [],
   onChange,
@@ -40,7 +55,10 @@ export default function QuarterSelectModal({
   className = '',
   showLabel = false,
   singleSelect = false,
-  customTrigger = null
+  customTrigger = null,
+  allowCustomRange = false,
+  onCustomRange,
+  customValue = null
 }) {
   const mt = VIZ_KH.periodModal;
   const browseYears = useMemo(() => listBrowseYears(12), []);
@@ -52,13 +70,29 @@ export default function QuarterSelectModal({
   const [browseYear, setBrowseYear] = useState(currentYear());
   const [periodKind, setPeriodKind] = useState(PERIOD_KIND.quarter);
   const [syncedKeys, setSyncedKeys] = useState([]);
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
 
-  const summary = useMemo(() => formatPeriodSummary(value), [value]);
-  const draftSummary = useMemo(() => formatPeriodSummary(draftKeys), [draftKeys]);
+  const customSummary = useMemo(() => formatCustomSummary(customValue), [customValue]);
+  const summary = useMemo(
+    () => customSummary || formatPeriodSummary(value),
+    [customSummary, value]
+  );
+  const draftCustomSummary = useMemo(
+    () => (customStart && customEnd ? `${customStart} → ${customEnd}` : mt.selectPlaceholder),
+    [customStart, customEnd, mt.selectPlaceholder]
+  );
+  const draftSummary = useMemo(
+    () => (periodKind === CUSTOM_KIND ? draftCustomSummary : formatPeriodSummary(draftKeys)),
+    [periodKind, draftCustomSummary, draftKeys]
+  );
+
+  const customValid = Boolean(customStart && customEnd && customStart <= customEnd);
 
   const allYearPeriods = useMemo(() => listAllYearPeriods(12), []);
   const viewPeriods = useMemo(() => {
     if (periodKind === PERIOD_KIND.year) return allYearPeriods;
+    if (periodKind === CUSTOM_KIND) return [];
     return periodsForYear(browseYear, periodKind);
   }, [periodKind, browseYear, allYearPeriods]);
 
@@ -70,11 +104,13 @@ export default function QuarterSelectModal({
     if (!open) return undefined;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    
-    getSyncedPeriods().then(res => {
-      if (res?.success) setSyncedKeys(res.data || []);
-    }).catch(console.error);
-    
+
+    getSyncedPeriods()
+      .then((res) => {
+        if (res?.success) setSyncedKeys(res.data || []);
+      })
+      .catch(console.error);
+
     return () => {
       document.body.style.overflow = prev;
     };
@@ -84,9 +120,19 @@ export default function QuarterSelectModal({
     e?.preventDefault();
     if (disabled) return;
     setDraftKeys(value);
-    const first = value[0] ? getPeriodByKey(value[0]) : null;
-    setBrowseYear(first?.year ?? currentYear());
-    setPeriodKind(first?.kind || PERIOD_KIND.quarter);
+    if (customValue?.startDate && customValue?.endDate) {
+      setCustomStart(customValue.startDate);
+      setCustomEnd(customValue.endDate);
+      setPeriodKind(CUSTOM_KIND);
+      setBrowseYear(Number(String(customValue.startDate).slice(0, 4)) || currentYear());
+    } else {
+      const first = value[0] ? getPeriodByKey(value[0]) : null;
+      setBrowseYear(first?.year ?? currentYear());
+      setPeriodKind(first?.kind || PERIOD_KIND.quarter);
+      const today = todayIso();
+      setCustomStart(first?.startDate || today);
+      setCustomEnd(first?.endDate || today);
+    }
     setOpen(true);
   };
 
@@ -109,10 +155,19 @@ export default function QuarterSelectModal({
   };
 
   const applySelection = () => {
+    if (periodKind === CUSTOM_KIND) {
+      if (!customValid) return;
+      onCustomRange?.({ startDate: customStart, endDate: customEnd });
+      setOpen(false);
+      return;
+    }
     if (!draftKeys.length) return;
     onChange?.(draftKeys);
     setOpen(false);
   };
+
+  const canApply =
+    periodKind === CUSTOM_KIND ? customValid : draftKeys.length > 0;
 
   const prevYear = () => setBrowseYear((y) => Math.max(minYear, y - 1));
   const nextYear = () => setBrowseYear((y) => Math.min(maxYear, y + 1));
@@ -120,8 +175,11 @@ export default function QuarterSelectModal({
   const kindTabs = [
     { id: PERIOD_KIND.quarter, label: VIZ_KH.periodKindQuarter },
     { id: PERIOD_KIND.month, label: VIZ_KH.periodKindMonth },
-    { id: PERIOD_KIND.year, label: VIZ_KH.periodKindYear }
+    { id: PERIOD_KIND.year, label: VIZ_KH.periodKindYear },
+    ...(allowCustomRange ? [{ id: CUSTOM_KIND, label: VIZ_KH.periodKindCustom }] : [])
   ];
+
+  const showYearNav = periodKind !== PERIOD_KIND.year && periodKind !== CUSTOM_KIND;
 
   return (
     <>
@@ -178,7 +236,7 @@ export default function QuarterSelectModal({
               </div>
 
               <div className="min-h-0 flex-1 overflow-auto px-6 py-4">
-                {periodKind !== PERIOD_KIND.year ? (
+                {showYearNav ? (
                   <div className="mb-4 flex items-center justify-between border border-border/80 bg-muted/25 px-2 py-2">
                     <button
                       type="button"
@@ -203,8 +261,10 @@ export default function QuarterSelectModal({
                       <RiArrowRightSLine className="size-5" />
                     </button>
                   </div>
-                ) : (
+                ) : periodKind === PERIOD_KIND.year ? (
                   <p className="mb-3 text-xs text-muted-foreground">{mt.allYearsHint}</p>
+                ) : (
+                  <p className="mb-3 text-xs text-muted-foreground">{mt.customHint}</p>
                 )}
 
                 <div className="mb-3 flex flex-wrap gap-1">
@@ -220,7 +280,7 @@ export default function QuarterSelectModal({
                   ))}
                 </div>
 
-                {!singleSelect && (
+                {!singleSelect && periodKind !== CUSTOM_KIND && (
                   <div className="mb-3 flex flex-wrap gap-1">
                     <button type="button" onClick={selectAllInView} className={appNavItemClass(false)}>
                       {VIZ_KH.modalSelectAll}
@@ -230,6 +290,34 @@ export default function QuarterSelectModal({
                     </button>
                   </div>
                 )}
+
+                {periodKind === CUSTOM_KIND ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="grid gap-1.5">
+                      <span className="text-[11px] font-medium text-muted-foreground">{mt.customStart}</span>
+                      <input
+                        type="date"
+                        value={customStart}
+                        max={customEnd || undefined}
+                        onChange={(e) => setCustomStart(e.target.value)}
+                        className="h-10 w-full border border-border/80 bg-background px-3 text-sm text-foreground outline-none focus:border-primary"
+                      />
+                    </label>
+                    <label className="grid gap-1.5">
+                      <span className="text-[11px] font-medium text-muted-foreground">{mt.customEnd}</span>
+                      <input
+                        type="date"
+                        value={customEnd}
+                        min={customStart || undefined}
+                        onChange={(e) => setCustomEnd(e.target.value)}
+                        className="h-10 w-full border border-border/80 bg-background px-3 text-sm text-foreground outline-none focus:border-primary"
+                      />
+                    </label>
+                    {customStart && customEnd && !customValid ? (
+                      <p className="sm:col-span-2 text-xs text-rose-500">{mt.customInvalid}</p>
+                    ) : null}
+                  </div>
+                ) : null}
 
                 {periodKind === PERIOD_KIND.quarter ? (
                   <div className="grid grid-cols-2 gap-2">
@@ -294,9 +382,11 @@ export default function QuarterSelectModal({
                 <div className="text-xs text-muted-foreground">
                   {mt.draft}{' '}
                   <span className="font-medium text-primary">{draftSummary}</span>
-                  <span className="ml-1 text-muted-foreground">
-                    ({draftKeys.length} {VIZ_KH.selectedPeriods})
-                  </span>
+                  {periodKind !== CUSTOM_KIND ? (
+                    <span className="ml-1 text-muted-foreground">
+                      ({draftKeys.length} {VIZ_KH.selectedPeriods})
+                    </span>
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-3">
                   <button
@@ -310,7 +400,7 @@ export default function QuarterSelectModal({
                     type="button"
                     className="h-10 bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-95 disabled:opacity-50"
                     onClick={applySelection}
-                    disabled={!draftKeys.length}
+                    disabled={!canApply}
                   >
                     {mt.apply}
                   </button>
@@ -350,7 +440,10 @@ function PeriodChip({ period, active, disabled, onToggle, large = false, subtitl
         <span className="flex items-center text-sm font-medium text-foreground">
           {period.label}
           {isSynced && (
-            <span className="ml-2 inline-block h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" title="Synced Data Available"></span>
+            <span
+              className="ml-2 inline-block h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"
+              title="Synced Data Available"
+            ></span>
           )}
         </span>
         {subtitle ? <span className="block text-[10px] text-muted-foreground tabular-nums">{subtitle}</span> : null}

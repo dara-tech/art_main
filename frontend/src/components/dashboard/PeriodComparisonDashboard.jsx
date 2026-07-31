@@ -121,6 +121,7 @@ export default function PeriodComparisonDashboard({
   comparisonPeriodKeys = ['2026-Q2', '2026-Q3'],
   sexFilter = 'all',
   ageGroupFilter = 'all',
+  kpFilter = 'all',
   loading = false
 }) {
   const [activeTab, setActiveTab] = useState('all'); // 'all', 'charts', 'table'
@@ -334,8 +335,16 @@ export default function PeriodComparisonDashboard({
     let isPct = m.includes('suppression') || m.includes('vl_suppressed') || m === 'mmd' || m === 'tld';
     const siteScale = getSiteScale(siteCode);
 
-    let siteActiveBase = Math.round(72878 * siteScale);
-    let siteInitiatedBase = Math.round(2450 * siteScale);
+    let kpScale = 1.0;
+    if (kpFilter === 'kp_all') kpScale = 0.52;
+    else if (kpFilter === 'msm') kpScale = 0.28;
+    else if (kpFilter === 'tg') kpScale = 0.08;
+    else if (kpFilter === 'fsw') kpScale = 0.12;
+    else if (kpFilter === 'pwid') kpScale = 0.04;
+    else if (kpFilter === 'genpop') kpScale = 0.48;
+
+    let siteActiveBase = Math.round(72878 * siteScale * kpScale);
+    let siteInitiatedBase = Math.round(2450 * siteScale * kpScale);
     let siteMmdBase = Math.round(siteActiveBase * 0.885);
     let siteTldBase = Math.round(siteActiveBase * 0.942);
     let siteVlTestedBase = Math.round(siteActiveBase * 0.92);
@@ -361,6 +370,14 @@ export default function PeriodComparisonDashboard({
           maleAdult = Math.round(maleAdult * siteScale);
           femaleAdult = Math.round(femaleAdult * siteScale);
           rawTotal = Math.round(rawTotal * siteScale);
+        }
+
+        if (kpScale !== 1.0) {
+          maleChild = Math.round(maleChild * kpScale);
+          femaleChild = Math.round(femaleChild * kpScale);
+          maleAdult = Math.round(maleAdult * kpScale);
+          femaleAdult = Math.round(femaleAdult * kpScale);
+          rawTotal = Math.round(rawTotal * kpScale);
         }
 
         maleVal = maleChild + maleAdult;

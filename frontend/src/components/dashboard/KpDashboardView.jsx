@@ -21,7 +21,7 @@ const KP_CATEGORIES = [
   { id: 'genpop', label: 'General Population (ប្រជាជនទូទៅ)', shortLabel: 'GenPop', color: '#10b981', icon: RiGroupLine },
 ];
 
-function generateMockKpPatients(kpGroupObj, siteCode = 'ALL', count = 45) {
+function generateMockKpPatients(kpGroupObj, siteCode = 'ALL', count = 20, startIndex = 0) {
   const kpId = kpGroupObj?.id || 'all';
   
   const sampleSites = [
@@ -50,35 +50,36 @@ function generateMockKpPatients(kpGroupObj, siteCode = 'ALL', count = 45) {
 
   const rows = [];
   for (let i = 1; i <= count; i++) {
+    const rowNum = startIndex + i;
     let kpInfo = kpTypes.find(k => k.id === kpId);
     if (!kpInfo || kpId === 'all') {
-      kpInfo = kpTypes[(i - 1) % kpTypes.length];
+      kpInfo = kpTypes[(rowNum - 1) % kpTypes.length];
     }
 
-    const site = sampleSites[(i - 1) % sampleSites.length];
-    const reg = regimens[(i - 1) % regimens.length];
-    const isSuppressed = (i % 15) !== 0;
-    const vlVal = isSuppressed ? ((i % 3 === 0) ? '< 20 copies/mL' : (i % 2 === 0 ? '18 copies/mL' : '< 40 copies/mL')) : `${650 + (i * 85)} copies/mL`;
+    const site = sampleSites[(rowNum - 1) % sampleSites.length];
+    const reg = regimens[(rowNum - 1) % regimens.length];
+    const isSuppressed = (rowNum % 15) !== 0;
+    const vlVal = isSuppressed ? ((rowNum % 3 === 0) ? '< 20 copies/mL' : (rowNum % 2 === 0 ? '18 copies/mL' : '< 40 copies/mL')) : `${650 + (rowNum * 85)} copies/mL`;
     
-    const age = 19 + ((i * 7 + 3) % 29);
+    const age = 19 + ((rowNum * 7 + 3) % 29);
     
     let sexVal = kpInfo.sex;
     if (kpInfo.id === 'pwid') {
-      sexVal = (i % 4 === 0) ? 'Female' : 'Male';
+      sexVal = (rowNum % 4 === 0) ? 'Female' : 'Male';
     } else if (kpInfo.id === 'genpop') {
-      sexVal = (i % 2 === 0) ? 'Female' : 'Male';
+      sexVal = (rowNum % 2 === 0) ? 'Female' : 'Male';
     }
 
-    const year = 2019 + ((i * 3) % 7);
-    const month = String(((i * 5) % 12) + 1).padStart(2, '0');
-    const day = String(((i * 7) % 28) + 1).padStart(2, '0');
+    const year = 2019 + ((rowNum * 3) % 7);
+    const month = String(((rowNum * 5) % 12) + 1).padStart(2, '0');
+    const day = String(((rowNum * 7) % 28) + 1).padStart(2, '0');
     const artStartDate = `${year}-${month}-${day}`;
 
-    const visitMonth = String(((i % 6) + 1)).padStart(2, '0');
-    const visitDay = String(((i * 3 % 25) + 1)).padStart(2, '0');
+    const visitMonth = String(((rowNum % 6) + 1)).padStart(2, '0');
+    const visitDay = String(((rowNum * 3 % 25) + 1)).padStart(2, '0');
     const lastVisitDate = `2026-${visitMonth}-${visitDay}`;
 
-    const numPadded = String(i * 3 + 1).padStart(4, '0');
+    const numPadded = String(rowNum * 3 + 1).padStart(4, '0');
     const clinicId = `${site.code}-${numPadded}`;
 
     rows.push({
@@ -104,27 +105,33 @@ function generateMockKpPatients(kpGroupObj, siteCode = 'ALL', count = 45) {
   return rows;
 }
 
-export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedPeriodKey = '', loading = false }) {
+export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedPeriodKey = '', loading = false, kpFilter = 'all', onKpFilterChange }) {
   const navigate = useNavigate();
-  const [selectedKp, setSelectedKp] = useState('all');
+  const [selectedKp, setSelectedKp] = useState(kpFilter === 'kp_all' ? 'all' : kpFilter);
+
+  useEffect(() => {
+    if (kpFilter) {
+      setSelectedKp(kpFilter === 'kp_all' ? 'all' : kpFilter);
+    }
+  }, [kpFilter]);
 
   // KP Line List Modal States
   const [lineListOpen, setLineListOpen] = useState(false);
   const [activeModalKp, setActiveModalKp] = useState(null);
   const [modalRows, setModalRows] = useState([]);
+  const [modalTotalCount, setModalTotalCount] = useState(0);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalSearch, setModalSearch] = useState('');
   const [modalVlFilter, setModalVlFilter] = useState('all'); // 'all' | 'suppressed' | 'unsuppressed'
   const [modalMmdFilter, setModalMmdFilter] = useState('all'); // 'all' | 'mmd3' | 'mmd6'
   const [modalPage, setModalPage] = useState(1);
-  const [modalPageSize, setModalPageSize] = useState(10);
-
-  useEffect(() => {
-    setModalPage(1);
-  }, [modalSearch, modalVlFilter, modalMmdFilter, lineListOpen]);
+  const [modalPageSize, setModalPageSize] = useState(20);
 
   const totalPatients = useMemo(() => kpis.activeArt || 72878, [kpis]);
-  const newlyInitiated = useMemo(() => kpis.newlyInitiated || 2450, [kpis]);
+  const newlyInitiated = useMemo(() => {
+    if (kpis.newlyInitiated && kpis.newlyInitiated > 50) return kpis.newlyInitiated;
+    return Math.round(totalPatients * 0.035);
+  }, [kpis, totalPatients]);
 
   // KP Distribution based on Cambodian National ART Data Ratios
   const kpData = useMemo(() => {
@@ -148,26 +155,62 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
     return kpData.filter(d => d.id === selectedKp);
   }, [kpData, selectedKp]);
 
+  const totalArtSum = useMemo(() => filteredKpData.reduce((acc, item) => acc + (item.value || 0), 0), [filteredKpData]);
+  const totalNewSum = useMemo(() => filteredKpData.reduce((acc, item) => acc + (item.newStart || 0), 0), [filteredKpData]);
+  const avgSuppression = useMemo(() => {
+    if (!totalArtSum) return 0;
+    const weightedSuppressed = filteredKpData.reduce((acc, item) => acc + (item.value * ((item.suppression || 95) / 100)), 0);
+    return Number(((weightedSuppressed / totalArtSum) * 100).toFixed(1));
+  }, [filteredKpData, totalArtSum]);
+  const avgMmd = useMemo(() => {
+    if (!totalArtSum) return 0;
+    const weightedMmd = filteredKpData.reduce((acc, item) => acc + (item.value * ((item.mmd || 90) / 100)), 0);
+    return Number(((weightedMmd / totalArtSum) * 100).toFixed(1));
+  }, [filteredKpData, totalArtSum]);
+
+  useEffect(() => {
+    setModalPage(1);
+  }, [modalSearch, modalVlFilter, modalMmdFilter, lineListOpen]);
+
   // Open Line List Modal Handler
-  const handleOpenLineList = async (kpItem) => {
-    const targetKp = kpItem || { id: 'all', name: 'គ្រប់ក្រុមប្រជាជនគន្លឹះ (All KP Groups)', shortName: 'All KP', fill: '#3b82f6' };
+  const handleOpenLineList = (kpItem, options = {}) => {
+    let targetKp = kpItem;
+    if (!targetKp || targetKp.id === 'all') {
+      targetKp = { id: 'all', name: 'គ្រប់ក្រុមប្រជាជនគន្លឹះ (All KP Groups)', shortName: 'All KP', value: totalPatients, fill: '#3b82f6' };
+    } else if (targetKp.id) {
+      const found = kpData.find(k => k.id === targetKp.id);
+      if (found) targetKp = { ...targetKp, value: found.value, name: found.name, shortName: found.shortName, fill: found.fill, newStart: found.newStart };
+    }
+
+    if (options.isNew) {
+      const newCount = targetKp.newStart || targetKp.value || Math.round(totalPatients * 0.035);
+      const cleanGroupLabel = targetKp.shortName || (targetKp.name ? targetKp.name.split(' (')[0] : 'All KP');
+      targetKp = {
+        ...targetKp,
+        isNewOnly: true,
+        name: `${cleanGroupLabel} - អ្នកជំងឺថ្មី (New Initiated)`,
+        value: newCount
+      };
+    }
+
     setActiveModalKp(targetKp);
+    const count = targetKp.value || totalPatients;
+    setModalTotalCount(count);
     setLineListOpen(true);
-    setModalLoading(true);
     setModalSearch('');
     setModalVlFilter('all');
     setModalMmdFilter('all');
-
-    try {
-      const mockRows = generateMockKpPatients(targetKp, siteCode, 45);
-      setModalRows(mockRows);
-    } catch (err) {
-      console.error('Error preparing KP line list:', err);
-      setModalRows([]);
-    } finally {
-      setModalLoading(false);
-    }
+    setModalPage(1);
+    setModalPageSize(20);
   };
+
+  useEffect(() => {
+    if (!lineListOpen || !activeModalKp) return;
+    const startIdx = (modalPage - 1) * modalPageSize;
+    const rowsToFetch = Math.min(modalPageSize, Math.max(0, modalTotalCount - startIdx));
+    const mockRows = generateMockKpPatients(activeModalKp, siteCode, rowsToFetch, startIdx);
+    setModalRows(mockRows);
+  }, [lineListOpen, activeModalKp, modalPage, modalPageSize, siteCode, modalTotalCount]);
 
   // Filtered rows inside modal
   const filteredModalRows = useMemo(() => {
@@ -194,8 +237,8 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
     );
   }, [modalRows, modalSearch, modalVlFilter, modalMmdFilter]);
 
-  const totalKpModalRows = filteredModalRows.length;
-  const totalKpPages = Math.max(1, Math.ceil(totalKpModalRows / modalPageSize));
+  const totalKpModalRows = modalTotalCount;
+  const totalKpPages = Math.max(1, Math.ceil(modalTotalCount / modalPageSize));
   const safeKpPage = Math.min(modalPage, totalKpPages);
   const startKpIndex = (safeKpPage - 1) * modalPageSize;
   const paginatedKpModalRows = useMemo(() => {
@@ -240,7 +283,7 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
             <span className="text-xs text-muted-foreground">ត្រីមាស: <strong>{selectedPeriodKey || '២០២៦-Q៣'}</strong></span>
           </div>
           <h2 className="text-sm font-black text-foreground mt-1 tracking-tight">
-            ផ្ទាំងវិភាគទិន្នន័យ ក្រុមប្រជាជនគន្លឹះ (Key Populations - KP Dashboard)
+            វិភាគក្រុមប្រជាជនគន្លឹះ (KP Dashboard)
           </h2>
         </div>
 
@@ -473,10 +516,10 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
       <div className="border border-border/80 bg-card shadow-2xs overflow-hidden">
         <div className="flex items-center justify-between border-b border-border/60 px-4 py-2.5 bg-muted/20">
           <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-            <RiTableLine className="size-4 text-primary" /> តារាងលម្អិតសូចនាករតាមក្រុមប្រជាជនគន្លឹះ KP Breakdown Table
+            <RiTableLine className="size-4 text-primary" /> តារាងលម្អិតសូចនាករតាមក្រុមប្រជាជនគន្លឹះ (KP Breakdown Table)
           </h3>
           <span className="text-[11px] font-semibold text-muted-foreground">
-            ចំនួនក្រុម: {filteredKpData.length}
+            សរុប {filteredKpData.length} ក្រុម
           </span>
         </div>
 
@@ -511,8 +554,15 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
                       <span>{kp.pct}%</span>
                     </div>
                   </td>
-                  <td className="px-4 py-2.5 text-right font-mono text-emerald-500 font-bold">
-                    {kp.newStart.toLocaleString()} នាក់
+                  <td className="px-4 py-2.5 text-right font-mono font-bold">
+                    <button
+                      onClick={() => handleOpenLineList(kp, { isNew: true })}
+                      className="px-2 py-0.5 text-xs text-emerald-500 hover:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 transition-all inline-flex items-center gap-1 font-mono font-bold"
+                      title={`ចុចដើម្បីមើលបញ្ជីឈ្មោះអ្នកជំងឺថ្មី ${kp.shortName}`}
+                    >
+                      <RiListCheck className="size-3" />
+                      <span>{kp.newStart.toLocaleString()} នាក់</span>
+                    </button>
                   </td>
                   <td className="px-4 py-2.5 text-right font-mono font-bold text-emerald-500">
                     {kp.suppression}%
@@ -532,6 +582,44 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
                 </tr>
               ))}
             </tbody>
+            <tfoot className="border-t-2 border-border/80 bg-muted/40 font-bold">
+              <tr>
+                <td className="px-4 py-3 text-foreground font-black">
+                  សរុប (Total)
+                </td>
+                <td className="px-4 py-3 text-right font-mono font-black text-foreground">
+                  {totalArtSum.toLocaleString()} នាក់
+                </td>
+                <td className="px-4 py-3 text-right font-mono font-black text-primary">
+                  100.0%
+                </td>
+                <td className="px-4 py-3 text-right font-mono font-black">
+                  <button
+                    onClick={() => handleOpenLineList({ id: 'all', name: 'គ្រប់ក្រុមប្រជាជនគន្លឹះ (All KP Groups)', value: totalPatients, newStart: totalNewSum }, { isNew: true })}
+                    className="px-2.5 py-1 text-xs text-emerald-500 hover:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition-colors inline-flex items-center gap-1 font-mono font-black"
+                    title="ចុចដើម្បីមើលបញ្ជីឈ្មោះអ្នកជំងឺថ្មីសរុប"
+                  >
+                    <RiListCheck className="size-3.5" />
+                    <span>{totalNewSum.toLocaleString()} នាក់</span>
+                  </button>
+                </td>
+                <td className="px-4 py-3 text-right font-mono font-black text-emerald-500">
+                  {avgSuppression}%
+                </td>
+                <td className="px-4 py-3 text-right font-mono font-black text-blue-500">
+                  {avgMmd}%
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <button
+                    onClick={() => handleOpenLineList(null)}
+                    className="px-2.5 py-1 text-xs font-bold text-primary bg-primary/10 hover:bg-primary hover:text-primary-foreground border border-primary/30 transition-all inline-flex items-center gap-1"
+                  >
+                    <RiListCheck className="size-3.5" />
+                    <span>បញ្ជីឈ្មោះសរុប</span>
+                  </button>
+                </td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>
@@ -548,8 +636,8 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
                 <div>
                   <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
                     <span>បញ្ជីឈ្មោះអ្នកជំងឺ KP ({activeModalKp?.name || 'All KP Groups'})</span>
-                    <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 border border-primary/30">
-                      {totalKpModalRows} នាក់
+                    <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 border border-primary/30 font-mono">
+                      {modalTotalCount.toLocaleString()} នាក់
                     </span>
                   </h3>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -642,7 +730,7 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/40">
-                      {paginatedKpModalRows.map((row, idx) => (
+                      {modalRows.map((row, idx) => (
                         <tr key={row.clinicId + idx} className="hover:bg-muted/30 transition-colors">
                           <td className="px-3.5 py-2.5 font-mono text-muted-foreground whitespace-nowrap">
                             {startKpIndex + idx + 1}
@@ -722,7 +810,7 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border/60 px-5 py-3 bg-muted/30 shrink-0">
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span>
-                  បង្ហាញពី <strong className="text-foreground">{totalKpModalRows === 0 ? 0 : startKpIndex + 1}</strong> ដល់ <strong className="text-foreground">{Math.min(startKpIndex + modalPageSize, totalKpModalRows)}</strong> នៃសរុប <strong className="text-primary font-bold">{totalKpModalRows}</strong> នាក់
+                  បង្ហាញពី <strong className="text-foreground">{totalKpModalRows === 0 ? 0 : startKpIndex + 1}</strong> ដល់ <strong className="text-foreground">{Math.min(startKpIndex + modalPageSize, totalKpModalRows)}</strong> នៃសរុប <strong className="text-primary font-bold">{modalTotalCount.toLocaleString()}</strong> នាក់
                 </span>
                 <div className="flex items-center gap-1">
                   <span>ទំហំ:</span>
@@ -734,9 +822,9 @@ export default function KpDashboardView({ kpis = {}, siteCode = 'ALL', selectedP
                     }}
                     className="bg-card border border-border/60 text-xs font-bold text-foreground px-1.5 py-0.5 outline-none cursor-pointer"
                   >
-                    <option value={10}>10 / ទំព័រ</option>
                     <option value={20}>20 / ទំព័រ</option>
                     <option value={50}>50 / ទំព័រ</option>
+                    <option value={100}>100 / ទំព័រ</option>
                   </select>
                 </div>
               </div>
