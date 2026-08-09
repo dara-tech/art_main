@@ -25,7 +25,9 @@ export default function VisualizeResults({
   sites = [],
   periods = [],
   onNavigateToPatient360,
-  onBeforeNavigateToPatient360
+  onBeforeNavigateToPatient360,
+  activeProfileFilterCount = 0,
+  onResetProfileFilters
 }) {
   const { columns: tableCols, rows: tableRows } = useMemo(
     () => buildVisualizeTableModel(results, catalog, scopeMode),
@@ -138,8 +140,58 @@ export default function VisualizeResults({
     [tableCols, chartSettings?.digitSeparator, handleCellClick]
   );
 
-  if (!results.length) {
-    return <VizEmpty>{VIZ_KH.empty}</VizEmpty>;
+  const [filterText, setFilterText] = useState('');
+
+  const filteredTableRows = useMemo(() => {
+    if (!filterText.trim()) return tableRows;
+    const query = filterText.toLowerCase().trim();
+    return tableRows.filter((r) => {
+      const indLabel = String(r.indicatorLabel || '').toLowerCase();
+      const facLabel = String(r.facilityLabel || r.scopeLabel || '').toLowerCase();
+      const perLabel = String(r.periodLabel || '').toLowerCase();
+      return indLabel.includes(query) || facLabel.includes(query) || perLabel.includes(query);
+    });
+  }, [tableRows, filterText]);
+
+  const kpiSummaryStats = useMemo(() => {
+    if (!results.length) return null;
+    let totalSum = 0;
+    let maxVal = -1;
+    let maxLabel = '';
+
+    results.forEach((r) => {
+      const val = Number(r.total || 0);
+      totalSum += val;
+      if (val > maxVal) {
+        maxVal = val;
+        maxLabel = r.indicatorLabel || r.indicatorId || '';
+      }
+    });
+
+    const uniquePeriods = new Set(results.map((r) => r.periodLabel || r.periodKey)).size;
+    const uniqueFacilities = new Set(results.map((r) => r.facilityLabel || r.siteCode)).size;
+
+    return {
+      totalSum,
+      maxVal,
+      maxLabel,
+      rowCount: results.length,
+      periodCount: uniquePeriods,
+      facilityCount: uniqueFacilities
+    };
+  }, [results]);
+
+  if (!results.length || (view === 'table' && !filteredTableRows.length)) {
+    return (
+      <VizEmpty
+        activeFilterCount={activeProfileFilterCount}
+        onResetFilters={onResetProfileFilters}
+      >
+        {activeProfileFilterCount > 0
+          ? `ពុំមានទិន្នន័យស្របតាមតម្រងប្រជាសាស្ត្រ/Profile ដែលបានជ្រើសរើសឡើយ។ សូមចុចប៊ូតុង "សម្អាតតម្រងទាំងអស់" ដើម្បីមើលទិន្នន័យដើមឡើងវិញ។`
+          : VIZ_KH.empty}
+      </VizEmpty>
+    );
   }
 
   if (view === 'chart') {
@@ -175,16 +227,58 @@ export default function VisualizeResults({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {tableTitle && (
-        <div className="px-5 py-3 border-b border-border/80 bg-muted/5 flex flex-col gap-0.5 select-text">
+        <div className="px-4 py-2 border-b border-border/80 bg-muted/5 flex flex-col gap-0.5 select-text">
           <h3 className="text-xs font-bold text-foreground tracking-wide">{tableTitle}</h3>
           {tableSubtitle && (
             <p className="text-[10px] text-muted-foreground">{tableSubtitle}</p>
           )}
         </div>
       )}
+
+      {/* Dynamic Results Header & Live Search Bar */}
+      <div className="px-3.5 py-2 border-b border-border/80 bg-muted/15 flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          {kpiSummaryStats && (
+            <div className="flex items-center gap-2 text-xs font-medium">
+              <span className="flex items-center gap-1.5 bg-primary/10 text-foreground px-2 py-0.5 border border-primary/20 font-bold rounded-none">
+                {kpiSummaryStats.totalSum.toLocaleString()} សរុបអ្នកជំងឺ (Total)
+              </span>
+              <span className="flex items-center gap-1 bg-muted/50 px-2 py-0.5 border border-border/60 text-muted-foreground rounded-none">
+                {filteredTableRows.length} / {kpiSummaryStats.rowCount} ជួរ (Rows)
+              </span>
+              {kpiSummaryStats.facilityCount > 1 && (
+                <span className="flex items-center gap-1 bg-violet-500/10 text-violet-300 px-2 py-0.5 border border-violet-500/20 font-bold rounded-none">
+                  {kpiSummaryStats.facilityCount} មណ្ឌល (Sites)
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Live Search Input */}
+        <div className="relative flex items-center min-w-[210px] max-w-[300px]">
+          <input
+            type="text"
+            value={filterText}
+            onChange={(e) => setFilterText(e.target.value)}
+            placeholder="ស្វែងរកតាមឈ្មោះ/សូចនាករ/ត្រីមាស..."
+            className="w-full bg-background border border-border/80 rounded-none px-2.5 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary focus:ring-1 focus:ring-primary/40 transition-all"
+          />
+          {filterText && (
+            <button
+              type="button"
+              onClick={() => setFilterText('')}
+              className="absolute right-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      </div>
+
       <Patient360DataTable
         columns={columns}
-        rows={tableRows}
+        rows={filteredTableRows}
         getRowKey={(r) => r._key}
         scrollBody
         fillHeight

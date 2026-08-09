@@ -198,10 +198,10 @@ export default function QuarterSelectModal({
             disabled={disabled}
             className={cn(
               p360ControlClass,
-              'w-full border bg-background px-3 text-left font-medium transition hover:bg-muted/20 disabled:opacity-50'
+              'w-full border bg-background px-3 text-left font-medium transition hover:bg-muted/20 disabled:opacity-50 inline-flex items-center whitespace-nowrap truncate overflow-hidden'
             )}
           >
-            {summary}
+            <span className="truncate whitespace-nowrap overflow-hidden flex-1">{summary}</span>
           </button>
         </div>
       )}

@@ -1,5 +1,6 @@
 -- Indicator 5: Newly Initiated - Detailed Records
 SELECT
+    p.site_code as site_code,
     p.ClinicID as clinicid,
     art.ART as art_number,
     p.Sex as sex,
@@ -23,8 +24,8 @@ SELECT
         ELSE CONCAT('Status: ', p.OffIn)
     END as transfer_status
 FROM tblaimain p 
-JOIN tblaart art ON p.ClinicID = art.ClinicID
-JOIN tblavmain v ON p.ClinicID = v.ClinicID AND v.DatVisit = art.DaArt 
+JOIN tblaart art ON p.ClinicID = art.ClinicID AND p.site_code = art.site_code
+JOIN tblavmain v ON p.ClinicID = v.ClinicID AND p.site_code = v.site_code AND v.DatVisit = art.DaArt 
 WHERE 
     art.DaArt BETWEEN :StartDate AND :EndDate 
     AND (p.OffIn IS NULL OR p.OffIn <> :transfer_in_code)
@@ -33,6 +34,7 @@ WHERE
 UNION ALL
 
 SELECT
+    p.site_code as site_code,
     p.ClinicID as clinicid,
     art.ART as art_number,
     p.Sex as sex,
@@ -43,7 +45,7 @@ SELECT
     END as sex_display,
     '≤14' as typepatients,
     p.DaBirth as DaBirth,
-    p.DafirstVisit as DafirstVisit,
+    p.DaFirstVisit as DafirstVisit,
     art.DaArt as DaArt,
     v.DatVisit as DatVisit,
     p.OffIn as OffIn,
@@ -56,9 +58,9 @@ SELECT
         ELSE CONCAT('Status: ', p.OffIn)
     END as transfer_status
 FROM tblcimain p 
-JOIN tblcart art ON p.ClinicID = art.ClinicID
-JOIN tblcvmain v ON p.ClinicID = v.ClinicID AND v.DatVisit = art.DaArt
+JOIN tblcart art ON p.ClinicID = art.ClinicID AND p.site_code = art.site_code
+JOIN tblcvmain v ON p.ClinicID = v.ClinicID AND p.site_code = v.site_code AND v.DatVisit = art.DaArt
 WHERE 
     art.DaArt BETWEEN :StartDate AND :EndDate 
     AND (p.OffIn IS NULL OR p.OffIn <> :transfer_in_code)
-ORDER BY DaArt DESC, ClinicID;
+ORDER BY DaArt DESC, clinicid;

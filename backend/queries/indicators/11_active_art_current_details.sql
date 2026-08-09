@@ -1,31 +1,33 @@
 -- Indicator 10: Active ART patients in this quarter - Detailed Records
--- This replicates the exact same CTE structure and logic as the aggregate query
 WITH tblvisit AS (
     SELECT 
+        site_code,
         clinicid,
         DatVisit,
         ARTnum,
         DaApp,
         vid,
-        ROW_NUMBER() OVER (PARTITION BY clinicid ORDER BY DatVisit DESC) AS id 
+        ROW_NUMBER() OVER (PARTITION BY site_code, clinicid ORDER BY DatVisit DESC) AS id 
     FROM tblavmain 
     WHERE DatVisit <= :EndDate
     
     UNION ALL 
     
     SELECT 
+        site_code,
         clinicid,
         DatVisit,
         ARTnum,
         DaApp,
         vid,
-        ROW_NUMBER() OVER (PARTITION BY clinicid ORDER BY DatVisit DESC) AS id 
+        ROW_NUMBER() OVER (PARTITION BY site_code, clinicid ORDER BY DatVisit DESC) AS id 
     FROM tblcvmain 
     WHERE DatVisit <= :EndDate
 ),
 
 tblimain AS (
     SELECT 
+        site_code,
         ClinicID,
         DafirstVisit,
         "15+" AS typepatients,
@@ -43,6 +45,7 @@ tblimain AS (
     UNION ALL 
     
     SELECT 
+        site_code,
         ClinicID,
         DafirstVisit,
         "≤14" AS typepatients,
@@ -60,7 +63,10 @@ tblimain AS (
 
 tblart AS (
     SELECT 
-        *,
+        site_code,
+        ClinicID,
+        ART,
+        DaArt,
         TIMESTAMPDIFF(month, DaArt, :EndDate) AS nmonthART 
     FROM tblaart 
     WHERE DaArt <= :EndDate
@@ -68,27 +74,30 @@ tblart AS (
     UNION ALL 
     
     SELECT 
-        *,
+        site_code,
+        ClinicID,
+        ART,
+        DaArt,
         TIMESTAMPDIFF(month, DaArt, :EndDate) AS nmonthART 
     FROM tblcart 
     WHERE DaArt <= :EndDate
 ),
 
 tblexit AS (
-    SELECT * 
+    SELECT site_code, clinicid, status, da
     FROM tblavpatientstatus 
     WHERE da <= :EndDate
     
     UNION ALL 
     
-    SELECT * 
+    SELECT site_code, clinicid, status, da
     FROM tblcvpatientstatus  
     WHERE da <= :EndDate
 )
 
 SELECT
     '11' as step,
-    i.clinicid as site_code,
+    v.site_code as site_code,
     i.clinicid,
     i.Sex AS sex,
     CASE 
@@ -120,8 +129,8 @@ SELECT
         ELSE CONCAT('Status: ', i.OffIn)
     END AS transfer_status
 FROM tblvisit v
-LEFT JOIN tblimain i ON i.clinicid = v.clinicid
-LEFT JOIN tblart a ON a.clinicid = v.clinicid
-LEFT JOIN tblexit e ON v.clinicid = e.clinicid
+LEFT JOIN tblimain i ON i.clinicid = v.clinicid AND i.site_code = v.site_code
+LEFT JOIN tblart a ON a.clinicid = v.clinicid AND a.site_code = v.site_code
+LEFT JOIN tblexit e ON e.clinicid = v.clinicid AND e.site_code = v.site_code
 WHERE v.id = 1 AND e.status IS NULL AND a.ART IS NOT NULL
 ORDER BY v.DatVisit DESC, i.clinicid;

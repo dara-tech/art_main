@@ -88,7 +88,8 @@ function generateMockAppointmentPatients(categoryObj, siteCode = 'ALL', count = 
     const age = 20 + ((rowNum * 7 + 2) % 35);
     const sexVal = (rowNum % 2 === 0) ? 'Female' : 'Male';
     const numPadded = String(rowNum * 4 + 2).padStart(4, '0');
-    const clinicId = `${site.code}-${numPadded}`;
+    const targetSiteCode = siteCode === 'ALL' ? site.code : siteCode;
+    const clinicId = `${targetSiteCode}-${numPadded}`;
 
     rows.push({
       id: clinicId,
@@ -110,7 +111,7 @@ function generateMockAppointmentPatients(categoryObj, siteCode = 'ALL', count = 
       regimen: reg.name,
       mmdMonths: reg.mmd,
       siteName: siteCode === 'ALL' ? site.name : `Site ${siteCode}`,
-      siteCode: site.code,
+      siteCode: targetSiteCode,
       status: catInfo.id === 'late_no_buffer' ? 'High Risk IIT' : (catInfo.id === 'returned' ? 'Restored Care' : 'Active ART')
     });
   }
@@ -1017,6 +1018,18 @@ export default function PatientAppointmentDashboardView({ kpis = {}, siteCode = 
                             </button>
                           </td>
 
+                          <td className="px-3.5 py-2.5 whitespace-nowrap">
+                            <span
+                              className="px-2 py-0.5 text-[10px] font-bold border"
+                              style={{
+                                backgroundColor: `${row.categoryColor}15`,
+                                color: row.categoryColor,
+                                borderColor: `${row.categoryColor}30`
+                              }}
+                            >
+                              {row.categoryName}
+                            </span>
+                          </td>
                           <td className="px-3.5 py-2.5 font-mono text-muted-foreground whitespace-nowrap">
                             {row.scheduledDate}
                           </td>

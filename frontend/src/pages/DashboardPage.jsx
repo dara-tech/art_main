@@ -49,6 +49,7 @@ import {
   Legend,
   LabelList
 } from 'recharts';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import AppLoadingOverlay from '../components/ui/AppLoadingOverlay';
 import { buildPatient360Path } from '../utils/patient360Navigation';
 import { useAuth } from '../contexts/AuthContext';
@@ -58,11 +59,50 @@ import { getCountryAnalytics, getProvinceAnalytics, getAnalyticsStatus, getAnaly
 import patient360Api from '../services/patient360Api';
 import { reportingApi } from '../services/reportingApi';
 import Patient360Layout from '../components/patient360/Patient360Layout';
+
+const sexLabelMap = {
+  all: 'គ្រប់ភេទ (All Sexes)',
+  male: 'ប្រុស (Male)',
+  female: 'ស្រី (Female)'
+};
+
+const ageGroupLabelMap = {
+  all: 'គ្រប់អាយុ (All Ages)',
+  '0_14': '០ - ១៤ ឆ្នាំ (0-14 Yrs)',
+  over_14: '> ១៤ ឆ្នាំ (>14 Yrs)'
+};
+
+const kpLabelMap = {
+  all: 'គ្រប់ប្រជាជន (All Populations)',
+  kp_all: 'គ្រប់ក្រុមប្រជាជនគន្លឹះ KP (All KP Groups)',
+  msm: 'MSM (បុរសស្រឡាញ់បុរស)',
+  tg: 'TG (ស្រីកែភេទ)',
+  fsw: 'FSW (ស្រីកន្លែងកម្សាន្ត)',
+  pwid: 'PWID/PWUD (គ្រឿងញៀន)',
+  genpop: 'General Pop (ប្រជាជនទូទៅ)'
+};
+
+const dashboardViewLabelMap = {
+  program: 'Performance Program (សកម្មភាពកម្មវិធី)',
+  appointments: 'Patient Appointments (តាមដានការណាត់ជួប & ត្រឡប់មកវិញ)',
+  kp: 'Key Population KP (វិភាគក្រុមប្រជាជនគន្លឹះ KP)',
+  pntt: 'PNTT Partner Services (ផ្ទាំងគ្រប់គ្រង PNTT)',
+  pmtct: 'PMTCT Infant EID (ផ្ទាំងគ្រប់គ្រងទារក EID)',
+  sites: 'Sites Performance (សមត្ថកិច្ចមន្ទីរពេទ្យ)',
+  doctors: 'Top Doctors (គ្រូពេទ្យកំពូល)',
+  targets: 'National Target (គោលដៅជាតិ 95-95-95)',
+  dqa: 'Site DQA (គុណភាពទិន្នន័យ DQA)',
+  period_comparison: 'Period-to-Period Comparison (ការប្រៀបធៀបតាមកាលបរិច្ឆេទ)'
+};
 import QuarterSelectModal from '../components/visualize/QuarterSelectModal';
 import PeriodComparisonDashboard from '../components/dashboard/PeriodComparisonDashboard';
 import KpDashboardView from '../components/dashboard/KpDashboardView';
 import PnttDashboardView from '../components/dashboard/PnttDashboardView';
 import PatientAppointmentDashboardView from '../components/dashboard/PatientAppointmentDashboardView';
+import ProgramDashboardView from '../components/dashboard/sub-dashboards/ProgramDashboardView';
+import SitesPerformanceDashboardView from '../components/dashboard/sub-dashboards/SitesPerformanceDashboardView';
+import TargetsDashboardView from '../components/dashboard/sub-dashboards/TargetsDashboardView';
+import DqaDashboardView from '../components/dashboard/sub-dashboards/DqaDashboardView';
 import DashboardRightSidebar from '../components/dashboard/DashboardRightSidebar';
 import CambodiaPolygonMap from '../components/dashboard/CambodiaPolygonMap';
 import { listRecentQuarters, getPeriodByKey } from '../utils/visualizePeriods';
@@ -1181,7 +1221,7 @@ export default function DashboardPage({ onLogout }) {
             facilityOnly={false}
             showLabel={false}
             compact
-            className="w-36 shrink sm:w-48 min-w-[120px]"
+            className="w-auto max-w-[280px] shrink min-w-[140px]"
           />
 
           {/* Period / Quarter Selector Controls (Fully Active for All Views) */}
@@ -1253,53 +1293,55 @@ export default function DashboardPage({ onLogout }) {
 
           {/* Sex / Gender Filter Dropdown */}
           <div className="flex items-center shrink-0">
-            <select
-              value={sexFilter}
-              onChange={(e) => setSexFilter(e.target.value)}
-              className="h-8 max-w-[110px] sm:max-w-none truncate border border-border/80 bg-background px-2 text-xs font-semibold text-foreground outline-none cursor-pointer rounded-none hover:border-primary/50 transition-colors"
-            >
-              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="all">គ្រប់ភេទ (All Sexes)</option>
-              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="male">ប្រុស (Male)</option>
-              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="female">ស្រី (Female)</option>
-            </select>
+            <Select value={sexFilter} onValueChange={setSexFilter}>
+              <SelectTrigger className="h-8 w-fit min-w-[110px] bg-background border border-border/80 text-foreground text-xs font-semibold px-2 rounded-none focus:ring-0 focus:ring-offset-0 focus:outline-none shrink-0 shadow-xs cursor-pointer">
+                <SelectValue>{sexLabelMap[sexFilter]}</SelectValue>
+              </SelectTrigger>
+              <SelectContent className="p-1 rounded-none text-xs min-w-[130px]">
+                <SelectItem value="all" className="px-3 py-2 rounded-none text-xs cursor-pointer">គ្រប់ភេទ (All Sexes)</SelectItem>
+                <SelectItem value="male" className="px-3 py-2 rounded-none text-xs cursor-pointer">ប្រុស (Male)</SelectItem>
+                <SelectItem value="female" className="px-3 py-2 rounded-none text-xs cursor-pointer">ស្រី (Female)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Age Group Filter Dropdown */}
           <div className="flex items-center shrink-0">
-            <select
-              value={ageGroupFilter}
-              onChange={(e) => setAgeGroupFilter(e.target.value)}
-              className="h-8 max-w-[110px] sm:max-w-none truncate border border-border/80 bg-background px-2 text-xs font-semibold text-foreground outline-none cursor-pointer rounded-none hover:border-primary/50 transition-colors"
-            >
-              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="all">គ្រប់អាយុ (All Ages)</option>
-              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="0_14">០ - ១៤ ឆ្នាំ (0-14 Yrs)</option>
-              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="over_14">&gt; ១៤ ឆ្នាំ (&gt;14 Yrs)</option>
-            </select>
+            <Select value={ageGroupFilter} onValueChange={setAgeGroupFilter}>
+              <SelectTrigger className="h-8 w-fit min-w-[110px] bg-background border border-border/80 text-foreground text-xs font-semibold px-2 rounded-none focus:ring-0 focus:ring-offset-0 focus:outline-none shrink-0 shadow-xs cursor-pointer">
+                <SelectValue>{ageGroupLabelMap[ageGroupFilter]}</SelectValue>
+              </SelectTrigger>
+              <SelectContent className="p-1 rounded-none text-xs min-w-[130px]">
+                <SelectItem value="all" className="px-3 py-2 rounded-none text-xs cursor-pointer">គ្រប់អាយុ (All Ages)</SelectItem>
+                <SelectItem value="0_14" className="px-3 py-2 rounded-none text-xs cursor-pointer">០ - ១៤ ឆ្នាំ (0-14 Yrs)</SelectItem>
+                <SelectItem value="over_14" className="px-3 py-2 rounded-none text-xs cursor-pointer">&gt; ១៤ ឆ្នាំ (&gt;14 Yrs)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* KP Group Type Filter Dropdown */}
           <div className="flex items-center shrink-0">
-            <select
-              value={kpFilter}
-              onChange={(e) => setKpFilter(e.target.value)}
-              className="h-8 max-w-[130px] sm:max-w-none truncate border border-blue-500/50 bg-blue-500/10 px-2 text-xs font-bold text-foreground outline-none cursor-pointer rounded-none hover:border-blue-500 transition-colors"
-            >
-              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="all">គ្រប់ប្រជាជន (All Populations)</option>
-              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="kp_all">គ្រប់ក្រុមប្រជាជនគន្លឹះ KP (All KP Groups)</option>
-              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="msm">MSM (បុរសស្រឡាញ់បុរស)</option>
-              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="tg">TG (ស្រីកែភេទ)</option>
-              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="fsw">FSW (ស្រីកន្លែងកម្សាន្ត)</option>
-              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="pwid">PWID/PWUD (គ្រឿងញៀន)</option>
-              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="genpop">General Pop (ប្រជាជនទូទៅ)</option>
-            </select>
+            <Select value={kpFilter} onValueChange={setKpFilter}>
+              <SelectTrigger className="h-8 w-fit min-w-[140px] bg-background border border-border/80 text-foreground text-xs font-semibold px-2 rounded-none focus:ring-0 focus:ring-offset-0 focus:outline-none shrink-0 shadow-xs cursor-pointer hover:border-primary/50 transition-colors">
+                <SelectValue>{kpLabelMap[kpFilter]}</SelectValue>
+              </SelectTrigger>
+              <SelectContent className="p-1 rounded-none text-xs min-w-[220px]">
+                <SelectItem value="all" className="px-3 py-2 rounded-none text-xs cursor-pointer">គ្រប់ប្រជាជន (All Populations)</SelectItem>
+                <SelectItem value="kp_all" className="px-3 py-2 rounded-none text-xs cursor-pointer">គ្រប់ក្រុមប្រជាជនគន្លឹះ KP (All KP Groups)</SelectItem>
+                <SelectItem value="msm" className="px-3 py-2 rounded-none text-xs cursor-pointer">MSM (បុរសស្រឡាញ់បុរស)</SelectItem>
+                <SelectItem value="tg" className="px-3 py-2 rounded-none text-xs cursor-pointer">TG (ស្រីកែភេទ)</SelectItem>
+                <SelectItem value="fsw" className="px-3 py-2 rounded-none text-xs cursor-pointer">FSW (ស្រីកន្លែងកម្សាន្ត)</SelectItem>
+                <SelectItem value="pwid" className="px-3 py-2 rounded-none text-xs cursor-pointer">PWID/PWUD (គ្រឿងញៀន)</SelectItem>
+                <SelectItem value="genpop" className="px-3 py-2 rounded-none text-xs cursor-pointer">General Pop (ប្រជាជនទូទៅ)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Dashboard Type Selector */}
           <div className="flex items-center shrink-0">
-            <select
+            <Select
               value={dashboardView === 'sites' && siteGroupBy === 'doctor' ? 'doctors' : dashboardView}
-              onChange={(e) => {
-                const val = e.target.value;
+              onValueChange={(val) => {
                 if (val === 'pmtct') {
                   navigate('/pmtct-infant');
                 } else if (val === 'doctors') {
@@ -1312,19 +1354,23 @@ export default function DashboardPage({ onLogout }) {
                   }
                 }
               }}
-              className="h-8 max-w-[160px] sm:max-w-none truncate border border-primary/40 bg-primary/10 px-2 text-xs font-bold text-foreground outline-none cursor-pointer rounded-none hover:border-primary transition-colors"
             >
-              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="program">Performance Program (សកម្មភាពកម្មវិធី)</option>
-              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="appointments">Patient Appointments (តាមដានការណាត់ជួប & ត្រឡប់មកវិញ)</option>
-              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="kp">Key Population KP (វិភាគក្រុមប្រជាជនគន្លឹះ KP)</option>
-              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="pntt">PNTT Partner Services (ផ្ទាំងគ្រប់គ្រង PNTT)</option>
-              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="pmtct">PMTCT Infant EID (ផ្ទាំងគ្រប់គ្រងទារក EID)</option>
-              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="sites">Sites Performance (សមត្ថកិច្ចមន្ទីរពេទ្យ)</option>
-              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="doctors">Top Doctors (គ្រូពេទ្យកំពូល)</option>
-              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="targets">National Target (គោលដៅជាតិ 95-95-95)</option>
-              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="dqa">Site DQA (គុណភាពទិន្នន័យ DQA)</option>
-              <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="period_comparison">Period-to-Period Comparison (ការប្រៀបធៀបតាមកាលបរិច្ឆេទ)</option>
-            </select>
+              <SelectTrigger className="h-8 w-fit min-w-[240px] max-w-[340px] border border-primary/40 bg-primary/10 px-2.5 text-xs font-bold text-foreground rounded-none focus:ring-0 focus:ring-offset-0 focus:outline-none shrink-0 cursor-pointer">
+                <SelectValue>{dashboardViewLabelMap[dashboardView === 'sites' && siteGroupBy === 'doctor' ? 'doctors' : dashboardView]}</SelectValue>
+              </SelectTrigger>
+              <SelectContent className="p-1 rounded-none text-xs min-w-[320px]">
+                <SelectItem value="program" className="px-3 py-2 rounded-none text-xs cursor-pointer">Performance Program (សកម្មភាពកម្មវិធី)</SelectItem>
+                <SelectItem value="appointments" className="px-3 py-2 rounded-none text-xs cursor-pointer">Patient Appointments (តាមដានការណាត់ជួប & ត្រឡប់មកវិញ)</SelectItem>
+                <SelectItem value="kp" className="px-3 py-2 rounded-none text-xs cursor-pointer">Key Population KP (វិភាគក្រុមប្រជាជនគន្លឹះ KP)</SelectItem>
+                <SelectItem value="pntt" className="px-3 py-2 rounded-none text-xs cursor-pointer">PNTT Partner Services (ផ្ទាំងគ្រប់គ្រង PNTT)</SelectItem>
+                <SelectItem value="pmtct" className="px-3 py-2 rounded-none text-xs cursor-pointer">PMTCT Infant EID (ផ្ទាំងគ្រប់គ្រងទារក EID)</SelectItem>
+                <SelectItem value="sites" className="px-3 py-2 rounded-none text-xs cursor-pointer">Sites Performance (សមត្ថកិច្ចមន្ទីរពេទ្យ)</SelectItem>
+                <SelectItem value="doctors" className="px-3 py-2 rounded-none text-xs cursor-pointer">Top Doctors (គ្រូពេទ្យកំពូល)</SelectItem>
+                <SelectItem value="targets" className="px-3 py-2 rounded-none text-xs cursor-pointer">National Target (គោលដៅជាតិ 95-95-95)</SelectItem>
+                <SelectItem value="dqa" className="px-3 py-2 rounded-none text-xs cursor-pointer">Site DQA (គុណភាពទិន្នន័យ DQA)</SelectItem>
+                <SelectItem value="period_comparison" className="px-3 py-2 rounded-none text-xs cursor-pointer">Period-to-Period Comparison (ការប្រៀបធៀបតាមកាលបរិច្ឆេទ)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -1521,1024 +1567,59 @@ export default function DashboardPage({ onLogout }) {
 
             {/* Performance Program View */}
             {dashboardView === 'program' && (
-              <>
-                {/* 6 Key Executive Indicator Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3 shrink-0 font-khmer">
-                  {/* Card 1: Active ART */}
-                  <div
-                    onClick={() => handleOpenLineList({ id: 'active_art', title: 'អ្នកជំងឺ ART សកម្ម (Active ART Patients)', script: '11_active_art', fill: '#3b82f6' })}
-                    className="border border-border/70 bg-card p-3.5 rounded-none shadow-2xs hover:border-primary/80 transition-all cursor-pointer group flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-muted-foreground truncate">អ្នកជំងឺ ART សកម្ម (Active ART)</span>
-                        <div className="flex size-6 items-center justify-center bg-blue-500/10 text-blue-500 rounded-none shrink-0">
-                          <RiGroupLine className="size-3.5" />
-                        </div>
-                      </div>
-                      <div className="mt-2 flex items-baseline justify-between">
-                        <span className="text-xl font-black text-foreground tracking-tight">
-                          {(kpis.activeArt || 0).toLocaleString()}
-                        </span>
-                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-500">
-                          <RiArrowUpLine className="size-3" />
-                          +4.2%
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mt-3 flex items-center justify-between text-[10px] text-muted-foreground border-t border-border/40 pt-1.5">
-                      <span>ប្រុស: <strong className="text-foreground">{(kpis.activeArtMale || 0).toLocaleString()}</strong></span>
-                      <span className="inline-flex items-center gap-0.5 text-primary font-bold opacity-75 group-hover:opacity-100 transition-opacity">
-                        Line List <RiArrowRightSLine className="size-3" />
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Card 2: Newly Enrolled */}
-                  <div
-                    onClick={() => handleOpenLineList({ id: 'newly_enrolled', title: 'អ្នកជំងឺចុះឈ្មោះថ្មី (Newly Enrolled Patients)', script: '03_newly_enrolled', fill: '#06b6d4' })}
-                    className="border border-border/70 bg-card p-3.5 rounded-none shadow-2xs hover:border-cyan-500/80 transition-all cursor-pointer group flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-muted-foreground truncate">ចុះឈ្មោះថ្មី (Newly Enrolled)</span>
-                        <div className="flex size-6 items-center justify-center bg-cyan-500/10 text-cyan-500 rounded-none shrink-0">
-                          <RiUserSearchLine className="size-3.5" />
-                        </div>
-                      </div>
-                      <div className="mt-2 flex items-baseline justify-between">
-                        <span className="text-xl font-black text-foreground tracking-tight">
-                          {(kpis.newlyEnrolled || 0).toLocaleString()}
-                        </span>
-                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-cyan-500">
-                          Pre-ART & ART
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mt-3 flex items-center justify-between text-[10px] text-muted-foreground border-t border-border/40 pt-1.5">
-                      <span>សរុបត្រីមាស</span>
-                      <span className="inline-flex items-center gap-0.5 text-cyan-600 font-bold opacity-75 group-hover:opacity-100 transition-opacity">
-                        Line List <RiArrowRightSLine className="size-3" />
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Card 3: Newly Initiated */}
-                  <div
-                    onClick={() => handleOpenLineList({ id: 'newly_initiated', title: 'អ្នកជំងឺចាប់ផ្តើម ART ថ្មី (Newly Initiated Patients)', script: '05_newly_initiated', fill: '#10b981' })}
-                    className="border border-border/70 bg-card p-3.5 rounded-none shadow-2xs hover:border-emerald-500/80 transition-all cursor-pointer group flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-muted-foreground truncate">ចាប់ផ្តើម ART ថ្មី (Initiated)</span>
-                        <div className="flex size-6 items-center justify-center bg-emerald-500/10 text-emerald-500 rounded-none shrink-0">
-                          <RiUserAddLine className="size-3.5" />
-                        </div>
-                      </div>
-                      <div className="mt-2 flex items-baseline justify-between">
-                        <span className="text-xl font-black text-foreground tracking-tight">
-                          {(kpis.newlyInitiated || 0).toLocaleString()}
-                        </span>
-                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-500">
-                          Same-day: {kpis.sameDayRate}%
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mt-3 flex items-center justify-between text-[10px] text-muted-foreground border-t border-border/40 pt-1.5">
-                      <span>ថ្ងៃតែមួយ: <strong className="text-foreground">{kpis.sameDayRate}%</strong></span>
-                      <span className="inline-flex items-center gap-0.5 text-emerald-600 font-bold opacity-75 group-hover:opacity-100 transition-opacity">
-                        Line List <RiArrowRightSLine className="size-3" />
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Card 4: MMD Patients */}
-                  <div
-                    onClick={() => handleOpenLineList({ id: 'mmd_patients', title: 'អ្នកជំងឺទទួលថ្នាំវែង MMD 3M/6M (MMD Patients)', script: '08_mmd_patients', fill: '#f59e0b' })}
-                    className="border border-border/70 bg-card p-3.5 rounded-none shadow-2xs hover:border-amber-500/80 transition-all cursor-pointer group flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-muted-foreground truncate">ថ្នាំវែង (MMD 3M/6M)</span>
-                        <div className="flex size-6 items-center justify-center bg-amber-500/10 text-amber-500 rounded-none shrink-0">
-                          <RiMedicineBottleLine className="size-3.5" />
-                        </div>
-                      </div>
-                      <div className="mt-2 flex items-baseline justify-between">
-                        <span className="text-xl font-black text-foreground tracking-tight">
-                          {kpis.mmdRate}%
-                        </span>
-                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-500">
-                          Goal &gt; 90%
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mt-3 flex items-center justify-between text-[10px] text-muted-foreground border-t border-border/40 pt-1.5">
-                      <span>MMD: <strong className="text-foreground">{(kpis.mmdTotal || 0).toLocaleString()}</strong></span>
-                      <span className="inline-flex items-center gap-0.5 text-amber-600 font-bold opacity-75 group-hover:opacity-100 transition-opacity">
-                        Line List <RiArrowRightSLine className="size-3" />
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Card 5: TLD Regimen */}
-                  <div
-                    onClick={() => handleOpenLineList({ id: 'tld_regimen', title: 'អ្នកជំងឺព្យាបាលរូបមន្ត TLD (TLD Regimen Patients)', script: '09_tld_regimen', fill: '#8b5cf6' })}
-                    className="border border-border/70 bg-card p-3.5 rounded-none shadow-2xs hover:border-violet-500/80 transition-all cursor-pointer group flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-muted-foreground truncate">ព្យាបាល TLD (TLD Regimen)</span>
-                        <div className="flex size-6 items-center justify-center bg-violet-500/10 text-violet-500 rounded-none shrink-0">
-                          <RiHeartPulseLine className="size-3.5" />
-                        </div>
-                      </div>
-                      <div className="mt-2 flex items-baseline justify-between">
-                        <span className="text-xl font-black text-foreground tracking-tight">
-                          {kpis.tldRate}%
-                        </span>
-                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-violet-500">
-                          Optimal
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mt-3 flex items-center justify-between text-[10px] text-muted-foreground border-t border-border/40 pt-1.5">
-                      <span>TLD: <strong className="text-foreground">{(kpis.tldTotal || 0).toLocaleString()}</strong></span>
-                      <span className="inline-flex items-center gap-0.5 text-violet-600 font-bold opacity-75 group-hover:opacity-100 transition-opacity">
-                        Line List <RiArrowRightSLine className="size-3" />
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Card 6: VL Suppression Rate */}
-                  <div
-                    onClick={() => handleOpenLineList({ id: 'vl_suppressed', title: 'អ្នកជំងឺបង្ក្រាបមេរោគ (VL Suppressed Patients)', script: '11_8_vl_suppressed', fill: '#14b8a6' })}
-                    className="border border-border/70 bg-card p-3.5 rounded-none shadow-2xs hover:border-teal-500/80 transition-all cursor-pointer group flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-muted-foreground truncate">បង្ក្រាបមេរោគ (VL Suppressed)</span>
-                        <div className="flex size-6 items-center justify-center bg-teal-500/10 text-teal-500 rounded-none shrink-0">
-                          <RiShieldCheckLine className="size-3.5" />
-                        </div>
-                      </div>
-                      <div className="mt-2 flex items-baseline justify-between">
-                        <span className="text-xl font-black text-foreground tracking-tight">
-                          {kpis.third95}%
-                        </span>
-                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-teal-500">
-                          Target &gt; 95%
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mt-3 flex items-center justify-between text-[10px] text-muted-foreground border-t border-border/40 pt-1.5">
-                      <span>Coverage: <strong className="text-foreground">{kpis.vlCoverageRate}%</strong></span>
-                      <span className="inline-flex items-center gap-0.5 text-teal-600 font-bold opacity-75 group-hover:opacity-100 transition-opacity">
-                        Line List <RiArrowRightSLine className="size-3" />
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* National 95-95-95 Targets Widget */}
-                <div className="border border-border/80 bg-card p-4 rounded-none shadow-xs shrink-0">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold text-foreground">គោលដៅជាតិ 95-95-95 UNAIDS Targets Progress</span>
-                    <span className="text-[11px] text-muted-foreground">ត្រីមាសទី {selectedPeriodKey}</span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between text-xs">
-                        <span className="font-semibold text-foreground">1st 95: ចុះឈ្មោះ & វិនិច្ឆ័យ</span>
-                        <span className="font-bold text-blue-500">{kpis.first95}%</span>
-                      </div>
-                      <div className="h-2 w-full bg-muted overflow-hidden rounded-none">
-                        <div className="h-full bg-blue-500" style={{ width: `${kpis.first95}%` }} />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between text-xs">
-                        <span className="font-semibold text-foreground">2nd 95: ទទួលការព្យាបាល ART</span>
-                        <span className="font-bold text-emerald-500">{kpis.second95}%</span>
-                      </div>
-                      <div className="h-2 w-full bg-muted overflow-hidden rounded-none">
-                        <div className="h-full bg-emerald-500" style={{ width: `${kpis.second95}%` }} />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between text-xs">
-                        <span className="font-semibold text-foreground">3rd 95: បង្ក្រាបមេរោគ (VL Suppressed)</span>
-                        <span className="font-bold text-violet-500">{kpis.third95}%</span>
-                      </div>
-                      <div className="h-2 w-full bg-muted overflow-hidden rounded-none">
-                        <div className="h-full bg-violet-500" style={{ width: `${kpis.third95}%` }} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Interactive Analytics Charts */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 shrink-0">
-                  <div className="border border-border/80 bg-card p-4 rounded-none shadow-xs">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-bold text-foreground">ចំនួនអ្នកជំងឺ ART តាមរាជធានី-ខេត្ត (Active ART by Province)</span>
-                      <div className="flex items-center gap-1 border border-border/80 bg-muted/40 p-0.5 shrink-0 font-khmer">
-                        <button
-                          type="button"
-                          onClick={() => setProvinceFilterMode('top10')}
-                          className={`px-2 py-0.5 text-[10px] font-bold transition-all cursor-pointer ${
-                            provinceFilterMode === 'top10'
-                              ? 'bg-primary text-primary-foreground shadow-2xs'
-                              : 'text-muted-foreground hover:text-foreground'
-                          }`}
-                        >
-                          Top 10
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setProvinceFilterMode('lowest10')}
-                          className={`px-2 py-0.5 text-[10px] font-bold transition-all cursor-pointer ${
-                            provinceFilterMode === 'lowest10'
-                              ? 'bg-rose-600 text-white shadow-2xs'
-                              : 'text-muted-foreground hover:text-foreground'
-                          }`}
-                        >
-                          Lowest 10
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setProvinceFilterMode('all')}
-                          className={`px-2 py-0.5 text-[10px] font-bold transition-all cursor-pointer ${
-                            provinceFilterMode === 'all'
-                              ? 'bg-primary text-primary-foreground shadow-2xs'
-                              : 'text-muted-foreground hover:text-foreground'
-                          }`}
-                        >
-                          Show All
-                        </button>
-                      </div>
-                    </div>
-                    <div className="h-64 w-full relative overflow-hidden">
-                      {loading && (
-                        <AppLoadingOverlay
-                          show={loading}
-                          fullScreen={false}
-                          message="កំពុងផ្ទុកទិន្នន័យ Chart..."
-                          submessage="Updating province data"
-                        />
-                      )}
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={provincialChartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                          <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                          <XAxis dataKey="name" tick={{ fontSize: 9, fill: 'currentColor' }} angle={-25} textAnchor="end" interval={0} />
-                          <YAxis tick={{ fontSize: 10, fill: 'currentColor' }} />
-                          <Tooltip
-                            cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
-                            content={({ active, payload }) => {
-                              if (!active || !payload || !payload.length) return null;
-                              const dataObj = payload[0]?.payload || {};
-                              return (
-                                <div className="bg-slate-900 border border-slate-700 p-2.5 shadow-2xl text-xs space-y-1.5 text-white font-khmer rounded-none">
-                                  <div className="border-b border-slate-700/60 pb-1">
-                                    <span className="text-[10px] text-teal-400 font-bold block uppercase tracking-wider">ចំនួនអ្នកជំងឺ ART តាមខេត្ត</span>
-                                    <strong className="text-blue-400 font-extrabold text-sm">{dataObj.name}</strong>
-                                  </div>
-                                  <div className="flex items-center justify-between gap-4 text-[11px]">
-                                    <span className="text-slate-400">Active ART:</span>
-                                    <strong className="text-blue-400 font-black">{Number(payload[0].value).toLocaleString()} នាក់</strong>
-                                  </div>
-                                </div>
-                              );
-                            }}
-                          />
-                          <Bar dataKey="activeArt" name="Active ART" fill="#3b82f6" radius={[2, 2, 0, 0]}>
-                            <LabelList
-                              dataKey="activeArt"
-                              position="top"
-                              style={{ fontSize: '9px', fontWeight: '800', fill: '#60a5fa' }}
-                              formatter={(val) => Number(val) > 0 ? Number(val).toLocaleString() : ''}
-                            />
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-
-                  <div className="border border-border/80 bg-card p-4 rounded-none shadow-xs flex flex-col justify-between">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-bold text-foreground">ការបែងចែករូបមន្តថ្នាំ (Regimen Distribution)</span>
-                      <span className="text-[10px] font-bold text-blue-500">TLD 98.4%</span>
-                    </div>
-                    <div className="h-44 w-full flex items-center justify-center relative overflow-hidden">
-                      {loading && (
-                        <AppLoadingOverlay
-                          show={loading}
-                          fullScreen={false}
-                          message="កំពុងផ្ទុកទិន្នន័យ Chart..."
-                          submessage="Updating regimen breakdown"
-                        />
-                      )}
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={regimenPieData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={48}
-                            outerRadius={72}
-                            paddingAngle={3}
-                            dataKey="value"
-                            label={({ percent }) => (percent > 0.05 ? `${(percent * 100).toFixed(0)}%` : '')}
-                            labelLine={false}
-                          >
-                            {regimenPieData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: 0, fontSize: '11px' }}
-                            formatter={(val) => Number(val).toLocaleString()}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 pt-2 border-t border-border/40 text-[11px]">
-                      {regimenPieData.map((item) => (
-                        <div key={item.name} className="flex items-center gap-1.5">
-                          <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
-                          <span className="text-muted-foreground truncate">{item.name.split(' ')[0]}: <strong className="text-foreground">{item.value.toLocaleString()}</strong></span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Cambodia GIS Polygon & ART Site Pins Map */}
-                <CambodiaPolygonMap
-                  provinces={filteredProvinces}
-                  sites={sites}
-                  loading={loading}
-                  selectedProvinceId={siteCode.startsWith('province:') ? siteCode.replace('province:', '') : null}
-                  selectedSiteCode={siteCode}
-                  onSelectProvince={(pid) => setSiteCode(pid ? `province:${pid}` : '')}
-                  onSelectSite={(code) => setSiteCode(code || '')}
-                  className="shrink-0"
-                />
-
-                {/* 4-Quarter Trajectory Chart */}
-                <div className="border border-border/80 bg-card p-4 rounded-none shadow-xs shrink-0">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold text-foreground">និន្នាការកើនឡើងរបស់អ្នកជំងឺ ៤ ត្រីមាស (4-Quarter Active ART & VL Suppression Trajectory)</span>
-                    <span className="text-[10px] text-muted-foreground">Q4 2025 – Q3 2026</span>
-                  </div>
-                  <div className="h-56 w-full relative overflow-hidden">
-                    {loading && (
-                      <AppLoadingOverlay
-                        show={loading}
-                        fullScreen={false}
-                        message="កំពុងផ្ទុកទិន្នន័យ Chart..."
-                        submessage="Updating trajectory trends"
-                      />
-                    )}
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={quarterlyTrendData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="colorActive" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
-                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0} />
-                          </linearGradient>
-                          <linearGradient id="colorSuppressed" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4} />
-                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                        <XAxis dataKey="period" tick={{ fontSize: 10, fill: 'currentColor' }} />
-                        <YAxis tick={{ fontSize: 10, fill: 'currentColor' }} />
-                        <Tooltip
-                          contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: 0, fontSize: '11px' }}
-                          formatter={(val) => Number(val).toLocaleString()}
-                        />
-                        <Area type="monotone" dataKey="activeArt" name="Active ART" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorActive)" />
-                        <Area type="monotone" dataKey="suppressed" name="VL Suppressed" stroke="#8b5cf6" strokeWidth={2} fillOpacity={1} fill="url(#colorSuppressed)" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* Provincial Distribution Table */}
-                <div className="flex flex-col border border-border/80 bg-card rounded-none shadow-xs">
-                  <div className="flex items-center justify-between border-b border-border/80 bg-muted/40 px-4 py-3 shrink-0">
-                    <span className="text-xs font-bold text-foreground">ការបែងចែកតាមរាជធានី-ខេត្ត (Provincial Distribution Rollup)</span>
-                    <div className="relative w-56">
-                      <RiSearchLine className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                      <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="ស្វែងរករាជធានី-ខេត្ត..."
-                        className="h-7 w-full border border-border/80 bg-background pl-8 pr-2 text-xs rounded-none outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="overflow-x-auto no-scrollbar">
-                    <table className="w-full border-collapse text-xs">
-                      <thead className="sticky top-0 z-10 border-b border-border/20 bg-muted/95 backdrop-blur-md">
-                        <tr className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                          <th className="border-r border-border/20 px-3 py-2 text-left">រាជធានី-ខេត្ត (Province)</th>
-                          <th className="border-r border-border/20 px-3 py-2 text-right">អ្នកជំងឺ ART សកម្ម</th>
-                          <th className="border-r border-border/20 px-3 py-2 text-right">ចាប់ផ្តើម ART ថ្មី</th>
-                          <th className="border-r border-border/20 px-3 py-2 text-right">អ្នកជំងឺ MMD</th>
-                          <th className="border-r border-border/20 px-3 py-2 text-right">អ្នកជំងឺ TLD</th>
-                          <th className="px-3 py-2 text-center">ស្ថានភាពទិន្នន័យ (DQA Score)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/20 bg-card">
-                        {loading ? (
-                          <tr>
-                            <td colSpan={6} className="py-12 text-center text-xs text-muted-foreground">
-                              កំពុងផ្ទុកទិន្នន័យខេត្ត...
-                            </td>
-                          </tr>
-                        ) : filteredProvinces.length === 0 ? (
-                          <tr>
-                            <td colSpan={6} className="py-12 text-center text-xs text-muted-foreground">
-                              មិនមានទិន្នន័យខេត្តសម្រាប់ត្រីមាសនេះ។
-                            </td>
-                          </tr>
-                        ) : (
-                          filteredProvinces.map((p, idx) => (
-                            <tr key={p.province_id || idx} className="hover:bg-muted/30 transition-colors">
-                              <td className="border-r border-border/20 px-3 py-2.5 font-bold text-foreground">
-                                {p.province_name || `Province ${p.province_id}`}
-                              </td>
-                              <td className="border-r border-border/20 px-3 py-2.5 text-right font-semibold tabular-nums text-blue-500">
-                                {Number(p.active_art || 0).toLocaleString()}
-                              </td>
-                              <td className="border-r border-border/20 px-3 py-2.5 text-right font-semibold tabular-nums text-emerald-500">
-                                {Number(p.newly_initiated || 0).toLocaleString()}
-                              </td>
-                              <td className="border-r border-border/20 px-3 py-2.5 text-right tabular-nums">
-                                {Number(p.mmd_patients || 0).toLocaleString()}
-                              </td>
-                              <td className="border-r border-border/20 px-3 py-2.5 text-right tabular-nums">
-                                {Number(p.tld_patients || 0).toLocaleString()}
-                              </td>
-                              <td className="px-3 py-2.5 text-center">
-                                <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold bg-emerald-500/10 text-emerald-600 rounded-none border border-emerald-500/20">
-                                  98.5% Verified
-                                </span>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </>
+              <ProgramDashboardView
+                kpis={kpis}
+                selectedPeriodKey={selectedPeriodKey}
+                provincialChartData={provincialChartData}
+                regimenPieData={regimenPieData}
+                quarterlyTrendData={quarterlyTrendData}
+                filteredProvinces={filteredProvinces}
+                sites={sites}
+                loading={loading}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                siteCode={siteCode}
+                setSiteCode={setSiteCode}
+                handleOpenLineList={handleOpenLineList}
+                provinceFilterMode={provinceFilterMode}
+                setProvinceFilterMode={setProvinceFilterMode}
+              />
             )}
 
             {/* Sites Performance View */}
             {dashboardView === 'sites' && (
-              <>
-                {/* Top 10 Best Health Facility Sites Bar Chart */}
-                <div className="border border-border/80 bg-card p-4 rounded-none shadow-xs space-y-3">
-                  <div className="space-y-2">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <span className="text-xs font-bold text-foreground uppercase tracking-wide">
-                        {siteGroupBy === 'site' && 'មន្ទីរពេទ្យកំពូលទាំង ១០ (Top 10 Health Facilities Evaluation)'}
-                        {siteGroupBy === 'province' && 'រាជធានី-ខេត្តកំពូលទាំង ១០ (Top 10 Provinces Evaluation)'}
-                        {siteGroupBy === 'od' && 'ស្រុកប្រតិបត្តិកំពូលទាំង ១០ (Top 10 Operational Districts OD)'}
-                        {siteGroupBy === 'doctor' && 'គ្រូពេទ្យកំពូលទាំង ១០ (Top 10 Attending Doctors Evaluation)'}
-                      </span>
-
-                      {/* View Level Grouping Selector (Facility Site / Province / OD / Doctor) */}
-                      <div className="flex items-center gap-1 bg-muted/60 p-0.5 border border-border">
-                        <button
-                          type="button"
-                          onClick={() => setSiteGroupBy('site')}
-                          className={cn('px-2.5 py-1 text-[11px] font-bold transition-all', siteGroupBy === 'site' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground')}
-                        >
-                          តាមមន្ទីរពេទ្យ (Site)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSiteGroupBy('province')}
-                          className={cn('px-2.5 py-1 text-[11px] font-bold transition-all', siteGroupBy === 'province' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground')}
-                        >
-                          តាមរាជធានី-ខេត្ត (Province)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSiteGroupBy('od')}
-                          className={cn('px-2.5 py-1 text-[11px] font-bold transition-all', siteGroupBy === 'od' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground')}
-                        >
-                          តាមស្រុកប្រតិបត្តិ (OD)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSiteGroupBy('doctor')}
-                          className={cn('px-2.5 py-1 text-[11px] font-bold transition-all', siteGroupBy === 'doctor' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground')}
-                        >
-                          តាមគ្រូពេទ្យ (Top Doctors)
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Clean Dropdown Indicator Metric Selector */}
-                    <div className="flex items-center justify-between bg-muted/30 px-3 py-1.5 border border-border/60">
-                      <span className="text-[11px] font-semibold text-muted-foreground">ប្រៀបធៀបតាមសូចនាករ (Evaluation Metric):</span>
-                      <select
-                        value={compareMetric}
-                        onChange={(e) => setCompareMetric(e.target.value)}
-                        className="h-7 border border-border bg-background px-3 text-xs font-bold text-foreground outline-none cursor-pointer focus:ring-1 focus:ring-primary shadow-xs"
-                      >
-                        <option value="all">គ្រប់សូចនាករ (All Indicators Comparison)</option>
-                        <option value="active_art">អ្នកជំងឺ ART សកម្ម (Active ART Patients)</option>
-                        <option value="newly_initiated">ចាប់ផ្តើម ART ថ្មី (Newly Initiated ART)</option>
-                        <option value="mmd_patients">ផ្តល់ថ្នាំ MMD 3M/6M (MMD Coverage)</option>
-                        <option value="tld_patients">ព្យាបាលដោយ TLD (TLD Regimen)</option>
-                        <option value="vl_tested">ពិនិត្យបន្ទុកវីរុស VL (Viral Load Tested)</option>
-                        <option value="vl_suppressed">បង្ក្រាបមេរោគ VL (Viral Load Suppressed)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="h-[680px] w-full relative overflow-hidden">
-                    {loading && (
-                      <AppLoadingOverlay
-                        show={loading}
-                        fullScreen={false}
-                        message="កំពុងផ្ទុកទិន្នន័យ Chart..."
-                        submessage="Updating site performance evaluation"
-                      />
-                    )}
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        layout="vertical"
-                        data={top10FacilityChartData}
-                        barCategoryGap="28%"
-                        barGap={2}
-                        margin={{ top: 15, right: 35, left: 10, bottom: 15 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.15} horizontal={false} />
-                        <XAxis type="number" tick={{ fontSize: 10, fill: 'currentColor' }} />
-                        <YAxis
-                          type="category"
-                          dataKey="fullName"
-                          width={220}
-                          tick={{ fontSize: 11, fontWeight: 700, fill: 'currentColor' }}
-                        />
-                        <Tooltip
-                          contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: 0, fontSize: '11px' }}
-                          formatter={(val) => Number(val).toLocaleString()}
-                        />
-                        <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-
-                        {compareMetric === 'all' ? (
-                          <>
-                            <Bar dataKey="activeArt" name="Active ART Patients" fill="#3b82f6" barSize={7} radius={[0, 0, 0, 0]} />
-                            <Bar dataKey="newArt" name="Newly Initiated ART" fill="#10b981" barSize={7} radius={[0, 0, 0, 0]} />
-                            <Bar dataKey="mmd" name="MMD 3M/6M Patients" fill="#f59e0b" barSize={7} radius={[0, 0, 0, 0]} />
-                            <Bar dataKey="tld" name="TLD Regimen Patients" fill="#8b5cf6" barSize={7} radius={[0, 0, 0, 0]} />
-                            <Bar dataKey="vlTested" name="VL Tested" fill="#06b6d4" barSize={7} radius={[0, 0, 0, 0]} />
-                            <Bar dataKey="vlSuppressed" name="VL Suppressed" fill="#d946ef" barSize={7} radius={[0, 0, 0, 0]} />
-                          </>
-                        ) : (
-                          <>
-                            {compareMetric === 'active_art' && (
-                              <Bar dataKey="activeArt" name="Active ART Patients" fill="#3b82f6" barSize={20} radius={[0, 2, 2, 0]}>
-                                <LabelList dataKey="activeArt" position="right" style={{ fontSize: '10px', fontWeight: '800', fill: '#60a5fa' }} formatter={(v) => Number(v) > 0 ? Number(v).toLocaleString() : ''} />
-                              </Bar>
-                            )}
-                            {compareMetric === 'newly_initiated' && (
-                              <Bar dataKey="newArt" name="Newly Initiated ART" fill="#10b981" barSize={20} radius={[0, 2, 2, 0]}>
-                                <LabelList dataKey="newArt" position="right" style={{ fontSize: '10px', fontWeight: '800', fill: '#34d399' }} formatter={(v) => Number(v) > 0 ? Number(v).toLocaleString() : ''} />
-                              </Bar>
-                            )}
-                            {compareMetric === 'mmd_patients' && (
-                              <Bar dataKey="mmd" name="MMD 3M/6M Patients" fill="#f59e0b" barSize={20} radius={[0, 2, 2, 0]}>
-                                <LabelList dataKey="mmd" position="right" style={{ fontSize: '10px', fontWeight: '800', fill: '#fbbf24' }} formatter={(v) => Number(v) > 0 ? Number(v).toLocaleString() : ''} />
-                              </Bar>
-                            )}
-                            {compareMetric === 'tld_patients' && (
-                              <Bar dataKey="tld" name="TLD Regimen Patients" fill="#8b5cf6" barSize={20} radius={[0, 2, 2, 0]}>
-                                <LabelList dataKey="tld" position="right" style={{ fontSize: '10px', fontWeight: '800', fill: '#a78bfa' }} formatter={(v) => Number(v) > 0 ? Number(v).toLocaleString() : ''} />
-                              </Bar>
-                            )}
-                            {compareMetric === 'vl_tested' && (
-                              <Bar dataKey="vlTested" name="VL Tested" fill="#06b6d4" barSize={20} radius={[0, 2, 2, 0]}>
-                                <LabelList dataKey="vlTested" position="right" style={{ fontSize: '10px', fontWeight: '800', fill: '#22d3ee' }} formatter={(v) => Number(v) > 0 ? Number(v).toLocaleString() : ''} />
-                              </Bar>
-                            )}
-                            {compareMetric === 'vl_suppressed' && (
-                              <Bar dataKey="vlSuppressed" name="VL Suppressed" fill="#d946ef" barSize={20} radius={[0, 2, 2, 0]}>
-                                <LabelList dataKey="vlSuppressed" position="right" style={{ fontSize: '10px', fontWeight: '800', fill: '#e879f9' }} formatter={(v) => Number(v) > 0 ? Number(v).toLocaleString() : ''} />
-                              </Bar>
-                            )}
-                          </>
-                        )}
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* All Reporting Performance Table */}
-                <div className="flex flex-col border border-border/80 bg-card rounded-none shadow-xs">
-                  <div className="flex items-center justify-between border-b border-border/80 bg-muted/40 px-4 py-3 shrink-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-foreground">
-                        {siteGroupBy === 'site' && 'តារាងសមត្ថកិច្ចគ្រប់មន្ទីរពេទ្យ (All Health Facilities Performance Table)'}
-                        {siteGroupBy === 'province' && 'តារាងសមត្ថកិច្ចតាមរាជធានី-ខេត្ត (Province Performance Table)'}
-                        {siteGroupBy === 'od' && 'តារាងសមត្ថកិច្ចតាមស្រុកប្រតិបត្តិ (Operational District OD Table)'}
-                        {siteGroupBy === 'doctor' && 'តារាងសមត្ថកិច្ចតាមគ្រូពេទ្យ (Top Doctors Performance Table)'}
-                      </span>
-                      <span className="px-2 py-0.5 text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
-                        {groupedPerformanceData.length} {siteGroupBy === 'site' ? 'Reporting Sites' : siteGroupBy === 'province' ? 'Provinces' : siteGroupBy === 'od' ? 'Operational Districts' : 'Attending Doctors'}
-                      </span>
-                    </div>
-                    <div className="relative w-64">
-                      <RiSearchLine className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                      <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="ស្វែងរករាជធានី-ខេត្ត ឬមន្ទីរពេទ្យ..."
-                        className="h-7 w-full border border-border/80 bg-background pl-8 pr-2 text-xs rounded-none outline-none"
-                      />
-                    </div>
-                  </div>
-
-
-                  <div className="overflow-x-auto no-scrollbar max-h-[500px]">
-                    <table className="w-full border-collapse text-xs">
-                      <thead className="sticky top-0 z-10 border-b border-border/20 bg-muted/95 backdrop-blur-md">
-                        <tr className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                          <th className="border-r border-border/20 px-3 py-2 text-center w-12"># Rank</th>
-                          <th className="border-r border-border/20 px-3 py-2 text-left">
-                            {siteGroupBy === 'site' ? 'ឈ្មោះមន្ទីរពេទ្យ (Facility Site Name)' : siteGroupBy === 'province' ? 'ឈ្មោះរាជធានី-ខេត្ត (Province Name)' : siteGroupBy === 'od' ? 'ស្រុកប្រតិបត្តិ (Operational District / OD)' : 'ឈ្មោះគ្រូពេទ្យ (Doctor / Clinician Name)'}
-                          </th>
-                          <th className="border-r border-border/20 px-3 py-2 text-left">
-                            {siteGroupBy === 'province' ? 'ចំនួនមន្ទីរពេទ្យ (Facility Count)' : siteGroupBy === 'doctor' ? 'មន្ទីរពេទ្យ (Facility Site)' : 'រាជធានី-ខេត្ត (Province)'}
-                          </th>
-                          <th className="border-r border-border/20 px-3 py-2 text-right">អ្នកជំងឺ ART សកម្ម</th>
-                          <th className="border-r border-border/20 px-3 py-2 text-right">ចាប់ផ្តើម ART ថ្មី</th>
-                          <th className="border-r border-border/20 px-3 py-2 text-right">MMD 3M/6M</th>
-                          <th className="border-r border-border/20 px-3 py-2 text-right">TLD Regimen</th>
-                          <th className="border-r border-border/20 px-3 py-2 text-right">VL Tested</th>
-                          <th className="border-r border-border/20 px-3 py-2 text-right">VL Suppressed</th>
-                          <th className="border-r border-border/20 px-3 py-2 text-center">ពិន្ទុសមត្ថកិច្ច (Best Score)</th>
-                          <th className="px-3 py-2 text-center">ភាគរយរួមចំណែក (% Share)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/20 bg-card">
-                        {groupedPerformanceData.map((s, idx) => {
-                          const active = Number(s.active_art || 0);
-                          let metricVal = active;
-                          if (compareMetric === 'newly_initiated') metricVal = Number(s.newly_initiated || 0);
-                          else if (compareMetric === 'mmd_patients') metricVal = Number(s.mmd_patients || 0);
-                          else if (compareMetric === 'tld_patients') metricVal = Number(s.tld_patients || 0);
-                          else if (compareMetric === 'vl_tested') metricVal = Number(s.vl_tested || 0);
-                          else if (compareMetric === 'vl_suppressed') metricVal = Number(s.vl_suppressed || 0);
-
-                          const share = totalGroupedMetric > 0 ? ((metricVal / totalGroupedMetric) * 100).toFixed(1) : '0.0';
-                          const isTop1 = idx === 0;
-                          const isTop2 = idx === 1;
-                          const isTop3 = idx === 2;
-                          return (
-                            <tr
-                              key={s.site_code || idx}
-                              onClick={() => siteGroupBy === 'site' && setSiteCode(s.site_code)}
-                              title={siteGroupBy === 'site' ? "Click to filter dashboard by this site" : undefined}
-                              className={cn('transition-colors group', siteGroupBy === 'site' ? 'hover:bg-primary/5 cursor-pointer' : 'hover:bg-muted/30')}
-                            >
-                              <td className="border-r border-border/20 px-3 py-2.5 text-center font-black">
-                                {isTop1 && <span className="text-amber-500 font-bold">#1</span>}
-                                {isTop2 && <span className="text-slate-400 font-bold">#2</span>}
-                                {isTop3 && <span className="text-amber-700 font-bold">#3</span>}
-                                {!isTop1 && !isTop2 && !isTop3 && <span className="text-muted-foreground">#{idx + 1}</span>}
-                              </td>
-                              <td className="border-r border-border/20 px-3 py-2.5 font-bold text-foreground group-hover:text-primary transition-colors flex items-center justify-between">
-                                <span>{s.site_name}</span>
-                                {siteGroupBy === 'site' && <span className="text-[10px] text-primary opacity-0 group-hover:opacity-100 transition-opacity font-normal">Filter &rarr;</span>}
-                              </td>
-                              <td className="border-r border-border/20 px-3 py-2.5 text-muted-foreground">
-                                {siteGroupBy === 'province' ? `${s.facility_count || 1} sites` : (s.province_name || 'Phnom Penh')}
-                              </td>
-                              <td className="border-r border-border/20 px-3 py-2.5 text-right font-semibold tabular-nums text-blue-500">
-                                {active.toLocaleString()}
-                              </td>
-                              <td className="border-r border-border/20 px-3 py-2.5 text-right font-semibold tabular-nums text-emerald-500">
-                                {Number(s.newly_initiated || 0).toLocaleString()}
-                              </td>
-                              <td className="border-r border-border/20 px-3 py-2.5 text-right tabular-nums">
-                                {Number(s.mmd_patients || 0).toLocaleString()}
-                              </td>
-                              <td className="border-r border-border/20 px-3 py-2.5 text-right tabular-nums font-semibold text-violet-500">
-                                {Number(s.tld_patients || 0).toLocaleString()}
-                              </td>
-                              <td className="border-r border-border/20 px-3 py-2.5 text-right tabular-nums font-semibold text-cyan-500">
-                                {Number(s.vl_tested || Math.round(active * 0.924)).toLocaleString()}
-                              </td>
-                              <td className="border-r border-border/20 px-3 py-2.5 text-right tabular-nums font-semibold text-fuchsia-500">
-                                {Number(s.vl_suppressed || Math.round(active * 0.924 * 0.965)).toLocaleString()}
-                              </td>
-                              <td className="border-r border-border/20 px-3 py-2.5 text-center">
-                                <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-black bg-emerald-500/10 text-emerald-600 border border-emerald-500/30">
-                                  {s.performanceScore || '98.5'} / 100
-                                </span>
-                              </td>
-                              <td className="px-3 py-2.5 text-center font-bold text-primary">
-                                {share}%
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </>
+              <SitesPerformanceDashboardView
+                siteGroupBy={siteGroupBy}
+                setSiteGroupBy={setSiteGroupBy}
+                compareMetric={compareMetric}
+                setCompareMetric={setCompareMetric}
+                compareMetricLabelMap={compareMetricLabelMap}
+                loading={loading}
+                top10FacilityChartData={top10FacilityChartData}
+                groupedPerformanceData={groupedPerformanceData}
+                totalGroupedMetric={totalGroupedMetric}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                setSiteCode={setSiteCode}
+              />
             )}
 
             {/* National Target 95-95-95 View */}
             {dashboardView === 'targets' && (
-              <>
-                {/* Expanded UNAIDS 95-95-95 Target Widget */}
-                <div className="border border-border/80 bg-card p-5 rounded-none shadow-xs shrink-0 space-y-4">
-                  <div className="flex items-center justify-between border-b border-border/60 pb-3">
-                    <div>
-                      <span className="text-sm font-black text-foreground uppercase tracking-wide">🎯 UNAIDS National 95-95-95 Target Progress Evaluation</span>
-                      <p className="text-xs text-muted-foreground mt-0.5">National HIV Cascade Evaluation & Viral Load Suppression Targets</p>
-                    </div>
-                    <span className="px-2.5 py-1 text-xs font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/30">
-                      National Target Status: On Track
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="border border-blue-500/20 bg-blue-500/5 p-4 rounded-none space-y-2">
-                      <div className="flex justify-between text-xs">
-                        <span className="font-bold text-foreground">1st 95: Diagnosed & Enrolled</span>
-                        <span className="font-black text-blue-500 text-base">{kpis.first95}%</span>
-                      </div>
-                      <div className="h-2.5 w-full bg-muted overflow-hidden rounded-none">
-                        <div className="h-full bg-blue-500" style={{ width: `${kpis.first95}%` }} />
-                      </div>
-                      <p className="text-[11px] text-muted-foreground">Estimated HIV diagnosed individuals enrolled into care.</p>
-                    </div>
-
-                    <div className="border border-emerald-500/20 bg-emerald-500/5 p-4 rounded-none space-y-2">
-                      <div className="flex justify-between text-xs">
-                        <span className="font-bold text-foreground">2nd 95: Active on ART Coverage</span>
-                        <span className="font-black text-emerald-500 text-base">{kpis.second95}%</span>
-                      </div>
-                      <div className="h-2.5 w-full bg-muted overflow-hidden rounded-none">
-                        <div className="h-full bg-emerald-500" style={{ width: `${kpis.second95}%` }} />
-                      </div>
-                      <p className="text-[11px] text-muted-foreground">Active ART patients currently receiving sustained treatment.</p>
-                    </div>
-
-                    <div className="border border-violet-500/20 bg-violet-500/5 p-4 rounded-none space-y-2">
-                      <div className="flex justify-between text-xs">
-                        <span className="font-bold text-foreground">3rd 95: Viral Load Suppression</span>
-                        <span className="font-black text-violet-500 text-base">{kpis.third95}%</span>
-                      </div>
-                      <div className="h-2.5 w-full bg-muted overflow-hidden rounded-none">
-                        <div className="h-full bg-violet-500" style={{ width: `${kpis.third95}%` }} />
-                      </div>
-                      <p className="text-[11px] text-muted-foreground">Patients with suppressed viral load (&lt;1000 copies/mL).</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border/40 text-xs">
-                    <div className="flex items-center justify-between p-3 bg-muted/20 border border-border/40">
-                      <span className="font-semibold text-foreground">6-Month ART Retention Rate:</span>
-                      <strong className="text-emerald-500 text-sm font-bold">{kpis.retentionRate}%</strong>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-muted/20 border border-border/40">
-                      <span className="font-semibold text-foreground">Viral Load Testing Coverage:</span>
-                      <strong className="text-blue-500 text-sm font-bold">{kpis.vlCoverageRate}%</strong>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 4-Quarter Trajectory Area Chart */}
-                <div className="border border-border/80 bg-card p-4 rounded-none shadow-xs shrink-0">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold text-foreground">និន្នាការកើនឡើងរបស់អ្នកជំងឺ ៤ ត្រីមាស (4-Quarter Active ART & VL Suppression Trajectory)</span>
-                    <span className="text-[10px] text-muted-foreground">Q4 2025 – Q3 2026</span>
-                  </div>
-                  <div className="h-64 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={quarterlyTrendData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="colorActive" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
-                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0} />
-                          </linearGradient>
-                          <linearGradient id="colorSuppressed" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4} />
-                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                        <XAxis dataKey="period" tick={{ fontSize: 10, fill: 'currentColor' }} />
-                        <YAxis tick={{ fontSize: 10, fill: 'currentColor' }} />
-                        <Tooltip
-                          contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: 0, fontSize: '11px' }}
-                          formatter={(val) => Number(val).toLocaleString()}
-                        />
-                        <Area type="monotone" dataKey="activeArt" name="Active ART" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorActive)" />
-                        <Area type="monotone" dataKey="suppressed" name="VL Suppressed" stroke="#8b5cf6" strokeWidth={2} fillOpacity={1} fill="url(#colorSuppressed)" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </>
+              <TargetsDashboardView
+                kpis={kpis}
+                selectedPeriodKey={selectedPeriodKey}
+                quarterlyTrendData={quarterlyTrendData}
+              />
             )}
 
             {/* Site DQA View - 7 Key Components of Health Data Quality */}
             {dashboardView === 'dqa' && (
-              <>
-                <div className="border border-border/80 bg-card p-4 rounded-none shadow-xs space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border/60 pb-3 gap-2">
-                    <div>
-                      <span className="text-xs font-bold text-foreground uppercase tracking-wide">
-                        សូចនាករទាំង ៧ នៃគុណភាពទិន្នន័យសុខាភិបាល (7 Key Components of Health Data Quality Evaluation)
-                      </span>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        WHO & National HIV Data Quality Audit (DQA) Standard Framework
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-1 text-xs font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/30">
-                        Overall DQA Audit Score: 98.7% (PASSED)
-                      </span>
-                      <Link
-                        to="/dqa"
-                        className="px-3 py-1 text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-xs"
-                      >
-                        ទំព័រ DQA ពេញលេញ &rarr;
-                      </Link>
-                    </div>
-                  </div>
-
-                  {/* 7 Key Health Data Quality Component Cards Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 shrink-0">
-                    {/* 1. Accuracy */}
-                    <div className="border border-emerald-500/30 bg-emerald-500/5 p-3 rounded-none">
-                      <div className="text-[10px] font-bold text-emerald-600 uppercase">1. ភាពត្រឹមត្រូវ</div>
-                      <div className="text-[11px] font-semibold text-foreground mt-0.5">Accuracy</div>
-                      <div className="mt-2 text-xl font-black text-emerald-600">98.5%</div>
-                      <div className="mt-1 text-[9px] text-muted-foreground leading-tight">No arithmetic or date logic errors</div>
-                    </div>
-
-                    {/* 2. Completeness */}
-                    <div className="border border-blue-500/30 bg-blue-500/5 p-3 rounded-none">
-                      <div className="text-[10px] font-bold text-blue-600 uppercase">2. ភាពពេញលេញ</div>
-                      <div className="text-[11px] font-semibold text-foreground mt-0.5">Completeness</div>
-                      <div className="mt-2 text-xl font-black text-blue-600">99.2%</div>
-                      <div className="mt-1 text-[9px] text-muted-foreground leading-tight">All clinical fields & forms filled</div>
-                    </div>
-
-                    {/* 3. Timeliness */}
-                    <div className="border border-indigo-500/30 bg-indigo-500/5 p-3 rounded-none">
-                      <div className="text-[10px] font-bold text-indigo-600 uppercase">3. ភាពទាន់ពេលវេលា</div>
-                      <div className="text-[11px] font-semibold text-foreground mt-0.5">Timeliness</div>
-                      <div className="mt-2 text-xl font-black text-indigo-600">96.8%</div>
-                      <div className="mt-1 text-[9px] text-muted-foreground leading-tight">Visit gap &lt;80d & deadline reports</div>
-                    </div>
-
-                    {/* 4. Consistency */}
-                    <div className="border border-violet-500/30 bg-violet-500/5 p-3 rounded-none">
-                      <div className="text-[10px] font-bold text-violet-600 uppercase">4. ភាពស៊ីសង្វាក់គ្នា</div>
-                      <div className="text-[11px] font-semibold text-foreground mt-0.5">Consistency</div>
-                      <div className="mt-2 text-xl font-black text-violet-600">99.0%</div>
-                      <div className="mt-1 text-[9px] text-muted-foreground leading-tight">Form A vs Visit TPT concordance</div>
-                    </div>
-
-                    {/* 5. Integrity & Uniqueness */}
-                    <div className="border border-amber-500/30 bg-amber-500/5 p-3 rounded-none">
-                      <div className="text-[10px] font-bold text-amber-600 uppercase">5. ភាពត្រឹមត្រូវបច្ចេកទេស</div>
-                      <div className="text-[11px] font-semibold text-foreground mt-0.5">Integrity</div>
-                      <div className="mt-2 text-xl font-black text-amber-600">99.6%</div>
-                      <div className="mt-1 text-[9px] text-muted-foreground leading-tight">No duplicate ART/VCCT codes</div>
-                    </div>
-
-                    {/* 6. Availability */}
-                    <div className="border border-cyan-500/30 bg-cyan-500/5 p-3 rounded-none">
-                      <div className="text-[10px] font-bold text-cyan-600 uppercase">6. ភាពអាចទទួលបាន</div>
-                      <div className="text-[11px] font-semibold text-foreground mt-0.5">Availability</div>
-                      <div className="mt-2 text-xl font-black text-cyan-600">100%</div>
-                      <div className="mt-1 text-[9px] text-muted-foreground leading-tight">71/71 Site register sync</div>
-                    </div>
-
-                    {/* 7. Confidentiality */}
-                    <div className="border border-fuchsia-500/30 bg-fuchsia-500/5 p-3 rounded-none">
-                      <div className="text-[10px] font-bold text-fuchsia-600 uppercase">7. ភាពសម្ងាត់</div>
-                      <div className="text-[11px] font-semibold text-foreground mt-0.5">Confidentiality</div>
-                      <div className="mt-2 text-xl font-black text-fuchsia-600">100%</div>
-                      <div className="mt-1 text-[9px] text-muted-foreground leading-tight">Encrypted patient ID security</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Provincial 7-Component DQA Audit Table */}
-                <div className="flex flex-col border border-border/80 bg-card rounded-none shadow-xs">
-                  <div className="flex items-center justify-between border-b border-border/80 bg-muted/40 px-4 py-3 shrink-0">
-                    <span className="text-xs font-bold text-foreground">
-                      លទ្ធផលវាយតម្លៃគុណភាពទិន្នន័យ DQA តាមរាជធានី-ខេត្ត (7-Component Provincial DQA Verification Breakdown)
-                    </span>
-                    <div className="relative w-56">
-                      <RiSearchLine className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                      <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="ស្វែងរករាជធានី-ខេត្ត..."
-                        className="h-7 w-full border border-border/80 bg-background pl-8 pr-2 text-xs rounded-none outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="overflow-x-auto no-scrollbar">
-                    <table className="w-full border-collapse text-xs">
-                      <thead className="sticky top-0 z-10 border-b border-border/20 bg-muted/95 backdrop-blur-md">
-                        <tr className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                          <th className="border-r border-border/20 px-3 py-2 text-left">រាជធានី-ខេត្ត (Province)</th>
-                          <th className="border-r border-border/20 px-3 py-2 text-right">អ្នកជំងឺ ART</th>
-                          <th className="border-r border-border/20 px-3 py-2 text-center">1. Accuracy</th>
-                          <th className="border-r border-border/20 px-3 py-2 text-center">2. Completeness</th>
-                          <th className="border-r border-border/20 px-3 py-2 text-center">3. Timeliness</th>
-                          <th className="border-r border-border/20 px-3 py-2 text-center">4. Consistency</th>
-                          <th className="border-r border-border/20 px-3 py-2 text-center">5. Integrity</th>
-                          <th className="border-r border-border/20 px-3 py-2 text-center">6. Availability</th>
-                          <th className="border-r border-border/20 px-3 py-2 text-center">7. Privacy</th>
-                          <th className="border-r border-border/20 px-3 py-2 text-center">ពិន្ទុសរុប (Overall Score)</th>
-                          <th className="px-3 py-2 text-center">ស្ថានភាព Audit Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/20 bg-card">
-                        {filteredProvinces.map((p, idx) => {
-                          const accuracyScore = Math.min(99.8, (98.2 + (idx % 3) * 0.5)).toFixed(1);
-                          const completenessScore = Math.min(99.9, (98.9 + (idx % 2) * 0.6)).toFixed(1);
-                          const timelinessScore = Math.min(99.5, (96.0 + (idx % 4) * 0.8)).toFixed(1);
-                          const consistencyScore = Math.min(99.8, (98.5 + (idx % 3) * 0.4)).toFixed(1);
-                          const integrityScore = Math.min(100, (99.1 + (idx % 2) * 0.5)).toFixed(1);
-                          const overallScore = ((Number(accuracyScore) + Number(completenessScore) + Number(timelinessScore) + Number(consistencyScore) + Number(integrityScore) + 200) / 7).toFixed(1);
-
-                          return (
-                            <tr key={p.province_id || idx} className="hover:bg-muted/30 transition-colors">
-                              <td className="border-r border-border/20 px-3 py-2.5 font-bold text-foreground">
-                                {p.province_name || `Province ${p.province_id}`}
-                              </td>
-                              <td className="border-r border-border/20 px-3 py-2.5 text-right font-semibold tabular-nums text-blue-500">
-                                {Number(p.active_art || 0).toLocaleString()}
-                              </td>
-                              <td className="border-r border-border/20 px-3 py-2.5 text-center font-bold text-emerald-600 tabular-nums">
-                                {accuracyScore}%
-                              </td>
-                              <td className="border-r border-border/20 px-3 py-2.5 text-center font-bold text-blue-600 tabular-nums">
-                                {completenessScore}%
-                              </td>
-                              <td className="border-r border-border/20 px-3 py-2.5 text-center font-bold text-indigo-600 tabular-nums">
-                                {timelinessScore}%
-                              </td>
-                              <td className="border-r border-border/20 px-3 py-2.5 text-center font-bold text-violet-600 tabular-nums">
-                                {consistencyScore}%
-                              </td>
-                              <td className="border-r border-border/20 px-3 py-2.5 text-center font-bold text-amber-600 tabular-nums">
-                                {integrityScore}%
-                              </td>
-                              <td className="border-r border-border/20 px-3 py-2.5 text-center font-bold text-cyan-600 tabular-nums">
-                                100%
-                              </td>
-                              <td className="border-r border-border/20 px-3 py-2.5 text-center font-bold text-fuchsia-600 tabular-nums">
-                                100%
-                              </td>
-                              <td className="border-r border-border/20 px-3 py-2.5 text-center">
-                                <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-black bg-emerald-500/10 text-emerald-600 border border-emerald-500/30">
-                                  {overallScore}%
-                                </span>
-                              </td>
-                              <td className="px-3 py-2.5 text-center">
-                                <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold bg-emerald-500/10 text-emerald-600 rounded-none border border-emerald-500/20">
-                                  PASSED
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </>
+              <DqaDashboardView
+                filteredProvinces={filteredProvinces}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+              />
             )}
 
             {/* Period-to-Period Comparison View - Extracted Subcomponent */}

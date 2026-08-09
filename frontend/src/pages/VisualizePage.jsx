@@ -9,6 +9,7 @@ import VisualizeToolbar from '../components/visualize/VisualizeToolbar';
 import { VIZ_COMPARE_MAX } from '../components/visualize/VisualizeCompareSitesModal';
 import VisualizePickerModal from '../components/visualize/VisualizePickerModal';
 import VisualizeResults from '../components/visualize/VisualizeResults';
+import VisualizeFilterSidebar from '../components/visualize/VisualizeFilterSidebar';
 import { Patient360LoadingPanel } from '../components/patient360/Patient360LoadingPanel';
 import { useSites } from '../contexts/SitesContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -113,7 +114,90 @@ export default function VisualizePage() {
   const [chartVariant, setChartVariant] = useState('bar');
   const [chartIndicatorIds, setChartIndicatorIds] = useState([]);
   const [chartSettings, setChartSettings] = useState(() => ({ ...DEFAULT_CHART_SETTINGS }));
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [profileFilters, setProfileFilters] = useState({
+    sex: 'all',
+    ageGroup: 'all',
+    kpGroup: 'all',
+    programCategory: 'all'
+  });
   const restoreRanRef = useRef(false);
+
+  const activeProfileFilterCount = useMemo(() => {
+    let count = 0;
+    if (profileFilters.sex && profileFilters.sex !== 'all') count++;
+    if (profileFilters.ageGroup && profileFilters.ageGroup !== 'all') count++;
+    if (profileFilters.kpGroup && profileFilters.kpGroup !== 'all') count++;
+    if (profileFilters.programCategory && profileFilters.programCategory !== 'all') count++;
+    return count;
+  }, [profileFilters]);
+
+  const handleResetProfileFilters = useCallback(() => {
+    setProfileFilters({
+      sex: 'all',
+      ageGroup: 'all',
+      kpGroup: 'all',
+      programCategory: 'all'
+    });
+  }, []);
+
+  const filteredResults = useMemo(() => {
+    if (!results.length) return results;
+    return results
+      .map((r) => {
+        let male014 = r.male014 != null ? Number(r.male014) : 0;
+        let female014 = r.female014 != null ? Number(r.female014) : 0;
+        let maleOver14 = r.maleOver14 != null ? Number(r.maleOver14) : 0;
+        let femaleOver14 = r.femaleOver14 != null ? Number(r.femaleOver14) : 0;
+
+        if (profileFilters.sex === 'male') {
+          female014 = 0;
+          femaleOver14 = 0;
+        } else if (profileFilters.sex === 'female') {
+          male014 = 0;
+          maleOver14 = 0;
+        }
+
+        if (profileFilters.ageGroup === 'child') {
+          maleOver14 = 0;
+          femaleOver14 = 0;
+        } else if (profileFilters.ageGroup === 'adult') {
+          male014 = 0;
+          female014 = 0;
+        }
+
+        const calculatedTotal = male014 + female014 + maleOver14 + femaleOver14;
+        const originalTotal = Number(r.total || 0);
+
+        const hasDemoFilter =
+          (profileFilters.sex && profileFilters.sex !== 'all') ||
+          (profileFilters.ageGroup && profileFilters.ageGroup !== 'all');
+
+        const finalTotal = hasDemoFilter ? calculatedTotal : originalTotal;
+
+        return {
+          ...r,
+          male014,
+          female014,
+          maleOver14,
+          femaleOver14,
+          total: finalTotal
+        };
+      })
+      .filter((r) => {
+        if (profileFilters.programCategory && profileFilters.programCategory !== 'all') {
+          const prog = profileFilters.programCategory.toLowerCase();
+          const indId = String(r.indicatorId || '').toLowerCase();
+          if (prog === 'art' && !indId.includes('art') && !indId.includes('11') && !indId.includes('01') && !indId.includes('03') && !indId.includes('05')) return false;
+          if (prog === 'vl' && !indId.includes('vl') && !indId.includes('eac') && !indId.includes('11.8')) return false;
+          if (prog === 'mmd' && !indId.includes('mmd') && !indId.includes('tld') && !indId.includes('11.2') && !indId.includes('11.3')) return false;
+          if (prog === 'tpt' && !indId.includes('tpt') && !indId.includes('tb') && !indId.includes('10')) return false;
+          if (prog === 'retention' && !indId.includes('retention') && !indId.includes('ltfu') && !indId.includes('11.5')) return false;
+          if (prog === 'infant' && !indId.includes('infant') && !indId.includes('eid') && !indId.includes('pcr')) return false;
+        }
+        return true;
+      });
+  }, [results, profileFilters]);
 
   const persistVisualizeSession = useCallback(
     (pendingRestore = false) => {
@@ -349,6 +433,7 @@ export default function VisualizePage() {
       onCompareSiteCodesChange={setCompareSiteCodes}
       maxCompareFacilities={vizLimits.maxCompareFacilities || VIZ_COMPARE_MAX}
       indicatorIds={indicatorIds}
+      onIndicatorIdsChange={setIndicatorIds}
       indicatorCount={indicatorIds.length}
       periodKeys={periodKeys}
       onPeriodKeysChange={setPeriodKeys}
@@ -368,6 +453,9 @@ export default function VisualizePage() {
       chartSettings={chartSettings}
       onChartSettingsChange={setChartSettings}
       catalog={catalog}
+      isSidebarOpen={isSidebarOpen}
+      onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+      activeProfileFilterCount={activeProfileFilterCount}
     />
   );
 
@@ -377,7 +465,7 @@ export default function VisualizePage() {
       <Patient360Layout lockViewport>
         <AppPageShell wide className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col !p-0">
           <Card className={cn(p360CardClass, 'flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col bg-card')}>
-            <CardContent className="relative flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col p-0">
+            <CardContent className="relative flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-row p-0 overflow-hidden">
               {loading && !results.length ? (
                 <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/35 backdrop-blur-[3px]">
                   <Patient360LoadingPanel label={VIZ_KH.running} className="border-0 bg-transparent" minHeight="min-h-0" />
@@ -385,12 +473,12 @@ export default function VisualizePage() {
               ) : null}
               <div
                 className={cn(
-                  'flex min-h-0 flex-1 flex-col',
+                  'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
                   loading && results.length && 'pointer-events-none opacity-75'
                 )}
               >
                 <VisualizeResults
-                  results={results}
+                  results={filteredResults}
                   view={resultView}
                   chartPanel={chartPanel}
                   chartVariant={chartVariant}
@@ -405,8 +493,20 @@ export default function VisualizePage() {
                   periods={periods}
                   onNavigateToPatient360={handleNavigateToPatient360}
                   onBeforeNavigateToPatient360={() => persistVisualizeSession(true)}
+                  activeProfileFilterCount={activeProfileFilterCount}
+                  onResetProfileFilters={handleResetProfileFilters}
                 />
               </div>
+
+              <VisualizeFilterSidebar
+                isOpen={isSidebarOpen}
+                onToggle={() => setIsSidebarOpen((prev) => !prev)}
+                filters={profileFilters}
+                onFiltersChange={setProfileFilters}
+                onResetFilters={handleResetProfileFilters}
+                activeFilterCount={activeProfileFilterCount}
+                totalResultsCount={results.length}
+              />
             </CardContent>
           </Card>
         </AppPageShell>

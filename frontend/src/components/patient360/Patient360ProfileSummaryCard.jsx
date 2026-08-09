@@ -4,29 +4,48 @@ import {
   RiMedicineBottleLine,
   RiCalendarCheckLine,
   RiUserHeartLine,
-  RiAlertLine
+  RiAlertLine,
+  RiCalendarLine,
+  RiPhoneLine,
+  RiMapPinLine,
+  RiUser3Line
 } from '@remixicon/react';
 import { cn } from '@/lib/utils';
 import { p360CardClass, P360_TABLE_PAD, P360_TABLE_TEXT } from '../layout/appNavStyles';
 import { P360_KH } from '../../pages/patient360Kh';
 
-function FactCell({ label, value, highlight }) {
+function getFieldIcon(key) {
+  const k = String(key).toLowerCase();
+  if (k.includes('visit') || k.includes('date') || k.includes('art')) return RiCalendarLine;
+  if (k.includes('phone')) return RiPhoneLine;
+  if (k.includes('province') || k.includes('nationality')) return RiMapPinLine;
+  if (k.includes('kp') || k.includes('population') || k.includes('risk')) return RiUser3Line;
+  if (k.includes('allergy')) return RiAlertLine;
+  return null;
+}
+
+function FactCell({ label, value, fieldKey, highlight }) {
   if (value == null || value === '') return null;
   const text = String(value);
+  const Icon = getFieldIcon(fieldKey);
+
   return (
-    <div className={cn('min-w-0 bg-card px-4 py-2.5 transition-colors hover:bg-muted/20')}>
-      <div className={cn('truncate text-muted-foreground', P360_TABLE_TEXT)} title={label}>
-        {label}
-      </div>
-      <div
-        className={cn(
-          'mt-1 truncate font-medium text-foreground',
-          P360_TABLE_TEXT,
-          highlight && 'text-primary font-semibold'
-        )}
-        title={text}
-      >
-        {text}
+    <div className={cn('min-w-0 bg-card px-4 py-3 transition-colors hover:bg-muted/15 flex items-start gap-3')}>
+      {Icon && <Icon className="h-4.5 w-4.5 text-muted-foreground/75 mt-0.5 shrink-0" />}
+      <div className="min-w-0 flex-1">
+        <div className={cn('truncate text-muted-foreground font-normal text-[11px] uppercase tracking-wider', P360_TABLE_TEXT)} title={label}>
+          {label}
+        </div>
+        <div
+          className={cn(
+            'mt-0.5 truncate font-semibold text-foreground text-sm',
+            P360_TABLE_TEXT,
+            highlight && 'text-primary font-bold'
+          )}
+          title={text}
+        >
+          {text}
+        </div>
       </div>
     </div>
   );
@@ -190,7 +209,7 @@ export default function Patient360ProfileSummaryCard({
           </div>
           <div className="grid grid-cols-1 gap-px bg-border/70 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {items.map(([key, val, label]) => (
-              <FactCell key={key} label={label} value={val} />
+              <FactCell key={key} label={label} value={val} fieldKey={key} />
             ))}
           </div>
         </>

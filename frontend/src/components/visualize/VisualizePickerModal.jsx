@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
+  RiAddLine,
   RiArrowDownSLine,
   RiArrowRightSLine,
   RiCheckboxBlankLine,
   RiCheckboxLine,
   RiCloseLine,
+  RiFolder2Line,
+  RiFolderOpenLine,
   RiListCheck2,
-  RiSearchLine
+  RiSearchLine,
+  RiSubtractLine
 } from '@remixicon/react';
 import { cn } from '@/lib/utils';
 import { appNavItemClass, p360ControlClass, P360_TABLE_TEXT } from '../layout/appNavStyles';
@@ -28,17 +32,17 @@ function PickerCheckboxItem({ active, label, onClick }) {
       type="button"
       onClick={onClick}
       className={cn(
-        'flex w-full items-start gap-2.5 border px-3 py-2 text-left transition-colors',
+        'flex w-full items-start gap-2.5 border px-3 py-2 text-left transition-colors cursor-pointer select-none rounded-none',
         P360_TABLE_TEXT,
         active
-          ? 'border-primary/55 bg-primary/12 text-foreground ring-1 ring-primary/20'
-          : 'border-border/70 bg-card hover:border-border hover:bg-muted/20'
+          ? 'border-primary/60 bg-primary/10 text-foreground font-semibold'
+          : 'border-border/60 bg-card hover:border-primary/40 hover:bg-muted/20 text-muted-foreground hover:text-foreground'
       )}
     >
       {active ? (
         <RiCheckboxLine className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
       ) : (
-        <RiCheckboxBlankLine className="mt-0.5 size-4 shrink-0 text-muted-foreground/80" aria-hidden />
+        <RiCheckboxBlankLine className="mt-0.5 size-4 shrink-0 text-muted-foreground/60" aria-hidden />
       )}
       <span className="min-w-0 flex-1 leading-snug">{label}</span>
     </button>
@@ -52,58 +56,72 @@ function PickerGroupSection({
   onToggleId,
   onToggleGroup,
   forceOpen = false,
-  defaultOpen = true
+  expandAllOverride = null,
+  defaultOpen = false
 }) {
   const [open, setOpen] = useState(defaultOpen);
-  const isOpen = forceOpen || open;
-  const selectedCount = items.filter((i) => draftIds.includes(i.id)).length;
-  const allSelected = items.length > 0 && selectedCount === items.length;
 
   useEffect(() => {
-    if (forceOpen) setOpen(true);
-  }, [forceOpen]);
+    if (expandAllOverride !== null) {
+      setOpen(expandAllOverride);
+    }
+  }, [expandAllOverride]);
+
+  const isOpen = forceOpen || (expandAllOverride !== null ? expandAllOverride : open);
+  const selectedCount = items.filter((i) => draftIds.includes(i.id)).length;
+  const allSelected = items.length > 0 && selectedCount === items.length;
 
   if (!items.length) return null;
 
   return (
     <section className="border-b border-border/80 last:border-b-0">
-      <div className="flex items-center gap-1 bg-muted/25 px-2 py-1.5">
+      <div className="flex items-center gap-2 bg-muted/20 px-3 py-2.5 border-l-2 border-transparent hover:border-primary/60 transition-all select-none">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           className={cn(
-            'flex min-w-0 flex-1 items-center gap-1 text-left font-semibold text-foreground',
+            'flex min-w-0 flex-1 items-center gap-2 text-left font-bold text-foreground cursor-pointer',
             P360_TABLE_TEXT
           )}
           aria-expanded={isOpen}
         >
           {isOpen ? (
-            <RiArrowDownSLine className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            <RiFolderOpenLine className="size-4 shrink-0 text-primary" aria-hidden />
           ) : (
-            <RiArrowRightSLine className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            <RiFolder2Line className="size-4 shrink-0 text-muted-foreground" aria-hidden />
           )}
-          <span className="truncate">{title}</span>
-          <span className="shrink-0 tabular-nums font-normal text-muted-foreground">
-            (
-              {VIZ_KH.pickerGroupSelected
-                .replace('{n}', String(selectedCount))
-                .replace('{total}', String(items.length))}
-              )
+          <span className="truncate text-xs font-bold text-foreground">{title}</span>
+          <span
+            className={cn(
+              'shrink-0 px-2 py-0.5 text-[10px] font-bold rounded-none tabular-nums border transition-all',
+              selectedCount > 0
+                ? 'bg-primary/10 text-primary border-primary/30'
+                : 'bg-muted/40 text-muted-foreground border-border/60'
+            )}
+          >
+            {selectedCount}/{items.length} ជ្រើសរើស
           </span>
+          {isOpen ? (
+            <RiArrowDownSLine className="size-4 shrink-0 text-muted-foreground ml-auto" aria-hidden />
+          ) : (
+            <RiArrowRightSLine className="size-4 shrink-0 text-muted-foreground ml-auto" aria-hidden />
+          )}
         </button>
         <button
           type="button"
           onClick={() => onToggleGroup(items.map((i) => i.id), !allSelected)}
           className={cn(
-            'shrink-0 px-2 py-0.5 text-[10px] font-medium text-primary hover:underline',
-            P360_TABLE_TEXT
+            'shrink-0 px-2.5 py-1 text-[11px] font-bold border transition-colors cursor-pointer rounded-none',
+            allSelected
+              ? 'border-rose-200 bg-rose-50/50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40'
+              : 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/20'
           )}
         >
           {allSelected ? VIZ_KH.pickerClearGroup : VIZ_KH.pickerSelectGroup}
         </button>
       </div>
       {isOpen ? (
-        <div className="space-y-1 px-2 py-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 p-2.5 bg-card/40 border-t border-border/40">
           {items.map((item) => (
             <PickerCheckboxItem
               key={item.id}
@@ -132,6 +150,7 @@ export default function VisualizePickerModal({
   const [search, setSearch] = useState('');
   const [programFilter, setProgramFilter] = useState('all');
   const [pickerView, setPickerView] = useState('events');
+  const [expandAllOverride, setExpandAllOverride] = useState(null);
 
   const programTabs = [
     { id: 'all', label: VIZ_KH.programAll },
@@ -146,6 +165,7 @@ export default function VisualizePickerModal({
     setSearch('');
     setProgramFilter('all');
     setPickerView(defaultPickerView);
+    setExpandAllOverride(null);
   }, [open, selectedIds, defaultPickerView]);
 
   useEffect(() => {
@@ -336,20 +356,43 @@ export default function VisualizePickerModal({
             ))}
           </div>
 
-          <div className="flex flex-wrap items-center gap-1">
-            <span className={cn('mr-1 shrink-0 text-muted-foreground', P360_TABLE_TEXT)}>
-              {VIZ_KH.pickerQuickPresets}:
-            </span>
-            {Object.entries(VISUALIZE_PRESETS).map(([key, p]) => (
+          <div className="flex flex-wrap items-center justify-between gap-1.5 pt-1">
+            <div className="flex flex-wrap items-center gap-1">
+              <span className={cn('mr-1 shrink-0 text-muted-foreground font-semibold', P360_TABLE_TEXT)}>
+                {VIZ_KH.pickerQuickPresets}:
+              </span>
+              {Object.entries(VISUALIZE_PRESETS).map(([key, p]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => applyPreset(p)}
+                  className={appNavItemClass(false)}
+                >
+                  {PRESET_LABEL_KH[key] || p.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-1.5 ml-auto">
               <button
-                key={key}
                 type="button"
-                onClick={() => applyPreset(p)}
-                className={appNavItemClass(false)}
+                onClick={() => setExpandAllOverride(true)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold border border-border/80 bg-muted/20 text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/40 transition-colors cursor-pointer rounded-none select-none"
+                title="ពង្រីកមើលក្រុមទាំងអស់"
               >
-                {PRESET_LABEL_KH[key] || p.label}
+                <RiAddLine className="size-3.5 text-primary shrink-0" />
+                <span>ពង្រីកទាំងអស់</span>
               </button>
-            ))}
+              <button
+                type="button"
+                onClick={() => setExpandAllOverride(false)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold border border-border/80 bg-muted/20 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer rounded-none select-none"
+                title="បត់រួមក្រុមទាំងអស់"
+              >
+                <RiSubtractLine className="size-3.5 shrink-0" />
+                <span>បត់រួមទាំងអស់</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -376,6 +419,7 @@ export default function VisualizePickerModal({
                 onToggleId={toggleId}
                 onToggleGroup={toggleGroupIds}
                 forceOpen={hasSearch}
+                expandAllOverride={expandAllOverride}
               />
             ))
           ) : (
@@ -388,6 +432,7 @@ export default function VisualizePickerModal({
                 onToggleId={toggleId}
                 onToggleGroup={toggleGroupIds}
                 forceOpen={hasSearch}
+                expandAllOverride={expandAllOverride}
               />
             ))
           )}

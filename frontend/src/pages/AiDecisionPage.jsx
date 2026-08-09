@@ -24,22 +24,22 @@ import { p360CardClass } from '../components/layout/appNavStyles';
 const PRESET_PROMPTS = [
   {
     id: 'p1',
-    khmer: '🚨 មណ្ឌលដែលមានអត្រាបង្ក្រាប VL ទាបជាងគេ?',
+    khmer: 'មណ្ឌលដែលមានអត្រាបង្ក្រាប VL ទាបជាងគេ?',
     query: 'តើមណ្ឌលណាខ្លះដែលមានអត្រាបង្ក្រាប VL ទាបជាង ៩០% ក្នុងត្រីមាសនេះ?'
   },
   {
     id: 'p2',
-    khmer: '📉 ការវិភាគមណ្ឌលដែលមានកំណើន ART ថយចុះ?',
+    khmer: 'ការវិភាគមណ្ឌលដែលមានកំណើន ART ថយចុះ?',
     query: 'វិភាគមណ្ឌលដែលមានការផ្ដើម ART ថ្មីថយចុះ ព្រមទាំងផ្តល់អនុសាសន៍ដោះស្រាយ។'
   },
   {
     id: 'p3',
-    khmer: '💊 មណ្ឌលយឺតយ៉ាវក្នុងការផ្តល់ថ្នាំ MMD 6M?',
+    khmer: 'មណ្ឌលយឺតយ៉ាវក្នុងការផ្តល់ថ្នាំ MMD 6M?',
     query: 'តើមណ្ឌលណាខ្លះដែលផ្តល់ថ្នាំ MMD 6M បានតិចជាងគេ?'
   },
   {
     id: 'p4',
-    khmer: '📋 បង្កើតរបាយការណ៍សង្ខេបប្រតិបត្តិត្រីមាស?',
+    khmer: 'បង្កើតរបាយការណ៍សង្ខេបប្រតិបត្តិត្រីមាស?',
     query: 'បង្កើតសេចក្តីសង្ខេបប្រតិបត្តិលើលទ្ធផលសូចនាករជាតិសម្រាប់ត្រីមាសនេះ។'
   }
 ];
@@ -50,7 +50,7 @@ export default function AiDecisionPage({ onLogout }) {
     {
       id: 'm1',
       sender: 'ai',
-      text: `ជំរាបសួរ! ស្វាគមន៍មកកាន់ **ART-AI Decision Hub** (Real Database Connected 🟢)។ ខ្ញុំបានភ្ជាប់ទៅកាន់ទិន្នន័យផ្ទាល់ចេញពីប្រព័ន្ធ SQL Warehouse រួចរាល់។ សូមចុចសំណួរគំរូខាងក្រោម ឬសួរសំណួរវិភាគទិន្នន័យ។`,
+      text: `ជំរាបសួរ! ស្វាគមន៍មកកាន់ **ART-AI Decision Hub** (Real Database Connected)។ ខ្ញុំបានភ្ជាប់ទៅកាន់ទិន្នន័យផ្ទាល់ចេញពីប្រព័ន្ធ SQL Warehouse រួចរាល់។ សូមចុចសំណួរគំរូខាងក្រោម ឬសួរសំណួរវិភាគទិន្នន័យ។`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -111,7 +111,7 @@ export default function AiDecisionPage({ onLogout }) {
       if (res && res.findings && res.findings.length > 0) {
         const titleStr = res.title ? `**${res.title}** ៖\n\n` : '';
         const findingsStr = res.findings.map((f) => `• ${f}`).join('\n');
-        const actionStr = res.action ? `\n\n💡 **អនុសាសន៍** ៖ ${res.action}` : '';
+        const actionStr = res.action ? `\n\n**អនុសាសន៍** ៖ ${res.action}` : '';
         aiText = `${titleStr}${findingsStr}${actionStr}`;
       } else {
         aiText = `**ទិន្នន័យផ្ទាល់ពីប្រព័ន្ធ SQL** ៖ ពុំមានទិន្នន័យសម្រាប់សំណួរនេះទេ។ សូមព្យាយាមសួរសំណួរលើ Viral Load, Retention, MMD ឬឈ្មោះខេត្ត។`;
@@ -145,7 +145,7 @@ export default function AiDecisionPage({ onLogout }) {
           <span className="h-4 w-px bg-border/80 shrink-0" aria-hidden />
 
           <div className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 shrink-0">
-            <RiWifiLine className="size-3 text-emerald-500" /> Live SQL Database Connected 🟢 (2026-Q2)
+            <RiWifiLine className="size-3 text-emerald-500" /> Live SQL Database Connected (2026-Q2)
           </div>
         </div>
 
@@ -212,7 +212,7 @@ export default function AiDecisionPage({ onLogout }) {
                         className={`flex flex-col ${m.sender === 'user' ? 'items-end' : 'items-start'} space-y-1`}
                       >
                         <div className="text-[10px] text-muted-foreground px-1 font-bold">
-                          {m.sender === 'ai' ? '🤖 ART-AI Engine' : 'លោកអ្នក (Program Officer)'} · {m.timestamp}
+                          {m.sender === 'ai' ? 'ART-AI Engine' : 'លោកអ្នក (Program Officer)'} · {m.timestamp}
                         </div>
                         <div
                           className={cn(

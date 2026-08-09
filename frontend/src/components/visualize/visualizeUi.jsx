@@ -15,8 +15,43 @@ import {
 } from '../layout/appNavStyles';
 import { VIZ_KH } from '../../pages/visualizeKh';
 
-export function VizEmpty({ children }) {
-  return <p className={vizEmptyStateClass}>{children}</p>;
+import { RiFilter3Line, RiRefreshLine, RiSearchEyeLine } from '@remixicon/react';
+
+export function VizEmpty({ children, activeFilterCount = 0, onResetFilters, className }) {
+  return (
+    <div className={cn('flex flex-col items-center justify-center p-8 text-center min-h-[16rem] w-full bg-card/60 border border-border/80 rounded-none space-y-3 font-khmer select-none', className)}>
+      <div className="flex h-12 w-12 items-center justify-center border border-border/80 bg-muted/30 text-muted-foreground">
+        {activeFilterCount > 0 ? (
+          <RiFilter3Line className="size-6 text-primary" />
+        ) : (
+          <RiSearchEyeLine className="size-6 text-muted-foreground" />
+        )}
+      </div>
+      <div className="space-y-1 max-w-md">
+        <h4 className="text-xs font-bold text-foreground tracking-wide">
+          {activeFilterCount > 0
+            ? 'មិនមានទិន្នន័យស្របតាមតម្រងដែលបានជ្រើសរើសឡើយ'
+            : 'ពុំមានទិន្នន័យបង្ហាញ'}
+        </h4>
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          {children || (activeFilterCount > 0
+            ? `លោកអ្នកកំពុងប្រើប្រាស់តម្រង Profile/ប្រជាសាស្ត្រចំនួន ${activeFilterCount} សកម្ម។ សូមពិនិត្យ ឬសម្អាតតម្រងដើម្បីមើលទិន្នន័យទូទៅ។`
+            : VIZ_KH.empty)}
+        </p>
+      </div>
+
+      {activeFilterCount > 0 && onResetFilters && (
+        <button
+          type="button"
+          onClick={onResetFilters}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-2xs cursor-pointer rounded-none"
+        >
+          <RiRefreshLine className="size-3.5" />
+          <span>សម្អាតតម្រងទាំងអស់ ({activeFilterCount})</span>
+        </button>
+      )}
+    </div>
+  );
 }
 
 export function VizTooltipBox({ title, children, typography }) {

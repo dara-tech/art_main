@@ -27,6 +27,7 @@ import {
 import cn from 'clsx';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 
 import api from '@/services/api';
 
@@ -151,13 +152,13 @@ export default function DashboardRightSidebar({
     <aside
       aria-label="Dashboard Control Sidebar"
       className={cn(
-        'h-full flex shrink-0 border-l border-border/80 bg-card transition-all duration-300 z-20 select-none shadow-sm',
+        'h-full flex shrink-0 border-l border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-300 z-20 select-none',
         isOpen ? 'w-80' : 'w-10'
       )}
     >
       {/* Collapsed Bar (When Child Panel is Hidden) */}
       {!isOpen && (
-        <div className="flex h-full w-10 flex-col items-center py-3 space-y-3.5 text-muted-foreground bg-card">
+        <div className="flex h-full w-10 flex-col items-center py-3 space-y-3.5 text-sidebar-foreground/75 bg-sidebar">
           <button
             type="button"
             onClick={() => setIsOpen(true)}
@@ -166,14 +167,14 @@ export default function DashboardRightSidebar({
           >
             <RiSidebarUnfoldLine className="size-4" />
           </button>
-          <div className="w-5 h-px bg-border/60" />
+          <div className="w-5 h-px bg-sidebar-border" />
           <button
             type="button"
             onClick={() => {
               setIsOpen(true);
               setActiveTab('filters');
             }}
-            className="flex size-7 items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all rounded-none cursor-pointer"
+            className="flex size-7 items-center justify-center text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all rounded-none cursor-pointer"
             title="តម្រងទិន្នន័យ"
           >
             <RiFilter3Line className="size-4" />
@@ -183,7 +184,7 @@ export default function DashboardRightSidebar({
 
       {/* Expanded Child Panel */}
       {isOpen && (
-        <div className="flex h-full w-80 flex-col overflow-y-auto no-scrollbar p-4 space-y-4 bg-card text-foreground">
+        <div className="flex h-full w-80 flex-col overflow-y-auto no-scrollbar p-4 space-y-4 bg-sidebar text-sidebar-foreground">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border/60 pb-3 gap-2">
             <div className="flex items-center gap-2 min-w-0">
@@ -269,19 +270,30 @@ export default function DashboardRightSidebar({
                 <label className="text-[11px] font-bold text-muted-foreground">
                   សូចនាករប្រៀបធៀប
                 </label>
-                <select
-                  value={compareMetric}
-                  onChange={(e) => onCompareMetricChange(e.target.value)}
-                  className="h-8 w-full border border-border bg-background px-2.5 text-xs font-bold text-foreground outline-none cursor-pointer rounded-none hover:border-primary transition-colors"
-                >
-                  <option value="all">គ្រប់សូចនាករ</option>
-                  <option value="active_art">អ្នកជំងឺ ART សកម្ម</option>
-                  <option value="newly_initiated">ចាប់ផ្តើម ART ថ្មី</option>
-                  <option value="mmd_patients">ផ្តល់ថ្នាំ MMD 3M/6M</option>
-                  <option value="tld_patients">ព្យាបាលដោយ TLD</option>
-                  <option value="vl_tested">ពិនិត្យបន្ទុកវីរុស VL</option>
-                  <option value="vl_suppressed">បង្ក្រាបមេរោគ VL</option>
-                </select>
+                <Select value={compareMetric} onValueChange={onCompareMetricChange}>
+                  <SelectTrigger className="h-8 w-full border border-border bg-background px-2.5 text-xs font-bold text-foreground rounded-none focus:ring-0 focus:ring-offset-0 focus:outline-none cursor-pointer">
+                    <SelectValue>
+                      {({
+                        all: 'គ្រប់សូចនាករ',
+                        active_art: 'អ្នកជំងឺ ART សកម្ម',
+                        newly_initiated: 'ចាប់ផ្តើម ART ថ្មី',
+                        mmd_patients: 'ផ្តល់ថ្នាំ MMD 3M/6M',
+                        tld_patients: 'ព្យាបាលដោយ TLD',
+                        vl_tested: 'ពិនិត្យបន្ទុកវីរុស VL',
+                        vl_suppressed: 'បង្ក្រាបមេរោគ VL'
+                      })[compareMetric]}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="p-1 rounded-none text-xs">
+                    <SelectItem value="all" className="px-3 py-2 rounded-none text-xs cursor-pointer">គ្រប់សូចនាករ</SelectItem>
+                    <SelectItem value="active_art" className="px-3 py-2 rounded-none text-xs cursor-pointer">អ្នកជំងឺ ART សកម្ម</SelectItem>
+                    <SelectItem value="newly_initiated" className="px-3 py-2 rounded-none text-xs cursor-pointer">ចាប់ផ្តើម ART ថ្មី</SelectItem>
+                    <SelectItem value="mmd_patients" className="px-3 py-2 rounded-none text-xs cursor-pointer">ផ្តល់ថ្នាំ MMD 3M/6M</SelectItem>
+                    <SelectItem value="tld_patients" className="px-3 py-2 rounded-none text-xs cursor-pointer">ព្យាបាលដោយ TLD</SelectItem>
+                    <SelectItem value="vl_tested" className="px-3 py-2 rounded-none text-xs cursor-pointer">ពិនិត្យបន្ទុកវីរុស VL</SelectItem>
+                    <SelectItem value="vl_suppressed" className="px-3 py-2 rounded-none text-xs cursor-pointer">បង្ក្រាបមេរោគ VL</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Demographic Filters */}
@@ -293,28 +305,34 @@ export default function DashboardRightSidebar({
 
                 <div className="space-y-1.5">
                   <span className="text-[10px] text-muted-foreground font-semibold">ភេទ:</span>
-                  <select
-                    value={sexFilter}
-                    onChange={(e) => onSexFilterChange(e.target.value)}
-                    className="h-8 w-full border border-border bg-background px-2.5 text-xs font-semibold text-foreground outline-none cursor-pointer rounded-none"
-                  >
-                    <option value="all">គ្រប់ភេទ</option>
-                    <option value="male">ប្រុស</option>
-                    <option value="female">ស្រី</option>
-                  </select>
+                  <Select value={sexFilter} onValueChange={onSexFilterChange}>
+                    <SelectTrigger className="h-8 w-full border border-border bg-background px-2.5 text-xs font-semibold text-foreground rounded-none focus:ring-0 focus:ring-offset-0 focus:outline-none cursor-pointer">
+                      <SelectValue>
+                        {({ all: 'គ្រប់ភេទ', male: 'ប្រុស', female: 'ស្រី' })[sexFilter]}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="p-1 rounded-none text-xs">
+                      <SelectItem value="all" className="px-3 py-2 rounded-none text-xs cursor-pointer">គ្រប់ភេទ</SelectItem>
+                      <SelectItem value="male" className="px-3 py-2 rounded-none text-xs cursor-pointer">ប្រុស</SelectItem>
+                      <SelectItem value="female" className="px-3 py-2 rounded-none text-xs cursor-pointer">ស្រី</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-1.5">
                   <span className="text-[10px] text-muted-foreground font-semibold">ក្រុមអាយុ:</span>
-                  <select
-                    value={ageGroupFilter}
-                    onChange={(e) => onAgeGroupFilterChange(e.target.value)}
-                    className="h-8 w-full border border-border bg-background px-2.5 text-xs font-semibold text-foreground outline-none cursor-pointer rounded-none"
-                  >
-                    <option value="all">គ្រប់អាយុ</option>
-                    <option value="0_14">០-១៤ ឆ្នាំ</option>
-                    <option value="over_14">&gt;១៤ ឆ្នាំ</option>
-                  </select>
+                  <Select value={ageGroupFilter} onValueChange={onAgeGroupFilterChange}>
+                    <SelectTrigger className="h-8 w-full border border-border bg-background px-2.5 text-xs font-semibold text-foreground rounded-none focus:ring-0 focus:ring-offset-0 focus:outline-none cursor-pointer">
+                      <SelectValue>
+                        {({ all: 'គ្រប់អាយុ', '0_14': '០-១៤ ឆ្នាំ', over_14: '>១៤ ឆ្នាំ' })[ageGroupFilter]}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="p-1 rounded-none text-xs">
+                      <SelectItem value="all" className="px-3 py-2 rounded-none text-xs cursor-pointer">គ្រប់អាយុ</SelectItem>
+                      <SelectItem value="0_14" className="px-3 py-2 rounded-none text-xs cursor-pointer">០-១៤ ឆ្នាំ</SelectItem>
+                      <SelectItem value="over_14" className="px-3 py-2 rounded-none text-xs cursor-pointer">&gt;១៤ ឆ្នាំ</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-1.5 pt-1.5 border-t border-border/30">
@@ -322,19 +340,30 @@ export default function DashboardRightSidebar({
                     <RiGroupLine className="size-3 text-primary" />
                     ប្រភេទប្រជាជន / KP Type:
                   </span>
-                  <select
-                    value={kpFilter}
-                    onChange={(e) => onKpFilterChange?.(e.target.value)}
-                    className="h-8 w-full border border-primary/40 bg-primary/5 px-2.5 text-xs font-bold text-foreground outline-none cursor-pointer rounded-none hover:border-primary transition-colors"
-                  >
-                    <option value="all">គ្រប់ប្រជាជន (All Populations)</option>
-                    <option value="kp_all">គ្រប់ក្រុមប្រជាជនគន្លឹះ KP (All KP Groups)</option>
-                    <option value="msm">MSM (បុរសស្រឡាញ់បុរស)</option>
-                    <option value="tg">TG (ស្រីកែភេទ)</option>
-                    <option value="fsw">FSW (ស្រីកន្លែងកម្សាន្ត)</option>
-                    <option value="pwid">PWID/PWUD (អ្នកប្រើប្រាស់គ្រឿងញៀន)</option>
-                    <option value="genpop">General Population (ប្រជាជនទូទៅ)</option>
-                  </select>
+                  <Select value={kpFilter} onValueChange={(v) => onKpFilterChange?.(v)}>
+                    <SelectTrigger className="h-8 w-full border border-primary/40 bg-primary/5 px-2.5 text-xs font-bold text-foreground rounded-none focus:ring-0 focus:ring-offset-0 focus:outline-none cursor-pointer">
+                      <SelectValue>
+                        {({
+                          all: 'គ្រប់ប្រជាជន (All Populations)',
+                          kp_all: 'គ្រប់ក្រុមប្រជាជនគន្លឹះ KP (All KP Groups)',
+                          msm: 'MSM (បុរសស្រឡាញ់បុរស)',
+                          tg: 'TG (ស្រីកែភេទ)',
+                          fsw: 'FSW (ស្រីកន្លែងកម្សាន្ត)',
+                          pwid: 'PWID/PWUD (អ្នកប្រើប្រាស់គ្រឿងញៀន)',
+                          genpop: 'General Population (ប្រជាជនទូទៅ)'
+                        })[kpFilter]}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="p-1 rounded-none text-xs min-w-[220px]">
+                      <SelectItem value="all" className="px-3 py-2 rounded-none text-xs cursor-pointer">គ្រប់ប្រជាជន (All Populations)</SelectItem>
+                      <SelectItem value="kp_all" className="px-3 py-2 rounded-none text-xs cursor-pointer">គ្រប់ក្រុមប្រជាជនគន្លឹះ KP (All KP Groups)</SelectItem>
+                      <SelectItem value="msm" className="px-3 py-2 rounded-none text-xs cursor-pointer">MSM (បុរសស្រឡាញ់បុរស)</SelectItem>
+                      <SelectItem value="tg" className="px-3 py-2 rounded-none text-xs cursor-pointer">TG (ស្រីកែភេទ)</SelectItem>
+                      <SelectItem value="fsw" className="px-3 py-2 rounded-none text-xs cursor-pointer">FSW (ស្រីកន្លែងកម្សាន្ត)</SelectItem>
+                      <SelectItem value="pwid" className="px-3 py-2 rounded-none text-xs cursor-pointer">PWID/PWUD (អ្នកប្រើប្រាស់គ្រឿងញៀន)</SelectItem>
+                      <SelectItem value="genpop" className="px-3 py-2 rounded-none text-xs cursor-pointer">General Population (ប្រជាជនទូទៅ)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 

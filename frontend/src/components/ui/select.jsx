@@ -25,7 +25,7 @@ function SelectValue({
   return (
     <SelectPrimitive.Value
       data-slot="select-value"
-      className={cn("flex flex-1 text-left", className)}
+      className={cn("flex flex-1 text-left whitespace-nowrap truncate overflow-hidden", className)}
       {...props} />
   );
 }
@@ -115,7 +115,7 @@ function SelectItem({
         className
       )}
       {...props}>
-      <SelectPrimitive.ItemText className="flex flex-1 shrink-0 gap-2 whitespace-nowrap">
+      <SelectPrimitive.ItemText className="flex flex-1 shrink-0 gap-2 whitespace-nowrap truncate overflow-hidden">
         {children}
       </SelectPrimitive.ItemText>
       <SelectPrimitive.ItemIndicator

@@ -2,13 +2,18 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 
-const LAB_USER = 'mpi.sys';
-const LAB_PASS = 'fT.!ga~Ndc8z@EM>7X4B2=F9?';
-const DEFAULT_PUBLIC_URL = 'http://36.37.175.123:9091';
-const DEFAULT_LAN_URL = 'http://192.168.0.27:9091';
+const LAB_USER = process.env.LAB_API_USER || 'mpi.sys';
+const LAB_PASS = process.env.LAB_API_PASS || 'fT.!ga~Ndc8z@EM>7X4B2=F9?';
+const DEFAULT_PUBLIC_URL = process.env.LAB_API_URL || 'http://36.37.175.123:9091';
+const DEFAULT_LAN_URL = process.env.LAB_API_LAN_URL || 'http://192.168.0.27:9091';
 
-// Basic Auth Header
-const authHeader = `Basic ${Buffer.from(`${LAB_USER}:${LAB_PASS}`).toString('base64')}`;
+// Dynamic Basic Auth Header helper
+const getAuthHeader = () => {
+  const user = process.env.LAB_API_USER || LAB_USER;
+  const pass = process.env.LAB_API_PASS || LAB_PASS;
+  return `Basic ${Buffer.from(`${user}:${pass}`).toString('base64')}`;
+};
+
 
 // Mock Generator for Lab Results when external service is offline or unreachable
 function generateFallbackLabResults(start, end, type = 'hiv') {
@@ -104,7 +109,7 @@ router.get('/test-results', async (req, res) => {
   try {
     const response = await axios.get(targetUrl, {
       headers: {
-        'Authorization': authHeader,
+        'Authorization': getAuthHeader(),
         'Accept': 'application/json',
         'User-Agent': 'ARTWeb-MPI-LabIntegration/1.0'
       },

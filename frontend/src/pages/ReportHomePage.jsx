@@ -1203,7 +1203,7 @@ export default function ReportHomePage({ onLogout }) {
                 setRows(finalRows);
                 setRunTimeMs(Math.round(performance.now() - startedAt));
                 setProgress({ completed: finalRows.length, total: finalRows.length });
-                toast.success('⚡ បានទាញយកពីឃ្លាំងទិន្នន័យ (Loaded from Warehouse)');
+                toast.success('បានទាញយកពីឃ្លាំងទិន្នន័យ (Loaded from Warehouse)');
                 setDataSource('warehouse');
                 success = true;
               }

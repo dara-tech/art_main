@@ -1,31 +1,36 @@
 -- 10.8 VL Suppression - Detailed Records (matching corrected aggregate logic)
 WITH tblactive AS (
+    -- Visit data from both adult and child tables
     WITH tblvisit AS (
         SELECT 
+            site_code,
             clinicid,
             DatVisit,
             ARTnum,
             DaApp,
             vid,
-            ROW_NUMBER() OVER (PARTITION BY clinicid ORDER BY DatVisit DESC) AS id 
+            ROW_NUMBER() OVER (PARTITION BY site_code, clinicid ORDER BY DatVisit DESC) AS id 
         FROM tblavmain 
         WHERE DatVisit <= :EndDate
         
         UNION ALL 
         
         SELECT 
+            site_code,
             clinicid,
             DatVisit,
             ARTnum,
             DaApp,
             vid,
-            ROW_NUMBER() OVER (PARTITION BY clinicid ORDER BY DatVisit DESC) AS id 
+            ROW_NUMBER() OVER (PARTITION BY site_code, clinicid ORDER BY DatVisit DESC) AS id 
         FROM tblcvmain 
         WHERE DatVisit <= :EndDate
     ),
     
+    -- Patient main information (adults and children)
     tblimain AS (
         SELECT 
+            site_code,
             ClinicID,
             DafirstVisit,
             "15+" AS typepatients,
@@ -43,6 +48,7 @@ WITH tblactive AS (
         UNION ALL 
         
         SELECT 
+            site_code,
             ClinicID,
             DafirstVisit,
             "≤14" AS typepatients,
@@ -58,60 +64,76 @@ WITH tblactive AS (
         WHERE DafirstVisit <= :EndDate
     ),
     
+    -- ART start information
     tblart AS (
-        SELECT *,
-               TIMESTAMPDIFF(MONTH, DaArt, :EndDate) AS nmonthART 
+        SELECT 
+            site_code,
+            ClinicID,
+            ART,
+            DaArt,
+            TIMESTAMPDIFF(MONTH, DaArt, :EndDate) AS nmonthART 
         FROM tblaart 
         WHERE DaArt <= :EndDate
         
         UNION ALL 
         
-        SELECT *,
-               TIMESTAMPDIFF(MONTH, DaArt, :EndDate) AS nmonthART 
+        SELECT 
+            site_code,
+            ClinicID,
+            ART,
+            DaArt,
+            TIMESTAMPDIFF(MONTH, DaArt, :EndDate) AS nmonthART 
         FROM tblcart 
         WHERE DaArt <= :EndDate
     ),
     
+    -- Patient exit/status information
     tblexit AS (
-        SELECT * 
+        SELECT site_code, clinicid, status, da
         FROM tblavpatientstatus 
         WHERE da <= :EndDate
         
         UNION ALL 
         
-        SELECT * 
+        SELECT site_code, clinicid, status, da
         FROM tblcvpatientstatus  
         WHERE da <= :EndDate
     ),
     
+    -- ARV drug information
     tblarvdrug AS (
         WITH tbldrug AS (
             SELECT 
+                site_code,
                 vid,
                 GROUP_CONCAT(DISTINCT DrugName ORDER BY DrugName ASC SEPARATOR '+') AS drugname 
             FROM tblavarvdrug 
             WHERE status <> 1
-            GROUP BY vid 
+            GROUP BY site_code, vid 
             
             UNION ALL 
             
             SELECT 
+                site_code,
                 vid,
                 GROUP_CONCAT(DISTINCT DrugName ORDER BY DrugName ASC SEPARATOR '+') AS drugname 
             FROM tblcvarvdrug 
             WHERE status <> 1
-            GROUP BY vid
+            GROUP BY site_code, vid
         )
         SELECT 
+            site_code,
             vid,
             drugname,
             IF(LOCATE('3TC+DTG+TDF', drugname) > 0, "TLD", "Not-TLD") AS TLDStatus 
         FROM tbldrug
     ),
     
+    -- Viral load information
     tblvltested AS (
         WITH tblvltest AS (
             SELECT 
+                site_code,
                 ClinicID,
                 IF(DaArrival < Dat, Dat, DaArrival) AS DateResult,
                 HIVLoad 
@@ -120,6 +142,7 @@ WITH tblactive AS (
             HAVING DateResult <= :EndDate
         )
         SELECT DISTINCT 
+            site_code,
             ClinicID,
             DateResult,
             HIVLoad,
@@ -127,19 +150,22 @@ WITH tblactive AS (
             IF(HIVLoad < 1000, "VL-Suppression", "Not-Suppression") AS vlresultstatus  
         FROM (
             SELECT 
+                site_code,
                 ClinicID,
                 DateResult,
                 HIVLoad,
                 DATE_SUB(:EndDate, INTERVAL 1 YEAR) AS datelast,
-                ROW_NUMBER() OVER (PARTITION BY clinicid ORDER BY DateResult DESC) AS id 
+                ROW_NUMBER() OVER (PARTITION BY site_code, clinicid ORDER BY DateResult DESC) AS id 
             FROM tblvltest 
         ) pt 
         WHERE pt.id = 1
     ),
     
+    -- TPT drug information
     tbltptdrug AS (
         WITH tbltptdrugs AS (
             SELECT 
+                site_code,
                 DrugName,
                 Status,
                 Da,
@@ -150,6 +176,7 @@ WITH tblactive AS (
             UNION ALL 
             
             SELECT 
+                site_code,
                 DrugName,
                 Status,
                 Da,
@@ -158,32 +185,33 @@ WITH tblactive AS (
             WHERE DrugName != "B6"
         ),
         
-        tblvisit AS (
-            SELECT clinicid, DatVisit, vid 
+        tblvisit_tpt AS (
+            SELECT site_code, clinicid, DatVisit, vid 
             FROM tblavmain 
             
             UNION ALL 
             
-            SELECT clinicid, DatVisit, vid 
+            SELECT site_code, clinicid, DatVisit, vid 
             FROM tblcvmain 
         ),
         
         tbltptall AS (
             SELECT 
-                clinicid,
-                DatVisit,
-                DrugName,
-                Status,
-                Da 
+                v.site_code,
+                v.clinicid,
+                v.DatVisit,
+                tp.DrugName,
+                tp.Status,
+                tp.Da 
             FROM tbltptdrugs tp 
-            LEFT JOIN tblvisit v ON tp.vid = v.vid
+            LEFT JOIN tblvisit_tpt v ON tp.vid = v.vid AND tp.site_code = v.site_code
         ),
         
         tbltptstart AS (
             SELECT * 
             FROM (
                 SELECT *,
-                       ROW_NUMBER() OVER (PARTITION BY clinicid ORDER BY DatVisit ASC) AS id 
+                       ROW_NUMBER() OVER (PARTITION BY site_code, clinicid ORDER BY DatVisit ASC) AS id 
                 FROM tbltptall 
                 WHERE status = 0 AND DatVisit <= :EndDate
             ) s 
@@ -193,47 +221,51 @@ WITH tblactive AS (
         tbltptstope AS (
             SELECT * 
             FROM (
-                SELECT *,
-                       ROW_NUMBER() OVER (PARTITION BY clinicid ORDER BY Da DESC) AS id 
+                SELECT 
+                    *,
+                    ROW_NUMBER() OVER(PARTITION BY site_code, clinicid ORDER BY Da DESC) AS id 
                 FROM tbltptall 
                 WHERE status = 1 AND Da <= :EndDate
             ) s 
             WHERE id = 1
         )
-        
         SELECT 
+            s.site_code,
             s.clinicid,
             s.DatVisit AS dateStart,
             s.DrugName AS Tptdrugname,
             st.da AS Datestop,
             DATEDIFF(st.da, s.DatVisit) / 30 AS duration  
         FROM tbltptstart s
-        LEFT JOIN tbltptstope st ON s.clinicid = st.clinicid
+        LEFT JOIN tbltptstope st ON s.clinicid = st.clinicid AND s.site_code = st.site_code
     )
 
+    -- Main query combining all data
     SELECT 
-        i.clinicid,
+        v.site_code as site_code,
+        i.clinicid, 
         i.DafirstVisit,
-        i.typepatients,
-        i.TypeofReturn,
-        i.LClinicID,
-        i.SiteNameold,
+        i.typepatients, 
+        i.TypeofReturn, 
+        i.LClinicID, 
+        i.SiteNameold, 
         i.DaBirth,
-        i.age,
-        i.Sex,
-        i.DaHIV,
-        i.OffIn,
-        a.ART,
+        i.age, 
+        i.Sex, 
+        i.DaHIV, 
+        i.OffIn, 
+        a.ART, 
         a.DaArt,
-        v.DatVisit,
-        v.ARTnum,
+        v.DatVisit AS DatVisit, 
+        v.ARTnum, 
         v.DaApp,
         a.nmonthART,
         IF(a.nmonthART >= 6, ">6M", "<6M") AS Startartstatus,
         DATEDIFF(v.DaApp, v.DatVisit) AS ndays,
         IF(DATEDIFF(v.DaApp, v.DatVisit) > 80, "MMD", "Not-MMD") AS MMDStatus,
         rd.drugname,
-        IF(LEFT(i.clinicid, 1) = "P" AND rd.TLDStatus != "TLD" AND LOCATE('DTG', drugname) > 0, "TLD", rd.TLDStatus) AS TLDStatus,
+        IF(LEFT(i.clinicid, 1) = "P" AND rd.TLDStatus != "TLD" AND LOCATE('DTG', drugname) > 0, 
+           "TLD", rd.TLDStatus) AS TLDStatus,
         vl.DateResult,
         vl.HIVLoad,
         vl.VLdostatus,
@@ -246,17 +278,18 @@ WITH tblactive AS (
            IF(LEFT(tp.Tptdrugname, 1) = 6 AND tp.duration >= 5.50, "TPT Complete",
               IF(tp.Tptdrugname IS NULL, "Not Start", "Not complete"))) AS tptstatus 
     FROM tblvisit v
-    LEFT JOIN tblimain i ON i.clinicid = v.clinicid
-    LEFT JOIN tblart a ON a.clinicid = v.clinicid
-    LEFT JOIN tblexit e ON v.clinicid = e.clinicid
-    LEFT JOIN tblarvdrug rd ON rd.vid = v.vid
-    LEFT JOIN tblvltested vl ON vl.clinicid = v.clinicid
-    LEFT JOIN tbltptdrug tp ON tp.clinicid = v.clinicid
-    WHERE id = 1 AND e.status IS NULL
+    LEFT JOIN tblimain i ON i.clinicid = v.clinicid AND i.site_code = v.site_code
+    LEFT JOIN tblart a ON a.clinicid = v.clinicid AND a.site_code = v.site_code
+    LEFT JOIN tblexit e ON e.clinicid = v.clinicid AND e.site_code = v.site_code
+    LEFT JOIN tblarvdrug rd ON rd.vid = v.vid AND rd.site_code = v.site_code
+    LEFT JOIN tblvltested vl ON vl.clinicid = v.clinicid AND vl.site_code = v.site_code
+    LEFT JOIN tbltptdrug tp ON tp.clinicid = v.clinicid AND tp.site_code = v.site_code
+    WHERE id = 1 AND e.status IS NULL AND a.ART IS NOT NULL
 )
 
 SELECT
     '10.8' as step,
+    site_code,
     clinicid,
     Sex AS sex,
     CASE 

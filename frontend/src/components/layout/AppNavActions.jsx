@@ -211,7 +211,7 @@ export default function AppNavActions({ onLogout, hideNav }) {
   const pdmoUser = hasRole(user, 'pdmo');
 
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('theme') || 'light';
+    return localStorage.getItem('theme') || 'dark';
   });
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -554,27 +554,19 @@ export default function AppNavActions({ onLogout, hideNav }) {
       'inline-flex shrink-0 items-center justify-center gap-1.5 h-8 px-4 text-[11px] font-medium transition-all relative rounded-t-[10px] select-none border-t border-l border-r outline-none focus:outline-none focus:ring-0',
       isActive
         ? 'bg-card text-foreground border-border/80 z-10 -mb-[1px]'
-        : 'bg-transparent text-white/70 border-transparent hover:bg-white/10 hover:text-white border-b-transparent'
+        : 'bg-transparent text-muted-foreground border-transparent hover:bg-muted/50 hover:text-foreground border-b-transparent'
     );
   };
 
-  const activeColorObj = ACCENT_COLORS.find(c => c.id === selectedColor) || ACCENT_COLORS[3];
-  const headerBgStyle = isIncognito
-    ? { backgroundColor: '#181617' }
-    : { backgroundColor: activeColorObj.navBg };
-
   return (
     <header
-      className="sticky top-0 z-50 flex h-10 shrink-0 items-end justify-between border-b border-border/80 px-2 pt-1 transition-all duration-300 shadow-md"
-      style={headerBgStyle}
+      className="sticky top-0 z-50 flex h-10 shrink-0 items-end justify-between border-b border-border/80 bg-card text-foreground px-2 pt-1 transition-all duration-300 shadow-none"
       aria-label="Global"
     >
       {!hideNav && (
-        <div className="flex shrink-0 items-center h-8 mb-[2px] mr-2">
-          <span className="bg-primary text-primary-foreground text-[10px] font-black px-2 py-0.5 rounded tracking-wider select-none shadow-xs">
-            ART
-          </span>
-          <span className="text-xs font-bold text-white ml-2 tracking-tight">
+        <div className="flex shrink-0 items-center h-8 mb-[2px] mr-3 gap-2 select-none cursor-pointer" onClick={() => navigate('/dashboard')}>
+          <img src="/logo.png" alt="NCHADS Logo" className="h-6 sm:h-7 w-auto object-contain" />
+          <span className="text-xs font-bold text-foreground tracking-tight">
             ART Portal
           </span>
         </div>
@@ -592,11 +584,11 @@ export default function AppNavActions({ onLogout, hideNav }) {
               setIsSearchOpen(!isSearchOpen);
               setSearchQuery('');
             }}
-            className="h-7 w-7 text-white/70 hover:bg-white/10 hover:text-white rounded-md flex items-center justify-center p-0 cursor-pointer outline-none focus:outline-none"
+            className="h-7 w-7 text-muted-foreground hover:bg-muted hover:text-foreground rounded-md flex items-center justify-center p-0 cursor-pointer outline-none focus:outline-none"
             title="ស្វែងរក (Search)"
             aria-label="Search"
           >
-            <Search className="size-3.5 text-white/80" strokeWidth={2.5} />
+            <Search className="size-3.5 text-muted-foreground" strokeWidth={2.5} />
           </Button>
 
           {isSearchOpen && (
@@ -745,7 +737,7 @@ export default function AppNavActions({ onLogout, hideNav }) {
               variant="ghost"
               size="icon-sm"
               onClick={() => setIsAppMenuOpen((prev) => !prev)}
-              className="h-7 w-7 text-white/70 hover:bg-white/10 hover:text-white rounded-md flex items-center justify-center p-0 cursor-pointer outline-none focus:outline-none"
+              className="h-7 w-7 text-muted-foreground hover:bg-muted hover:text-foreground rounded-md flex items-center justify-center p-0 cursor-pointer outline-none focus:outline-none"
               title="App Menu (កម្មវិធីប្រព័ន្ធ)"
               aria-label="App Menu"
             >

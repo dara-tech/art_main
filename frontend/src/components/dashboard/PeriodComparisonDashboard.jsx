@@ -526,11 +526,11 @@ export default function PeriodComparisonDashboard({
           color: 'purple'
         },
         card4: {
-          title: '🚨 មណ្ឌល TPT ទាបជាងគេ (Needs Support)',
+          title: 'មណ្ឌល TPT ទាបជាងគេ (Needs Support)',
           name: site4.site_name || site4.name,
           val: '52.0%',
           subLabel: 'ត្រូវការគាំទ្រថ្នាំ TPT',
-          badge: '⚠️ Low TPT',
+          badge: 'Low TPT',
           isAlert: true
         }
       };
@@ -563,11 +563,11 @@ export default function PeriodComparisonDashboard({
           color: 'emerald'
         },
         card4: {
-          title: '🚨 មណ្ឌលបង្ក្រាប VL ទាបជាងគេ',
+          title: 'មណ្ឌលបង្ក្រាប VL ទាបជាងគេ',
           name: site4.site_name || site4.name,
           val: '81.4%',
           subLabel: 'ទាបជាងគោលដៅ 95%',
-          badge: '⚠️ Low VL',
+          badge: 'Low VL',
           isAlert: true
         }
       };
@@ -600,11 +600,11 @@ export default function PeriodComparisonDashboard({
           color: 'purple'
         },
         card4: {
-          title: '🚨 មណ្ឌលផ្ដើម ART ថ្មីថយចុះ',
+          title: 'មណ្ឌលផ្ដើម ART ថ្មីថយចុះ',
           name: site4.site_name || site4.name,
           val: '-12.5%',
           subLabel: 'កំណើនផ្ដើមថ្មីថយចុះ',
-          badge: '⚠️ Declining',
+          badge: 'Declining',
           isAlert: true
         }
       };
@@ -637,11 +637,11 @@ export default function PeriodComparisonDashboard({
           color: 'blue'
         },
         card4: {
-          title: '🚨 មណ្ឌល MMD 6M ទាបជាងគេ',
+          title: 'មណ្ឌល MMD 6M ទាបជាងគេ',
           name: site4.site_name || site4.name,
           val: '64.2%',
           subLabel: 'ត្រូវការពង្រីក MMD 6M',
-          badge: '⚠️ Low MMD',
+          badge: 'Low MMD',
           isAlert: true
         }
       };
@@ -674,11 +674,11 @@ export default function PeriodComparisonDashboard({
           color: 'purple'
         },
         card4: {
-          title: '🚨 មណ្ឌលបាត់បង់ LTFU ខ្ពស់ជាងគេ',
+          title: 'មណ្ឌលបាត់បង់ LTFU ខ្ពស់ជាងគេ',
           name: site4.site_name || site4.name,
           val: '4.8%',
           subLabel: 'អត្រា LTFU ខ្ពស់',
-          badge: '⚠️ High LTFU',
+          badge: 'High LTFU',
           isAlert: true
         }
       };
@@ -711,11 +711,11 @@ export default function PeriodComparisonDashboard({
           color: 'purple'
         },
         card4: {
-          title: '🚨 មណ្ឌល Re-suppression ទាបជាងគេ',
+          title: 'មណ្ឌល Re-suppression ទាបជាងគេ',
           name: site4.site_name || site4.name,
           val: '68.5%',
           subLabel: 'ត្រូវការពង្រឹង EAC',
-          badge: '⚠️ EAC Gap',
+          badge: 'EAC Gap',
           isAlert: true
         }
       };
@@ -748,11 +748,11 @@ export default function PeriodComparisonDashboard({
         color: 'purple'
       },
       card4: {
-        title: '🚨 មណ្ឌលមានកំណើនសកម្មទាបជាងគេ',
+        title: 'មណ្ឌលមានកំណើនសកម្មទាបជាងគេ',
         name: site4.site_name || site4.name,
         val: '+1.2%',
         subLabel: 'កំណើនយឺតយ៉ាវ',
-        badge: '⚠️ Slow Growth',
+        badge: 'Slow Growth',
         isAlert: true
       }
     };
@@ -884,7 +884,7 @@ export default function PeriodComparisonDashboard({
               className="flex items-center gap-1.5 px-3 py-1 text-[11px] font-extrabold bg-teal-600 hover:bg-teal-500 text-white border border-teal-500 shadow-2xs transition-all cursor-pointer"
             >
               <RiSparklingLine className="size-3.5 animate-pulse text-teal-200" />
-              <span>✨ ART-AI Decision Co-Pilot</span>
+              <span>ART-AI Decision Co-Pilot</span>
             </button>
           </div>
 
@@ -1477,6 +1477,7 @@ export default function PeriodComparisonDashboard({
             sexFilter={sexFilter}
             ageGroupFilter={ageGroupFilter}
             isChartLoading={isChartLoading}
+            onClose={() => setZoomedIndicator(null)}
           />,
           document.body
         )}

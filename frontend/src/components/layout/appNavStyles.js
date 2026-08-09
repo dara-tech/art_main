@@ -23,7 +23,7 @@ export const appSubnavShellClass =
   'w-full shrink-0 border-0 bg-card/95 backdrop-blur-sm';
 
 /** Fixed flush under main app top bar (overlap header border-b by 1px) */
-export const p360FixedShellClass = 'shrink-0 border-b border-border/80 bg-card/95 backdrop-blur-sm sticky top-[var(--app-topbar-h,2.5rem)] z-40 border-t-0';
+export const p360FixedShellClass = 'shrink-0 border-b border-border/80 bg-card/95 backdrop-blur-sm sticky top-[var(--app-topbar-h,2.5rem)] z-40 border-t-0 shadow-none';
 
 /** @deprecated use fixed — kept for type compat */
 export const p360StackedShellClass = cn(appSubnavShellClass, 'relative z-30 border-t-0');
@@ -43,12 +43,11 @@ export const P360_TABLE_HEAD_TEXT = P360_TABLE_TEXT;
 /** Detail section tabs — same border on every tab; active = tint only */
 export const p360TabClass = (active, disabled = false) =>
   cn(
-    'inline-flex shrink-0 items-center justify-center gap-1 rounded-none border-b border-border/80 px-2.5 transition-colors',
-    APP_NAV_ROW,
+    'inline-flex shrink-0 items-center justify-center gap-1 rounded-none px-3.5 py-2 transition-colors font-medium border-b-2',
     P360_TABLE_TEXT,
     active
-      ? 'bg-primary/10 text-foreground'
-      : 'bg-muted/15 text-muted-foreground hover:bg-muted/35 hover:text-foreground',
+      ? 'border-primary text-primary bg-primary/5 font-semibold'
+      : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/10',
     disabled && 'pointer-events-none opacity-40'
   );
 /** Inner cell: fixed h-8 row, centered text, horizontal ellipsis only (no vertical clip). */
@@ -80,7 +79,8 @@ export const p360ControlClass = cn(
   APP_NAV_ROW,
   APP_NAV_TEXT,
   'rounded-none border border-border/80 bg-background px-3 shadow-none',
-  'placeholder:text-muted-foreground/70 focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/25'
+  'placeholder:text-muted-foreground/70 focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/25',
+  'inline-flex items-center whitespace-nowrap truncate overflow-hidden'
 );
 
 export const p360CardClass =

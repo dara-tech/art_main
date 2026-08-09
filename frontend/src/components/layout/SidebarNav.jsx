@@ -72,25 +72,20 @@ export default function SidebarNav() {
     return cn(
       'flex items-center gap-2.5 px-3 py-2 transition-all duration-200 cursor-pointer text-xs font-semibold relative outline-none focus:outline-none border-0',
       isActive
-        ? 'bg-card text-foreground rounded-l-xl rounded-r-none border-t border-b border-l border-border/25 mr-[-1px] z-10 ' +
-          'before:content-[""] before:absolute before:right-0 before:-top-[12px] before:size-[12px] before:rounded-br-xl before:shadow-[3px_3px_0_3px_var(--card)] ' +
-          'after:content-[""] after:absolute after:right-0 after:-bottom-[12px] after:size-[12px] after:rounded-tr-xl after:shadow-[3px_-3px_0_3px_var(--card)]'
-        : 'text-white/70 hover:bg-white/5 hover:text-white rounded-xl mr-3'
+        ? 'bg-card text-foreground font-bold border-l-2 border-l-primary rounded-none mr-[-1px] z-10'
+        : 'text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground rounded-none mr-2'
     );
   };
 
   return (
     <aside
-      className="w-56 shrink-0 flex flex-col border-r border-border/10 py-3 pl-3 pr-0 select-none transition-all duration-300 overflow-y-auto no-scrollbar"
-      style={{ backgroundColor: sidebarBg }}
+      className="w-56 shrink-0 flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground py-3 pl-3 pr-0 select-none transition-all duration-300 overflow-y-auto no-scrollbar"
     >
       {/* Brand logo */}
-      <div className="flex items-center gap-2 px-3 py-3 mb-2 border-b border-white/5 mr-3 shrink-0">
-        <span className="bg-teal-600 text-white text-[10px] font-black px-2 py-0.5 rounded tracking-wider">
-          ART
-        </span>
-        <span className="text-white text-xs font-bold tracking-tight">ART Portal</span>
-      </div>
+      <NavLink to="/dashboard" className="flex items-center gap-2 px-3 py-2 mb-2 border-b border-sidebar-border mr-3 shrink-0 select-none">
+        <img src="/logo.png" alt="NCHADS Logo" className="h-6 w-auto object-contain shrink-0" />
+        <span className="text-xs font-bold text-sidebar-foreground tracking-tight">ART Portal</span>
+      </NavLink>
 
       {/* Nav Links Container */}
       <nav className="flex flex-col gap-1 flex-1 font-khmer pr-1" aria-label="Sidebar">
@@ -100,7 +95,7 @@ export default function SidebarNav() {
           <button
             type="button"
             onClick={() => toggleGroup('dashboards')}
-            className="flex items-center justify-between px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/50 hover:text-white transition-colors mr-3"
+            className="flex items-center justify-between px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/50 hover:text-sidebar-foreground transition-colors mr-3"
           >
             <span>ផ្ទាំងព័ត៌មាន (Dashboards)</span>
             {openGroups.dashboards ? <RiArrowDownSLine className="size-3.5 opacity-60" /> : <RiArrowRightSLine className="size-3.5 opacity-60" />}
@@ -144,7 +139,7 @@ export default function SidebarNav() {
               <button
                 type="button"
                 onClick={() => toggleGroup('patients')}
-                className="flex items-center justify-between px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/50 hover:text-white transition-colors mr-3"
+                className="flex items-center justify-between px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/50 hover:text-sidebar-foreground transition-colors mr-3"
               >
                 <span>អ្នកជំងឺ (Patient 360°)</span>
                 {openGroups.patients ? <RiArrowDownSLine className="size-3.5 opacity-60" /> : <RiArrowRightSLine className="size-3.5 opacity-60" />}
@@ -169,7 +164,7 @@ export default function SidebarNav() {
               <button
                 type="button"
                 onClick={() => toggleGroup('forms')}
-                className="flex items-center justify-between px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/50 hover:text-white transition-colors mr-3"
+                className="flex items-center justify-between px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/50 hover:text-sidebar-foreground transition-colors mr-3"
               >
                 <span>ទម្រង់អ្នកជំងឺ (Forms)</span>
                 {openGroups.forms ? <RiArrowDownSLine className="size-3.5 opacity-60" /> : <RiArrowRightSLine className="size-3.5 opacity-60" />}
@@ -200,7 +195,7 @@ export default function SidebarNav() {
               <button
                 type="button"
                 onClick={() => toggleGroup('data')}
-                className="flex items-center justify-between px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/50 hover:text-white transition-colors mr-3"
+                className="flex items-center justify-between px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/50 hover:text-sidebar-foreground transition-colors mr-3"
               >
                 <span>វិភាគទិន្នន័យ (Data)</span>
                 {openGroups.data ? <RiArrowDownSLine className="size-3.5 opacity-60" /> : <RiArrowRightSLine className="size-3.5 opacity-60" />}

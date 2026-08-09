@@ -1,5 +1,6 @@
--- Indicator 3: Newly Enrolled - Detailed Records (matching aggregate logic)
+-- Indicator 3: Newly Enrolled - Detailed Records
 SELECT
+    p.site_code as site_code,
     p.ClinicID as clinicid,
     art.ART as art_number,
     p.Sex as sex,
@@ -32,23 +33,23 @@ SELECT
         'Active'
     ) as patient_status
 FROM tblaimain p 
-LEFT OUTER JOIN tblaart art ON p.ClinicID = art.ClinicID
+LEFT OUTER JOIN tblaart art ON p.ClinicID = art.ClinicID AND p.site_code = art.site_code
 LEFT OUTER JOIN (
-    SELECT ClinicID, Status, ROW_NUMBER() OVER (PARTITION BY ClinicID ORDER BY Da DESC) as rn
+    SELECT site_code, ClinicID, Status, ROW_NUMBER() OVER (PARTITION BY site_code, ClinicID ORDER BY Da DESC) as rn
     FROM tblavpatientstatus
     WHERE Da <= :EndDate
-) s ON p.ClinicID = s.ClinicID AND s.rn = 1
+) s ON p.ClinicID = s.ClinicID AND p.site_code = s.site_code AND s.rn = 1
 WHERE 
     p.DafirstVisit BETWEEN :StartDate AND :EndDate 
     AND (p.OffIn IS NULL OR p.OffIn <> :transfer_in_code)
     AND (p.TypeofReturn IS NULL OR p.TypeofReturn = -1)
     AND (p.Refugstatus IS NULL OR p.Refugstatus = -1)
     AND (p.SiteNameold IS NULL OR p.SiteNameold = '')
-GROUP BY p.ClinicID
 
 UNION ALL
 
 SELECT
+    p.site_code as site_code,
     p.ClinicID as clinicid,
     art.ART as art_number,
     p.Sex as sex,
@@ -81,16 +82,15 @@ SELECT
         'Active'
     ) as patient_status
 FROM tblcimain p 
-LEFT OUTER JOIN tblcart art ON p.ClinicID = art.ClinicID
+LEFT OUTER JOIN tblcart art ON p.ClinicID = art.ClinicID AND p.site_code = art.site_code
 LEFT OUTER JOIN (
-    SELECT ClinicID, Status, ROW_NUMBER() OVER (PARTITION BY ClinicID ORDER BY Da DESC) as rn
+    SELECT site_code, ClinicID, Status, ROW_NUMBER() OVER (PARTITION BY site_code, ClinicID ORDER BY Da DESC) as rn
     FROM tblcvpatientstatus
     WHERE Da <= :EndDate
-) s ON p.ClinicID = s.ClinicID AND s.rn = 1
+) s ON p.ClinicID = s.ClinicID AND p.site_code = s.site_code AND s.rn = 1
 WHERE 
     p.DaFirstVisit BETWEEN :StartDate AND :EndDate 
     AND (p.OffIn IS NULL OR p.OffIn <> :transfer_in_code)
     AND (p.LClinicID IS NULL OR p.LClinicID = '')
     AND (p.SiteNameold IS NULL OR p.SiteNameold = '')
-GROUP BY p.ClinicID
 ORDER BY DafirstVisit DESC, clinicid;

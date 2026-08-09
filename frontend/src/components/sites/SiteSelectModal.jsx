@@ -152,9 +152,9 @@ export default function SiteSelectModal({
           type="button"
           onClick={openModal}
           disabled={disabled}
-          className={`${controlClass(compact)} w-full border bg-background px-3 text-left font-medium transition hover:bg-muted/20 disabled:opacity-50`}
+          className={`${controlClass(compact)} w-full border bg-background px-3 text-left font-medium transition hover:bg-muted/20 disabled:opacity-50 inline-flex items-center whitespace-nowrap truncate overflow-hidden`}
         >
-          {selectedLabel || mt.selectPlaceholder}
+          <span className="truncate whitespace-nowrap overflow-hidden flex-1">{selectedLabel || mt.selectPlaceholder}</span>
         </button>
       </div>
 
@@ -352,7 +352,7 @@ export default function SiteSelectModal({
                                       <RiCheckboxBlankCircleLine className="size-5 text-muted-foreground" />
                                     )}
                                   </span>
-                                  <span className="text-sm text-foreground">
+                                  <span className="text-sm text-foreground whitespace-nowrap truncate overflow-hidden flex-1">
                                     {site.code} - {site.name}
                                   </span>
                                 </button>

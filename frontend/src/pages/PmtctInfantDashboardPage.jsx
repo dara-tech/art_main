@@ -11,6 +11,7 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, LabelList, Legend
 } from 'recharts';
 import AppLoadingOverlay from '../components/ui/AppLoadingOverlay';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '../contexts/AuthContext';
 import { useSites } from '../contexts/SitesContext';
 import SiteSelectModal from '../components/sites/SiteSelectModal';
@@ -21,6 +22,12 @@ import Patient360Layout from '../components/patient360/Patient360Layout';
 import { VizToolbarBtn } from '../components/visualize/visualizeToolbarUi';
 import { TOOLBAR_ICON } from '../components/layout/toolbarIconColors';
 import { infantReportApi } from '../services/reportingApi';
+import PmtctCascadeView from '../components/dashboard/pmtct/PmtctCascadeView';
+import PmtctTestingView from '../components/dashboard/pmtct/PmtctTestingView';
+import PmtctCohortView from '../components/dashboard/pmtct/PmtctCohortView';
+import PmtctOutcomesView from '../components/dashboard/pmtct/PmtctOutcomesView';
+import PmtctSitesPerformanceView from '../components/dashboard/pmtct/PmtctSitesPerformanceView';
+import PmtctDqaView from '../components/dashboard/pmtct/PmtctDqaView';
 
 function getQuarterDates(periodKey = '2026-Q3') {
   const year = Number(periodKey.slice(0, 4)) || 2026;
@@ -39,6 +46,32 @@ export default function PmtctInfantDashboardPage({ onLogout }) {
   const { sites } = useSites();
 
   const [siteCode, setSiteCode] = useState('ALL');
+
+  const sexLabelMap = {
+    ALL: 'គ្រប់ភេទ (All Sexes)',
+    MALE: 'ប្រុស (Male Only)',
+    FEMALE: 'ស្រី (Female Only)'
+  };
+
+  const dashboardLabelMap = {
+    pmtct: 'PNTT / PMTCT Infant (ទារក EID / ម្តាយទៅកូន)',
+    program: 'Performance Program (សកម្មភាពកម្មវិធី)',
+    kp: 'Key Population KP (វិភាគក្រុមប្រជាជនគន្លឹះ KP)',
+    sites: 'Sites Performance (សមត្ថកិច្ចមន្ទីរពេទ្យ)',
+    doctors: 'Top Doctors (គ្រូពេទ្យកំពូល)',
+    targets: 'National Target (គោលដៅជាតិ 95-95-95)',
+    dqa: 'Site DQA (គុណភាពទិន្នន័យ DQA)',
+    period_comparison: 'Period-to-Period Comparison (ការប្រៀបធៀបតាមកាលបរិច្ឆេទ)'
+  };
+
+  const infantViewLabelMap = {
+    cascade: 'Infant EID Cascade (លំហូរពិនិត្យទារក EID)',
+    testing: 'Infant DNA PCR Testing (ការធ្វើតេស្ត DNA PCR)',
+    cohort: 'Infant Cohort & Cotrim (ការថែទាំ & ឱសថ Cotrim)',
+    outcomes: 'Infant Outcomes (ការចាកចេញពីការថែទាំ)',
+    sites_performance: 'Sites Performance (សមត្ថកិច្ចមន្ទីរពេទ្យ EID)',
+    data_issues: 'Data Quality & Issues (គុណភាពទិន្នន័យ & បញ្ហា DQA)'
+  };
 
   useEffect(() => {
     if (sites && sites.length > 0 && (siteCode === 'ALL' || !siteCode)) {
@@ -626,55 +659,59 @@ export default function PmtctInfantDashboardPage({ onLogout }) {
 
             {/* Sex / Gender Filter Dropdown */}
             <div className="relative inline-flex items-center shrink-0">
-              <select
-                value={selectedSex}
-                onChange={(e) => setSelectedSex(e.target.value)}
-                className="bg-card border border-border/80 text-foreground text-xs font-bold px-2.5 py-1.5 focus:outline-none focus:border-primary shrink-0 cursor-pointer shadow-xs font-khmer"
-                aria-label="Filter by Sex"
-              >
-                <option value="ALL">គ្រប់ភេទ (All Sexes)</option>
-                <option value="MALE">ប្រុស (Male Only)</option>
-                <option value="FEMALE">ស្រី (Female Only)</option>
-              </select>
+              <Select value={selectedSex} onValueChange={setSelectedSex}>
+                <SelectTrigger className="h-8 w-fit min-w-[140px] bg-card border border-border/80 text-foreground text-xs font-bold px-2.5 rounded-none focus:ring-0 focus:ring-offset-0 focus:outline-none shrink-0 shadow-xs">
+                  <SelectValue>{sexLabelMap[selectedSex]}</SelectValue>
+                </SelectTrigger>
+                <SelectContent className="p-1 rounded-none text-xs min-w-[140px]">
+                  <SelectItem value="ALL" className="px-3 py-2 rounded-none text-xs cursor-pointer">គ្រប់ភេទ (All Sexes)</SelectItem>
+                  <SelectItem value="MALE" className="px-3 py-2 rounded-none text-xs cursor-pointer">ប្រុស (Male Only)</SelectItem>
+                  <SelectItem value="FEMALE" className="px-3 py-2 rounded-none text-xs cursor-pointer">ស្រី (Female Only)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* MAIN DASHBOARD TYPE SELECTOR */}
             <div className="flex items-center shrink-0">
-              <select
+              <Select
                 value="pmtct"
-                onChange={(e) => {
-                  const val = e.target.value;
+                onValueChange={(val) => {
                   if (val !== 'pmtct') {
                     navigate(`/dashboard?view=${val}`);
                   }
                 }}
-                className="h-8 border border-emerald-500/40 bg-emerald-500/10 px-2 text-xs font-bold text-foreground outline-none cursor-pointer rounded-none hover:border-emerald-500 transition-colors font-khmer shrink-0"
               >
-                <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="pmtct">PNTT / PMTCT Infant (ទារក EID / ម្តាយទៅកូន)</option>
-                <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="program">Performance Program (សកម្មភាពកម្មវិធី)</option>
-                <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="kp">Key Population KP (វិភាគក្រុមប្រជាជនគន្លឹះ KP)</option>
-                <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="sites">Sites Performance (សមត្ថកិច្ចមន្ទីរពេទ្យ)</option>
-                <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="doctors">Top Doctors (គ្រូពេទ្យកំពូល)</option>
-                <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="targets">National Target (គោលដៅជាតិ 95-95-95)</option>
-                <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="dqa">Site DQA (គុណភាពទិន្នន័យ DQA)</option>
-                <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="period_comparison">Period-to-Period Comparison (ការប្រៀបធៀបតាមកាលបរិច្ឆេទ)</option>
-              </select>
+                <SelectTrigger className="h-8 w-fit min-w-[320px] border border-emerald-500/40 bg-emerald-500/10 px-2 text-xs font-bold text-foreground rounded-none focus:ring-0 focus:ring-offset-0 focus:outline-none shrink-0">
+                  <SelectValue>{dashboardLabelMap['pmtct']}</SelectValue>
+                </SelectTrigger>
+                <SelectContent className="p-1 rounded-none text-xs min-w-[320px]">
+                  <SelectItem value="pmtct" className="px-3 py-2 rounded-none text-xs cursor-pointer">PNTT / PMTCT Infant (ទារក EID / ម្តាយទៅកូន)</SelectItem>
+                  <SelectItem value="program" className="px-3 py-2 rounded-none text-xs cursor-pointer">Performance Program (សកម្មភាពកម្មវិធី)</SelectItem>
+                  <SelectItem value="kp" className="px-3 py-2 rounded-none text-xs cursor-pointer">Key Population KP (វិភាគក្រុមប្រជាជនគន្លឹះ KP)</SelectItem>
+                  <SelectItem value="sites" className="px-3 py-2 rounded-none text-xs cursor-pointer">Sites Performance (សមត្ថកិច្ចមន្ទីរពេទ្យ)</SelectItem>
+                  <SelectItem value="doctors" className="px-3 py-2 rounded-none text-xs cursor-pointer">Top Doctors (គ្រូពេទ្យកំពូល)</SelectItem>
+                  <SelectItem value="targets" className="px-3 py-2 rounded-none text-xs cursor-pointer">National Target (គោលដៅជាតិ 95-95-95)</SelectItem>
+                  <SelectItem value="dqa" className="px-3 py-2 rounded-none text-xs cursor-pointer">Site DQA (គុណភាពទិន្នន័យ DQA)</SelectItem>
+                  <SelectItem value="period_comparison" className="px-3 py-2 rounded-none text-xs cursor-pointer">Period-to-Period Comparison (ការប្រៀបធៀបតាមកាលបរិច្ឆេទ)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* INFANT SPECIFIC DATA VIEW SWITCHER DROPDOWN */}
             <div className="flex items-center shrink-0">
-              <select
-                value={infantViewMode}
-                onChange={(e) => setInfantViewMode(e.target.value)}
-                className="h-8 border border-primary/40 bg-primary/10 px-2 text-xs font-bold text-foreground outline-none cursor-pointer rounded-none hover:border-primary transition-colors font-khmer shrink-0"
-              >
-                <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="cascade">Infant EID Cascade (លំហូរពិនិត្យទារក EID)</option>
-                <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="testing">Infant DNA PCR Testing (ការធ្វើតេស្ត DNA PCR)</option>
-                <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="cohort">Infant Cohort & Cotrim (ការថែទាំ & ឱសថ Cotrim)</option>
-                <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="outcomes">Infant Outcomes (ការចាកចេញពីការថែទាំ)</option>
-                <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="sites_performance">Sites Performance (សមត្ថកិច្ចមន្ទីរពេទ្យ EID)</option>
-                <option className="bg-card text-foreground dark:bg-[#18181b] dark:text-white" value="data_issues">Data Quality & Issues (គុណភាពទិន្នន័យ & បញ្ហា DQA)</option>
-              </select>
+              <Select value={infantViewMode} onValueChange={setInfantViewMode}>
+                <SelectTrigger className="h-8 w-fit min-w-[320px] border border-primary/40 bg-primary/10 px-2 text-xs font-bold text-foreground rounded-none focus:ring-0 focus:ring-offset-0 focus:outline-none shrink-0">
+                  <SelectValue>{infantViewLabelMap[infantViewMode]}</SelectValue>
+                </SelectTrigger>
+                <SelectContent className="p-1 rounded-none text-xs min-w-[320px]">
+                  <SelectItem value="cascade" className="px-3 py-2 rounded-none text-xs cursor-pointer">Infant EID Cascade (លំហូរពិនិត្យទារក EID)</SelectItem>
+                  <SelectItem value="testing" className="px-3 py-2 rounded-none text-xs cursor-pointer">Infant DNA PCR Testing (ការធ្វើតេស្ត DNA PCR)</SelectItem>
+                  <SelectItem value="cohort" className="px-3 py-2 rounded-none text-xs cursor-pointer">Infant Cohort & Cotrim (ការថែទាំ & ឱសថ Cotrim)</SelectItem>
+                  <SelectItem value="outcomes" className="px-3 py-2 rounded-none text-xs cursor-pointer">Infant Outcomes (ការចាកចេញពីការថែទាំ)</SelectItem>
+                  <SelectItem value="sites_performance" className="px-3 py-2 rounded-none text-xs cursor-pointer">Sites Performance (សមត្ថកិច្ចមន្ទីរពេទ្យ EID)</SelectItem>
+                  <SelectItem value="data_issues" className="px-3 py-2 rounded-none text-xs cursor-pointer">Data Quality & Issues (គុណភាពទិន្នន័យ & បញ្ហា DQA)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
           </div>
@@ -779,416 +816,49 @@ export default function PmtctInfantDashboardPage({ onLogout }) {
               </div>
             </div>
 
-            {/* DYNAMIC SMART VIEW SWITCHER RENDER */}
-            {infantViewMode === 'sites_performance' ? (
-              /* VIEW 5: SITES PERFORMANCE RANKING VIEW */
-              <div className="border border-border/80 bg-card p-4 shadow-xs space-y-4">
-                <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
-                  <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                    <RiBuilding4Line className="size-4 text-emerald-500" /> សមត្ថកិច្ចមន្ទីរពេទ្យ EID (Infant EID Sites Performance Ranking)
-                  </h3>
-                  <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5">EID Sites Ranking</span>
-                </div>
-                <div className="h-80 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={inlineBreakdownChartData} margin={{ top: 25, right: 15, left: -15, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                      <XAxis dataKey="name" tick={{ fontSize: 9, fontWeight: '700', fill: 'currentColor' }} className="text-muted-foreground" />
-                      <YAxis tick={{ fontSize: 10, fill: 'currentColor' }} className="text-muted-foreground" />
-                      <Tooltip
-                        cursor={{ fill: 'rgba(16,185,129,0.1)' }}
-                        content={({ active, payload }) => {
-                          if (!active || !payload || !payload.length) return null;
-                          const d = payload[0].payload;
-                          return (
-                            <div className="bg-slate-900 border border-slate-700 p-2.5 text-xs text-white shadow-xl font-khmer">
-                              <div className="font-bold border-b border-slate-700 pb-1 mb-1 text-emerald-400">{d.name}</div>
-                              <div>ប្រុស (Male): <strong className="text-sky-400">{(d.male || 0).toLocaleString()} ទារក</strong></div>
-                              <div>ស្រី (Female): <strong className="text-pink-400">{(d.female || 0).toLocaleString()} ទារក</strong></div>
-                              <div className="pt-1 mt-1 border-t border-slate-800 text-slate-300 font-bold">សរុប: {(d.value || 0).toLocaleString()} ទារក</div>
-                            </div>
-                          );
-                        }}
-                      />
-                      <Bar dataKey="value" name="សរុបទារក (Total)" fill="#10b981" radius={[4, 4, 0, 0]} onClick={(entry) => handleBreakdownBarClick(entry)} className="cursor-pointer">
-                        <LabelList dataKey="value" position="top" style={{ fontSize: '10px', fontWeight: '800', fill: 'currentColor' }} formatter={(v) => (v > 0 ? v.toLocaleString() : '')} />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            ) : infantViewMode === 'data_issues' ? (
-              /* VIEW 6: ALL-CASCADE FULL COVERAGE DQA AUDIT SUITE */
-              <div className="border border-border/80 bg-card p-4 shadow-xs space-y-4 font-khmer">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-border/60 pb-2.5 gap-2">
-                  <div>
-                    <h3 className="text-xs font-bold text-rose-500 flex items-center gap-1.5">
-                      <RiAlertLine className="size-4 text-rose-500" /> សវនកម្មគុណភាពទិន្នន័យ DQA គ្រប់ដំណាក់កាល EID Cascade (All-Cascade DQA Audit)
-                    </h3>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">DQA Detection Audit across all 18 EID Indicators and Cascade stages</p>
-                  </div>
-                  
-                  {/* CASCADE STAGE FILTER TABS */}
-                  <div className="flex items-center gap-1 bg-muted/40 p-1 border border-border/60 text-[10px] font-bold">
-                    <button
-                      onClick={() => setDqaCategoryFilter('ALL')}
-                      className={`px-2 py-0.5 transition-colors ${dqaCategoryFilter === 'ALL' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                    >
-                      គ្រប់ដំណាក់កាល ({dqaMetrics.fullIssueList.length})
-                    </button>
-                    <button
-                      onClick={() => setDqaCategoryFilter('enrollment')}
-                      className={`px-2 py-0.5 transition-colors ${dqaCategoryFilter === 'enrollment' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                    >
-                      ការចុះឈ្មោះ
-                    </button>
-                    <button
-                      onClick={() => setDqaCategoryFilter('prophylaxis')}
-                      className={`px-2 py-0.5 transition-colors ${dqaCategoryFilter === 'prophylaxis' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                    >
-                      ឱសថ Cotrim
-                    </button>
-                    <button
-                      onClick={() => setDqaCategoryFilter('testing')}
-                      className={`px-2 py-0.5 transition-colors ${dqaCategoryFilter === 'testing' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                    >
-                      តេស្ត PCR
-                    </button>
-                    <button
-                      onClick={() => setDqaCategoryFilter('outcomes')}
-                      className={`px-2 py-0.5 transition-colors ${dqaCategoryFilter === 'outcomes' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                    >
-                      លទ្ធផល/ចាកចេញ
-                    </button>
-                  </div>
-                </div>
-
-                {/* 10 SMART CASCADE DQA AUDIT CARDS */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-                  {dqaMetrics.filteredIssues.map((issue) => (
-                    <div
-                      key={issue.id}
-                      onClick={() => handleOpenIndicatorDetail(infantIndicators.find(i => i.id === issue.indId))}
-                      className="border border-border/80 bg-card hover:border-primary/50 p-2.5 cursor-pointer transition-colors space-y-1 shadow-2xs group"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-[9px] font-mono font-bold text-muted-foreground group-hover:text-primary">{issue.code}</span>
-                        <span className={`text-[8px] font-bold px-1 py-0.5 rounded-none ${issue.severity === 'High' ? 'bg-rose-500/20 text-rose-400' : issue.severity === 'Medium' ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400'}`}>
-                          {issue.severity}
-                        </span>
-                      </div>
-                      <div className="text-[11px] font-bold text-foreground truncate">{issue.label}</div>
-                      <div className="text-base font-extrabold text-foreground group-hover:text-primary">{issue.count.toLocaleString()} <span className="text-[9px] text-muted-foreground font-normal">ទារក</span></div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* CASCADE DQA AUDIT TABLE */}
-                <div className="border border-border/60 bg-card overflow-hidden">
-                  <div className="flex items-center justify-between border-b border-border/60 px-4 py-2.5 bg-muted/20">
-                    <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                      <RiTableLine className="size-4 text-primary" /> តារាងសវនកម្ម DQA គ្រប់សូចនាករទាំង ១៨ (All 18 Cascade Indicators DQA Audit Table)
-                    </h4>
-                    <span className="text-[10px] text-muted-foreground">ចុចលើជួរដេកដើម្បីទាញយកបញ្ជីឈ្មោះទារកក្នុង SQL</span>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-border/60 bg-muted/40 text-muted-foreground font-bold">
-                          <th className="px-3.5 py-2">ល.រ</th>
-                          <th className="px-3.5 py-2">កូដ DQA</th>
-                          <th className="px-3.5 py-2">ដំណាក់កាល Cascade</th>
-                          <th className="px-3.5 py-2">សូចនាករ DQA audit (Cascade Indicator Audit)</th>
-                          <th className="px-3.5 py-2">កម្រិត (Severity)</th>
-                          <th className="px-3.5 py-2 text-right">ចំនួនករណី (Count)</th>
-                          <th className="px-3.5 py-2 text-right">សកម្មភាព (Action)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/40">
-                        {dqaMetrics.filteredIssues.map((issue, idx) => (
-                          <tr
-                            key={issue.id}
-                            onClick={() => handleOpenIndicatorDetail(infantIndicators.find(i => i.id === issue.indId))}
-                            className="hover:bg-primary/5 cursor-pointer transition-colors group"
-                          >
-                            <td className="px-3.5 py-2 font-mono text-muted-foreground">{idx + 1}</td>
-                            <td className="px-3.5 py-2 font-mono font-bold text-primary">{issue.code}</td>
-                            <td className="px-3.5 py-2 font-semibold text-muted-foreground capitalize">{issue.stage}</td>
-                            <td className="px-3.5 py-2 font-bold text-foreground group-hover:text-primary">{issue.label}</td>
-                            <td className="px-3.5 py-2">
-                              <span className={`text-[9px] font-bold px-1.5 py-0.5 ${issue.severity === 'High' ? 'bg-rose-500/20 text-rose-400' : issue.severity === 'Medium' ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400'}`}>
-                                {issue.severity}
-                              </span>
-                            </td>
-                            <td className="px-3.5 py-2 text-right font-mono font-bold text-foreground">{issue.count.toLocaleString()} ទារក</td>
-                            <td className="px-3.5 py-2 text-right text-primary font-bold text-[11px] group-hover:underline">
-                              មើលទិន្នន័យ SQL ➔
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-              </div>
-            ) : infantViewMode === 'testing' ? (
-              /* VIEW 2: SMART INFANT DNA PCR TESTING VIEW */
-              <div className="border border-border/80 bg-card p-4 shadow-xs space-y-3">
-                <div className="flex items-center justify-between border-b border-border/60 pb-2">
-                  <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                    <RiBarChartGroupedFill className="size-4 text-pink-500" /> Smart Chart: ការប្រៀបធៀបតេស្ត DNA PCR ដំបូង និង តេស្តបញ្ជាក់ (Initial vs Confirmatory PCR Tests)
-                  </h3>
-                  <span className="text-[10px] font-bold text-pink-500 bg-pink-500/10 px-2 py-0.5">💡 ចុចលើរបារដើម្បីមើលបញ្ជីឈ្មោះទារក</span>
-                </div>
-                <div className="h-72 w-full pt-2">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={testingStageData} margin={{ top: 25, right: 15, left: -15, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                      <XAxis dataKey="stage" tick={{ fontSize: 9, fontWeight: '700', fill: 'currentColor' }} className="text-muted-foreground" />
-                      <YAxis tick={{ fontSize: 10, fill: 'currentColor' }} className="text-muted-foreground" />
-                      <Tooltip
-                        cursor={{ fill: 'rgba(236,72,153,0.1)' }}
-                        content={({ active, payload }) => {
-                          if (!active || !payload || !payload.length) return null;
-                          const d = payload[0].payload;
-                          return (
-                            <div className="bg-slate-900 border border-slate-700 p-2.5 text-xs text-white shadow-xl font-khmer">
-                              <div className="font-bold border-b border-slate-700 pb-1 mb-1 text-pink-400">{d.stage}</div>
-                              <div>តេស្តដំបូង (Initial): <strong className="text-sky-400">{d.initial.toLocaleString()} ទារក</strong></div>
-                              <div>តេស្តបញ្ជាក់ (Confirmatory): <strong className="text-rose-400">{d.confirm.toLocaleString()} ទារក</strong></div>
-                            </div>
-                          );
-                        }}
-                      />
-                      <Bar dataKey="initial" name="តេស្តដំបូង (Initial)" fill="#3b82f6" radius={[4, 4, 0, 0]} onClick={(entry) => handleOpenIndicatorDetail(entry.initInd)} className="cursor-pointer">
-                        <LabelList dataKey="initial" position="center" style={{ fontSize: '9px', fontWeight: '800', fill: '#ffffff' }} formatter={(v) => (v > 0 ? v.toLocaleString() : '')} />
-                      </Bar>
-                      <Bar dataKey="confirm" name="តេស្តបញ្ជាក់ (Confirmatory)" fill="#f43f5e" radius={[4, 4, 0, 0]} onClick={(entry) => handleOpenIndicatorDetail(entry.confInd)} className="cursor-pointer">
-                        <LabelList dataKey="confirm" position="center" style={{ fontSize: '9px', fontWeight: '800', fill: '#ffffff' }} formatter={(v) => (v > 0 ? v.toLocaleString() : '')} />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            ) : infantViewMode === 'cohort' ? (
-              /* VIEW 3: SMART INFANT COHORT VIEW */
-              <div className="border border-border/80 bg-card p-4 shadow-xs space-y-3">
-                <div className="flex items-center justify-between border-b border-border/60 pb-2">
-                  <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                    <RiBarChartGroupedFill className="size-4 text-emerald-500" /> Smart Chart: ការថែទាំទារក & ឱសថ Cotrimoxazole (Infant Cohort & Prophylaxis)
-                  </h3>
-                  <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5">💡 ចុចលើរបារដើម្បីមើលបញ្ជីឈ្មោះទារក</span>
-                </div>
-                <div className="h-72 w-full pt-2">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={cohortStageData} margin={{ top: 25, right: 15, left: -15, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                      <XAxis dataKey="name" tick={{ fontSize: 9, fontWeight: '700', fill: 'currentColor' }} className="text-muted-foreground" />
-                      <YAxis tick={{ fontSize: 10, fill: 'currentColor' }} className="text-muted-foreground" />
-                      <Tooltip
-                        cursor={{ fill: 'rgba(16,185,129,0.1)' }}
-                        content={({ active, payload }) => {
-                          if (!active || !payload || !payload.length) return null;
-                          const d = payload[0].payload;
-                          return (
-                            <div className="bg-slate-900 border border-slate-700 p-2.5 text-xs text-white shadow-xl font-khmer">
-                              <div className="font-bold border-b border-slate-700 pb-1 mb-1 text-emerald-400">{d.name}</div>
-                              <div>ប្រុស (Male): <strong className="text-sky-400">{d.male.toLocaleString()} ទារក</strong></div>
-                              <div>ស្រី (Female): <strong className="text-pink-400">{d.female.toLocaleString()} ទារក</strong></div>
-                              <div className="pt-1 mt-1 border-t border-slate-800 text-slate-300 font-bold">សរុប: {d.total.toLocaleString()} ទារក</div>
-                            </div>
-                          );
-                        }}
-                      />
-                      <Bar dataKey="male" name="ប្រុស (Male)" stackId="cohortStack" fill="#3b82f6" radius={[0, 0, 0, 0]}>
-                        <LabelList dataKey="male" position="center" style={{ fontSize: '9px', fontWeight: '800', fill: '#ffffff' }} formatter={(v) => (v > 0 ? v.toLocaleString() : '')} />
-                      </Bar>
-                      <Bar dataKey="female" name="ស្រី (Female)" stackId="cohortStack" fill="#ec4899" radius={[4, 4, 0, 0]} onClick={(entry) => handleOpenIndicatorDetail(entry.ind)} className="cursor-pointer">
-                        <LabelList dataKey="female" position="center" style={{ fontSize: '9px', fontWeight: '800', fill: '#ffffff' }} formatter={(v) => (v > 0 ? v.toLocaleString() : '')} />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            ) : infantViewMode === 'outcomes' ? (
-              /* VIEW 4: SMART INFANT OUTCOMES VIEW */
-              <div className="border border-border/80 bg-card p-4 shadow-xs space-y-3">
-                <div className="flex items-center justify-between border-b border-border/60 pb-2">
-                  <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                    <RiBarChartGroupedFill className="size-4 text-rose-500" /> Smart Chart: លទ្ធផលនៃការថែទាំទារក & ការចាកចេញ (Infant Retention & Outcomes)
-                  </h3>
-                  <span className="text-[10px] font-bold text-rose-500 bg-rose-500/10 px-2 py-0.5">💡 ចុចលើរបារដើម្បីមើលបញ្ជីឈ្មោះទារក</span>
-                </div>
-                <div className="h-72 w-full pt-2">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={outcomesStageData} margin={{ top: 25, right: 15, left: -15, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                      <XAxis dataKey="name" tick={{ fontSize: 9, fontWeight: '700', fill: 'currentColor' }} className="text-muted-foreground" />
-                      <YAxis tick={{ fontSize: 10, fill: 'currentColor' }} className="text-muted-foreground" />
-                      <Tooltip
-                        cursor={{ fill: 'rgba(239,68,68,0.1)' }}
-                        content={({ active, payload }) => {
-                          if (!active || !payload || !payload.length) return null;
-                          const d = payload[0].payload;
-                          return (
-                            <div className="bg-slate-900 border border-slate-700 p-2.5 text-xs text-white shadow-xl font-khmer">
-                              <div className="font-bold border-b border-slate-700 pb-1 mb-1 text-rose-400">{d.name}</div>
-                              <div>ប្រុស (Male): <strong className="text-sky-400">{d.male.toLocaleString()} ទារក</strong></div>
-                              <div>ស្រី (Female): <strong className="text-pink-400">{d.female.toLocaleString()} ទារក</strong></div>
-                              <div className="pt-1 mt-1 border-t border-slate-800 text-slate-300 font-bold">សរុប: {d.total.toLocaleString()} ទារក</div>
-                            </div>
-                          );
-                        }}
-                      />
-                      <Bar dataKey="male" name="ប្រុស (Male)" stackId="outcomesStack" fill="#3b82f6" radius={[0, 0, 0, 0]}>
-                        <LabelList dataKey="male" position="center" style={{ fontSize: '9px', fontWeight: '800', fill: '#ffffff' }} formatter={(v) => (v > 0 ? v.toLocaleString() : '')} />
-                      </Bar>
-                      <Bar dataKey="female" name="ស្រី (Female)" stackId="outcomesStack" fill="#ef4444" radius={[4, 4, 0, 0]} onClick={(entry) => handleOpenIndicatorDetail(entry.ind)} className="cursor-pointer">
-                        <LabelList dataKey="female" position="center" style={{ fontSize: '9px', fontWeight: '800', fill: '#ffffff' }} formatter={(v) => (v > 0 ? v.toLocaleString() : '')} />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            ) : (
-              /* VIEW 1: DUAL SMART CHARTS GRID FOR EID CASCADE VIEW */
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                
-                {/* Chart 1: MAIN INFANT EID CASCADE STACKED BAR CHART */}
-                <div className="relative lg:col-span-6 border border-border/80 bg-card p-4 shadow-xs flex flex-col justify-between overflow-hidden">
-                  {loading && (
-                    <AppLoadingOverlay
-                      show={loading}
-                      fullScreen={false}
-                      message="កំពុងផ្ទុកទិន្នន័យ Chart..."
-                      submessage="Updating Infant EID Cascade"
-                    />
-                  )}
-                  <div className="flex items-center justify-between border-b border-border/60 pb-2.5 mb-2">
-                    <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                      <RiBarChartGroupedFill className="size-4 text-blue-500" /> Smart Chart: គំនូសតាងលំហូរពិនិត្យទារក EID (Infant Cascade Stacked)
-                    </h3>
-                    <div className="flex items-center gap-2 text-[10px] font-bold">
-                      <span className="flex items-center gap-1 text-blue-500"><span className="size-2 bg-blue-500 rounded-full inline-block" /> &lt;2m</span>
-                      <span className="flex items-center gap-1 text-emerald-500"><span className="size-2 bg-emerald-500 rounded-full inline-block" /> &gt;=2m</span>
-                    </div>
-                  </div>
-                  <div className="h-72 w-full pt-2">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={eidCascadeData} margin={{ top: 25, right: 15, left: -15, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                        <XAxis dataKey="name" tick={{ fontSize: 9, fontWeight: '700', fill: 'currentColor' }} className="text-muted-foreground" />
-                        <YAxis tick={{ fontSize: 10, fill: 'currentColor' }} className="text-muted-foreground" />
-                        <Tooltip
-                          cursor={{ fill: 'rgba(59,130,246,0.1)' }}
-                          content={({ active, payload }) => {
-                            if (!active || !payload || !payload.length) return null;
-                            const d = payload[0].payload;
-                            return (
-                              <div className="bg-slate-900 border border-slate-700 p-2.5 text-xs text-white shadow-xl font-khmer">
-                                <div className="font-bold border-b border-slate-700 pb-1 mb-1 text-sky-300">{d.name} ({d.subtitle})</div>
-                                <div>អាយុ &lt; 2m: <strong className="text-sky-400">{d.less2m.toLocaleString()} ទារក</strong></div>
-                                <div>អាយុ &gt;= 2m: <strong className="text-emerald-400">{d.great2m.toLocaleString()} ទារក</strong></div>
-                                <div className="pt-1 mt-1 border-t border-slate-800 text-slate-300 font-bold">សរុប: {d.value.toLocaleString()} ទារក</div>
-                                <div className="text-[10px] text-sky-300 mt-1">💡 ចុចលើរបារនេះដើម្បីប្តូរព័ត៌មានបំបែកតាមមណ្ឌលខាងស្តាំ</div>
-                              </div>
-                            );
-                          }}
-                        />
-                        <Bar
-                          dataKey="less2m"
-                          name="អាយុ < 2m"
-                          stackId="cascadeStack"
-                          fill="#3b82f6"
-                          radius={[0, 0, 0, 0]}
-                          onClick={(entry, index) => handleCascadeBarClick(entry, index)}
-                          className="cursor-pointer"
-                        >
-                          <LabelList dataKey="less2m" position="center" style={{ fontSize: '9px', fontWeight: '800', fill: '#ffffff' }} formatter={(v) => (v > 0 ? v.toLocaleString() : '')} />
-                        </Bar>
-                        <Bar
-                          dataKey="great2m"
-                          name="អាយុ >= 2m"
-                          stackId="cascadeStack"
-                          fill="#10b981"
-                          radius={[4, 4, 0, 0]}
-                          onClick={(entry, index) => handleCascadeBarClick(entry, index)}
-                          className="cursor-pointer"
-                        >
-                          <LabelList dataKey="great2m" position="center" style={{ fontSize: '9px', fontWeight: '800', fill: '#ffffff' }} formatter={(v) => (v > 0 ? v.toLocaleString() : '')} />
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* Chart 2: INLINE BREAKDOWN STACKED BAR CHART */}
-                <div className="relative lg:col-span-6 border border-border/80 bg-card p-4 shadow-xs flex flex-col justify-between overflow-hidden">
-                  {loading && (
-                    <AppLoadingOverlay
-                      show={loading}
-                      fullScreen={false}
-                      message="កំពុងផ្ទុកទិន្នន័យ Breakdown Chart..."
-                      submessage="Updating Real Gender Figures"
-                    />
-                  )}
-                  <div className="flex items-center justify-between border-b border-border/60 pb-2.5 mb-2">
-                    <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                      <RiBuilding4Line className="size-4 text-emerald-500" />
-                      {currentHierarchyLevel === 'country'
-                        ? `បំបែកតាមខេត្ត & ភេទ (Province Stacked by Sex) — ${eidCascadeData[selectedCascadeIndex]?.name}`
-                        : currentHierarchyLevel === 'province'
-                        ? `បំបែកតាមមណ្ឌល & ភេទ (Site Stacked by Sex) — ${eidCascadeData[selectedCascadeIndex]?.name}`
-                        : `បំបែកតាមក្រុមអាយុ (Age & Sex Stacked)`}
-                    </h3>
-                    <div className="flex items-center gap-2 text-[10px] font-bold">
-                      <span className="flex items-center gap-1 text-sky-500"><span className="size-2 bg-sky-500 rounded-full inline-block" /> ប្រុស (Male)</span>
-                      <span className="flex items-center gap-1 text-pink-500"><span className="size-2 bg-pink-500 rounded-full inline-block" /> ស្រី (Female)</span>
-                    </div>
-                  </div>
-                  <div className="h-72 w-full pt-2">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={inlineBreakdownChartData} margin={{ top: 25, right: 15, left: -15, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                        <XAxis dataKey="name" tick={{ fontSize: 9, fontWeight: '700', fill: 'currentColor' }} className="text-muted-foreground" />
-                        <YAxis tick={{ fontSize: 10, fill: 'currentColor' }} className="text-muted-foreground" />
-                        <Tooltip
-                          cursor={{ fill: 'rgba(16,185,129,0.1)' }}
-                          content={({ active, payload }) => {
-                            if (!active || !payload || !payload.length) return null;
-                            const d = payload[0].payload;
-                            return (
-                              <div className="bg-slate-900 border border-slate-700 p-2.5 text-xs text-white shadow-xl font-khmer">
-                                <div className="font-bold border-b border-slate-700 pb-1 mb-1 text-emerald-400">{d.name}</div>
-                                <div>ប្រុស (Male): <strong className="text-sky-400">{(d.male || 0).toLocaleString()} ទារក</strong></div>
-                                <div>ស្រី (Female): <strong className="text-pink-400">{(d.female || 0).toLocaleString()} ទារក</strong></div>
-                                <div className="pt-1 mt-1 border-t border-slate-800 text-slate-300 font-bold">សរុប: {(d.value || 0).toLocaleString()} ទារក</div>
-                                <div className="text-[10px] text-emerald-300 mt-1">💡 ចុចលើរបារដើម្បីមើលបញ្ជីឈ្មោះទារកក្នុងមណ្ឌលនេះ</div>
-                              </div>
-                            );
-                          }}
-                        />
-                        <Bar dataKey="male" name="ប្រុស (Male)" stackId="sexStack" fill="#0284c7" radius={[0, 0, 0, 0]}>
-                          <LabelList dataKey="male" position="center" style={{ fontSize: '9px', fontWeight: '800', fill: '#ffffff' }} formatter={(v) => (v > 0 ? v.toLocaleString() : '')} />
-                        </Bar>
-                        <Bar
-                          dataKey="female"
-                          name="ស្រី (Female)"
-                          stackId="sexStack"
-                          fill="#ec4899"
-                          radius={[4, 4, 0, 0]}
-                          onClick={(entry) => handleBreakdownBarClick(entry)}
-                          className="cursor-pointer"
-                        >
-                          <LabelList dataKey="female" position="center" style={{ fontSize: '9px', fontWeight: '800', fill: '#ffffff' }} formatter={(v) => (v > 0 ? v.toLocaleString() : '')} />
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-              </div>
+            {infantViewMode === 'cascade' && (
+              <PmtctCascadeView
+                loading={loading}
+                eidCascadeData={eidCascadeData}
+                selectedCascadeIndex={selectedCascadeIndex}
+                currentHierarchyLevel={currentHierarchyLevel}
+                handleCascadeBarClick={handleCascadeBarClick}
+                handleBreakdownBarClick={handleBreakdownBarClick}
+                inlineBreakdownChartData={inlineBreakdownChartData}
+              />
+            )}
+            {infantViewMode === 'testing' && (
+              <PmtctTestingView
+                testingStageData={testingStageData}
+                handleOpenIndicatorDetail={handleOpenIndicatorDetail}
+              />
+            )}
+            {infantViewMode === 'cohort' && (
+              <PmtctCohortView
+                cohortStageData={cohortStageData}
+                handleOpenIndicatorDetail={handleOpenIndicatorDetail}
+              />
+            )}
+            {infantViewMode === 'outcomes' && (
+              <PmtctOutcomesView
+                outcomesStageData={outcomesStageData}
+                handleOpenIndicatorDetail={handleOpenIndicatorDetail}
+              />
+            )}
+            {infantViewMode === 'sites_performance' && (
+              <PmtctSitesPerformanceView
+                inlineBreakdownChartData={inlineBreakdownChartData}
+                handleBreakdownBarClick={handleBreakdownBarClick}
+              />
+            )}
+            {infantViewMode === 'data_issues' && (
+              <PmtctDqaView
+                dqaMetrics={dqaMetrics}
+                dqaCategoryFilter={dqaCategoryFilter}
+                setDqaCategoryFilter={setDqaCategoryFilter}
+                infantIndicators={infantIndicators}
+                handleOpenIndicatorDetail={handleOpenIndicatorDetail}
+              />
             )}
 
             {/* GIS Map Section for Infant EID Catchments */}

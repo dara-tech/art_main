@@ -538,6 +538,9 @@ export default function CambodiaPolygonMap({
   const [hoveredId, setHoveredId] = useState(null); // Primitive string ID to prevent hover re-render flickering
   const [isExpanded, setIsExpanded] = useState(false);
   const [useKhmer, setUseKhmer] = useState(true); // Default to Khmer labels
+  const [showPins, setShowPins] = useState(true);
+  const [showHeatmap, setShowHeatmap] = useState(true);
+  const [showBorders, setShowBorders] = useState(true);
 
   // Fetch official Cambodia ADM1 Provinces (25 Polygons) & ADM2 Districts (197 Polygons)
   useEffect(() => {
@@ -903,6 +906,7 @@ export default function CambodiaPolygonMap({
   const getChoroplethColor = (item, isSelected, isHovered) => {
     if (isSelected) return '#38bdf8'; // Bright Sky Blue when selected
     if (isHovered) return '#f8fafc';  // Crisp White on Hover
+    if (!showHeatmap) return '#1e293b'; // Muted Slate when Heatmap layer is turned OFF
 
     let val = 0;
     if (item.type === 'site') {
@@ -971,8 +975,8 @@ export default function CambodiaPolygonMap({
               key={`path-${item.type}-${item.id}-${idx}`}
               d={item.pathD}
               fill={getChoroplethColor(item, isSelected, isHovered)}
-              stroke={isHovered ? '#ffffff' : isDirectlySelected ? '#38bdf8' : 'rgba(255, 255, 255, 0.25)'}
-              strokeWidth={isHovered ? 1.0 : isDirectlySelected ? 1.0 : 0.3}
+              stroke={showBorders ? (isHovered ? '#ffffff' : isDirectlySelected ? '#38bdf8' : 'rgba(255, 255, 255, 0.25)') : 'transparent'}
+              strokeWidth={showBorders ? (isHovered ? 1.0 : isDirectlySelected ? 1.0 : 0.3) : 0}
               strokeLinejoin="round"
               className="transition-colors duration-100 cursor-pointer hover:brightness-125 pointer-events-auto"
               onMouseEnter={() => setHoveredId(item.id)}
@@ -1024,7 +1028,7 @@ export default function CambodiaPolygonMap({
       )}
 
       {/* LAYER 3 (FRONT-MOST INTERACTIVE TOP LAYER): ALL ART SITE HOSPITAL MEDICAL PIN ICONS ACROSS ALL 25 PROVINCES */}
-      {hierarchyLevel === 'site' && (
+      {(showPins || hierarchyLevel === 'site') && (
         <g className="site-icon-layer">
           {sitePins.map((item, idx) => {
             const pCenter = item.center;
@@ -1158,6 +1162,52 @@ export default function CambodiaPolygonMap({
               >
                 <RiHospitalLine className="size-3.5" />
                 <span>{txt.siteCatchments}</span>
+              </button>
+            </div>
+
+            {/* Interactive Layer Controls Toggle Group */}
+            <div className="flex items-stretch border border-border/80 bg-muted/30 overflow-hidden rounded-none divide-x divide-border/60 shrink-0" title="Map Layer Toggles">
+              <button
+                type="button"
+                onClick={() => setShowPins((prev) => !prev)}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer rounded-none',
+                  showPins
+                    ? 'bg-primary/25 text-primary font-extrabold shadow-sm'
+                    : 'bg-transparent text-muted-foreground/60 hover:text-foreground'
+                )}
+                title="Toggle ART Health Facility Pins Layer"
+              >
+                <RiMapPinLine className="size-3.5" />
+                <span>{useKhmer ? 'មណ្ឌល' : 'Pins'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowHeatmap((prev) => !prev)}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer rounded-none',
+                  showHeatmap
+                    ? 'bg-primary/25 text-primary font-extrabold shadow-sm'
+                    : 'bg-transparent text-muted-foreground/60 hover:text-foreground'
+                )}
+                title="Toggle Epidemiological Choropleth Heatmap"
+              >
+                <RiPulseLine className="size-3.5" />
+                <span>{useKhmer ? 'កម្តៅ' : 'Heatmap'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowBorders((prev) => !prev)}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer rounded-none',
+                  showBorders
+                    ? 'bg-primary/25 text-primary font-extrabold shadow-sm'
+                    : 'bg-transparent text-muted-foreground/60 hover:text-foreground'
+                )}
+                title="Toggle OD & Province Polygon Boundaries"
+              >
+                <RiShieldCheckLine className="size-3.5" />
+                <span>{useKhmer ? 'ព្រំដែន' : 'Borders'}</span>
               </button>
             </div>
 

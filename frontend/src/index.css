@@ -11,45 +11,43 @@
 :root {
   --app-topbar-h: 2.5rem;
   --p360-row-h: 2rem;
-  /* Unified warm paper surface — top nav, page canvas, and cards */
-  --app-surface: oklch(0.995 0.004 82);
-  --background: var(--app-surface);
-  --foreground: oklch(0.28 0.022 55);
-  --card: var(--app-surface);
-  --card-foreground: oklch(0.28 0.022 55);
-  --popover: oklch(0.993 0.005 82);
-  --popover-foreground: oklch(0.28 0.022 55);
-  /* Muted terracotta CTA — softer than pure amber */
-  --primary: oklch(0.5 0.13 46);
-  --primary-foreground: oklch(0.985 0.006 82);
-  --secondary: oklch(0.945 0.012 78);
-  --secondary-foreground: oklch(0.32 0.02 58);
-  --muted: oklch(0.94 0.01 80);
-  --muted-foreground: oklch(0.46 0.024 58);
-  --accent: oklch(0.94 0.014 76);
-  --accent-foreground: oklch(0.32 0.02 58);
-  --destructive: oklch(0.52 0.2 25);
-  --destructive-foreground: oklch(0.985 0.006 82);
-  --border: oklch(0.9 0.014 76);
-  --input: oklch(0.925 0.012 78);
-  --ring: oklch(0.52 0.12 48);
+  /* Premium Slate Light Mode Theme */
+  --background: oklch(0.985 0.004 240); /* Soft slate white #f8fafc */
+  --foreground: oklch(0.25 0.015 240); /* Deep slate slate-900 */
+  --card: oklch(1 0 0); /* Pure white cards #ffffff */
+  --card-foreground: oklch(0.25 0.015 240);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.25 0.015 240);
+  --primary: oklch(0.45 0.10 240); /* Rich deep executive slate-navy */
+  --primary-foreground: oklch(0.99 0.002 240);
+  --secondary: oklch(0.96 0.005 240); /* soft slate-100 #f1f5f9 */
+  --secondary-foreground: oklch(0.35 0.01 240);
+  --muted: oklch(0.96 0.005 240);
+  --muted-foreground: oklch(0.55 0.015 240); /* slate-500 #64748b */
+  --accent: oklch(0.96 0.005 240);
+  --accent-foreground: oklch(0.25 0.015 240);
+  --destructive: oklch(0.55 0.18 25);
+  --destructive-foreground: oklch(0.99 0.002 240);
+  --border: oklch(0.92 0.008 240); /* Clean slate borders #e2e8f0 */
+  --input: oklch(0.94 0.006 240);
+  --ring: oklch(0.45 0.10 240);
   /* Report table: male / female — dusty tones, not default Tailwind blue/pink */
   --report-male: oklch(0.44 0.09 252);
   --report-female: oklch(0.46 0.11 18);
-  --radius: 0.625rem;
+  --radius: 0px;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.985 0.004 82);
-  --sidebar-foreground: oklch(0.28 0.022 55);
-  --sidebar-primary: oklch(0.5 0.13 46);
-  --sidebar-primary-foreground: oklch(0.985 0.006 82);
-  --sidebar-accent: oklch(0.94 0.01 80);
-  --sidebar-accent-foreground: oklch(0.28 0.022 55);
-  --sidebar-border: oklch(0.9 0.014 76);
-  --sidebar-ring: oklch(0.52 0.12 48);
+  --sidebar: oklch(0.99 0.002 240);
+  --sidebar-foreground: oklch(0.25 0.015 240);
+  --sidebar-primary: oklch(0.45 0.10 240);
+  --sidebar-primary-foreground: oklch(0.99 0.002 240);
+  --sidebar-accent: oklch(0.96 0.005 240);
+  --sidebar-accent-foreground: oklch(0.25 0.015 240);
+  --sidebar-border: oklch(0.92 0.008 240);
+  --sidebar-ring: oklch(0.45 0.10 240);
 }
 
 .dark {
@@ -112,10 +110,22 @@
   --color-ring: var(--ring);
   --color-report-male: var(--report-male);
   --color-report-female: var(--report-female);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --radius-4xl: 0px;
+  --shadow-2xs: none;
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-xl: none;
+  --shadow-2xl: none;
+  --shadow-inner: none;
+  --shadow: none;
   /* Geist for Latin UI; Hanuman for Khmer (no Latin glyphs in Geist → browser uses Hanuman) */
   --font-heading: var(--font-sans);
   --font-sans: 'Geist Variable', 'Hanuman', ui-sans-serif, system-ui, sans-serif;
@@ -132,9 +142,6 @@
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
 @layer utilities {

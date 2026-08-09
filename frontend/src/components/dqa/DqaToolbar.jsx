@@ -1,4 +1,4 @@
-import { RiLoader4Line, RiRefreshLine, RiSearchLine, RiShieldCheckLine } from '@remixicon/react';
+import { RiDownloadLine, RiLoader4Line, RiRefreshLine, RiSearchLine, RiShieldCheckLine } from '@remixicon/react';
 import SiteSelectModal from '../sites/SiteSelectModal';
 import { cn } from '@/lib/utils';
 import { APP_NAV_ICON, appNavItemClass, p360ControlClass } from '../layout/appNavStyles';
@@ -111,7 +111,8 @@ export default function DqaToolbar({
             }}
             title="ទាញយករបាយការណ៍ DQA ជា CSV"
           >
-            📥 របាយការណ៍ CSV
+            <RiDownloadLine className={APP_NAV_ICON} />
+            <span>របាយការណ៍ CSV</span>
           </Button>
         ) : null}
       </Patient360NavRow>

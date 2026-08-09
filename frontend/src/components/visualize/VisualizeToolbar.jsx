@@ -4,10 +4,13 @@ import {
   RiBarChartGroupedLine,
   RiClipboardLine,
   RiDownloadLine,
+  RiFilter3Line,
   RiGitMergeLine,
   RiListCheck2,
   RiLoader4Line,
   RiRefreshLine,
+  RiSidebarFoldLine,
+  RiSidebarUnfoldLine,
   RiStackLine,
   RiTable2
 } from '@remixicon/react';
@@ -56,7 +59,11 @@ export default function VisualizeToolbar({
   chartSettings,
   onChartSettingsChange,
   catalog = [],
-  indicatorIds = []
+  indicatorIds = [],
+  onIndicatorIdsChange,
+  isSidebarOpen = false,
+  onToggleSidebar,
+  activeProfileFilterCount = 0
 }) {
   const canRun =
     indicatorCount > 0 &&
@@ -181,6 +188,36 @@ export default function VisualizeToolbar({
           showLabel
         />
 
+        {/* Quick Indicator Presets Group */}
+        {onIndicatorIdsChange && (
+          <div className="hidden lg:flex items-center gap-1 shrink-0 ml-0.5" title="Quick Indicator Presets">
+            <button
+              type="button"
+              onClick={() => onIndicatorIdsChange(VISUALIZE_PRESETS.vl.ids)}
+              className="px-2 py-1 text-[11px] font-bold border border-border/80 bg-muted/20 text-foreground hover:bg-primary/10 hover:border-primary/40 transition-all rounded-none cursor-pointer"
+              title="Quick Preset: Viral Load & EAC Indicators"
+            >
+              VL/EAC
+            </button>
+            <button
+              type="button"
+              onClick={() => onIndicatorIdsChange(VISUALIZE_PRESETS.quality.ids)}
+              className="px-2 py-1 text-[11px] font-bold border border-border/80 bg-muted/20 text-foreground hover:bg-primary/10 hover:border-primary/40 transition-all rounded-none cursor-pointer"
+              title="Quick Preset: Quality (MMD/TLD/TPT)"
+            >
+              MMD/TLD
+            </button>
+            <button
+              type="button"
+              onClick={() => onIndicatorIdsChange(VISUALIZE_PRESETS.retention.ids)}
+              className="px-2 py-1 text-[11px] font-bold border border-border/80 bg-muted/20 text-foreground hover:bg-primary/10 hover:border-primary/40 transition-all rounded-none cursor-pointer"
+              title="Quick Preset: Retention & Loss to Follow-up"
+            >
+              Retention
+            </button>
+          </div>
+        )}
+
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <span className="mx-0.5 hidden h-5 w-px shrink-0 bg-border/80 md:inline" aria-hidden />
 
@@ -224,6 +261,36 @@ export default function VisualizeToolbar({
             onClick={handleExportExcel}
             title={VIZ_KH.exportExcelTitle}
           />
+
+          <span className="mx-0.5 hidden h-5 w-px shrink-0 bg-border/80 md:inline" aria-hidden />
+
+          {onToggleSidebar && (
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              className={cn(
+                appNavItemClass(isSidebarOpen),
+                'gap-1.5 font-bold transition-all text-xs border border-border/80 px-2.5 py-1 cursor-pointer select-none rounded-none',
+                activeProfileFilterCount > 0
+                  ? 'border-primary text-primary bg-primary/10'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
+              )}
+              title="បើក/បិទផ្ទាំងតម្រង Profile (Toggle Demographic Filter Sidebar)"
+            >
+              <RiFilter3Line className={cn(APP_NAV_ICON, activeProfileFilterCount > 0 ? 'text-primary' : TOOLBAR_ICON.blue)} />
+              <span className="hidden sm:inline">តម្រង Profile</span>
+              {activeProfileFilterCount > 0 && (
+                <span className="px-1 py-0.2 text-[10px] font-bold bg-primary text-primary-foreground">
+                  {activeProfileFilterCount}
+                </span>
+              )}
+              {isSidebarOpen ? (
+                <RiSidebarFoldLine className="size-3.5 text-muted-foreground" />
+              ) : (
+                <RiSidebarUnfoldLine className="size-3.5 text-muted-foreground" />
+              )}
+            </button>
+          )}
 
           {loading && progress?.total > 0 ? (
             <span className={cn('shrink-0 tabular-nums text-[11px] text-muted-foreground')} role="status">
